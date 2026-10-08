@@ -2,127 +2,82 @@
 
 import Link from "next/link";
 import { useDevUser } from "@/components/providers";
-import { PlusCircle, Users, ArrowRight, ShieldCheck, Zap, Lock, Sparkles, TrendingUp, Coins, ChevronRight } from "lucide-react";
+import { PlusCircle, Users, ArrowRight, ShieldCheck, Zap, Lock, Sparkles, TrendingUp, Coins, User, ArrowUpRight } from "lucide-react";
 import { DemoVideoModal } from "@/components/demo-video-modal";
+import { FloatingCoinsBackground } from "@/components/floating-coins-background";
 
 export default function HomePage() {
   const { user } = useDevUser();
 
   return (
-    <div className="min-h-screen bg-black text-white space-y-16 pb-20">
+    <div className="relative min-h-screen bg-black text-white overflow-hidden pb-24">
+      {/* 3D Floating Coins Interactive Dynamic Background Layer */}
+      <FloatingCoinsBackground />
+
       <DemoVideoModal />
 
-      {/* Hero Section inspired by Xapo Bank */}
-      <section className="relative pt-12 sm:pt-20 pb-8 overflow-hidden max-w-7xl mx-auto px-6">
-        {/* Ambient background glow */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-gradient-to-tr from-red-600/15 via-rose-600/10 to-transparent blur-[120px] pointer-events-none rounded-full" />
-
-        <div className="relative z-10 max-w-3xl space-y-6">
-          <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-neutral-900 border border-neutral-800 text-xs font-semibold tracking-widest uppercase text-neutral-300">
-            <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-            <span>Private Financial Protocol</span>
-          </div>
-
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-white leading-[1.08]">
-            Wealth circles built for the digital era.
+      {/* Main Hero Section matching exact Xapo Bank screenshot */}
+      <section className="relative z-10 max-w-7xl mx-auto px-6 pt-16 sm:pt-24 lg:pt-28 pb-16">
+        <div className="max-w-2xl lg:max-w-3xl space-y-8">
+          
+          {/* Main Hero Headline matching typography in screenshot */}
+          <h1 className="text-5xl sm:text-7xl lg:text-8xl font-extrabold tracking-tight text-white leading-[1.04]">
+            Crypto wealth since 2026. 5.2%* surplus on USD.
           </h1>
 
-          <p className="text-lg sm:text-xl text-neutral-400 font-normal leading-relaxed max-w-2xl">
-            Welcome, <span className="text-white font-semibold">{user?.displayName || "Private Member"}</span>. Combine capital with verified peers, automate monthly pooling, and bid in confidential cryptographic auctions.
+          {/* Subtitle matching style in screenshot */}
+          <p className="text-base sm:text-lg lg:text-xl text-neutral-300 font-normal leading-relaxed max-w-2xl">
+            The decentralized chit fund protocol on Base Sepolia helps you pool capital with trusted circles without paying middleman fees. Secure, bid, and grow your wealth with us.
           </p>
 
+          {/* Action Buttons matching the Burnt Orange Pill in screenshot */}
           <div className="flex flex-wrap items-center gap-4 pt-4">
             <Link
               href="/circles/new"
-              className="px-8 py-4 rounded-2xl bg-white hover:bg-neutral-200 text-black font-bold text-sm transition-all shadow-xl shadow-white/5 flex items-center gap-2"
+              className="px-8 py-4 rounded-full bg-gradient-to-r from-orange-600 via-amber-600 to-orange-700 hover:from-orange-500 hover:to-amber-500 text-white font-bold text-sm tracking-wide transition-all shadow-2xl shadow-orange-900/50 flex items-center gap-2.5 transform hover:scale-105 duration-300 cursor-pointer"
             >
-              <span>Form a Circle</span>
-              <ArrowRight className="h-4 w-4" />
+              <span>Become a Member</span>
+              <User className="h-4 w-4" />
             </Link>
 
             <Link
               href="/circles"
-              className="px-8 py-4 rounded-2xl bg-neutral-900/90 hover:bg-neutral-800 border border-neutral-800 text-white font-bold text-sm transition-all flex items-center gap-2"
+              className="px-8 py-4 rounded-full bg-neutral-900/90 hover:bg-neutral-800 text-neutral-200 hover:text-white font-bold text-sm tracking-wide border border-neutral-800 transition-all flex items-center gap-2"
             >
-              <span>View Active Circles</span>
+              <span>Explore Circles</span>
+              <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
-        </div>
 
-        {/* Real Time Portfolio Stats Strip */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-16 pt-8 border-t border-neutral-900">
-          <div className="p-6 rounded-2xl bg-neutral-950 border border-neutral-900 space-y-1.5">
-            <div className="text-xs uppercase tracking-widest text-neutral-400 font-semibold">
-              Total Pooled Volume
-            </div>
-            <div className="text-2xl sm:text-3xl font-bold text-white font-mono">
-              24,500 <span className="text-xs font-normal text-neutral-400">USDC</span>
-            </div>
-            <div className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
-              <TrendingUp className="w-3 h-3" />
-              <span>Full capital accounted</span>
-            </div>
+          {/* Welcome User Pill */}
+          <div className="pt-2 flex items-center gap-2 text-xs text-neutral-400 font-mono">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Active session: <strong className="text-white">{user?.displayName || "Private Member"}</strong> (@{user?.username})</span>
           </div>
 
-          <div className="p-6 rounded-2xl bg-neutral-950 border border-neutral-900 space-y-1.5">
-            <div className="text-xs uppercase tracking-widest text-neutral-400 font-semibold">
-              Auction Dividend Return
-            </div>
-            <div className="text-2xl sm:text-3xl font-bold text-red-400 font-mono">
-              5.2% <span className="text-xs font-normal text-neutral-400">Surplus</span>
-            </div>
-            <div className="text-[11px] text-neutral-400">
-              Distributed to non winning members
-            </div>
-          </div>
-
-          <div className="p-6 rounded-2xl bg-neutral-950 border border-neutral-900 space-y-1.5">
-            <div className="text-xs uppercase tracking-widest text-neutral-400 font-semibold">
-              Settlement Speed
-            </div>
-            <div className="text-2xl sm:text-3xl font-bold text-white font-mono">
-              Instant
-            </div>
-            <div className="text-[11px] text-neutral-400">
-              Direct smart account payout
-            </div>
-          </div>
-
-          <div className="p-6 rounded-2xl bg-neutral-950 border border-neutral-900 space-y-1.5">
-            <div className="text-xs uppercase tracking-widest text-neutral-400 font-semibold">
-              Network Protocol
-            </div>
-            <div className="text-2xl sm:text-3xl font-bold text-white font-mono">
-              Base Sepolia
-            </div>
-            <div className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>Smart contracts verified</span>
-            </div>
-          </div>
         </div>
       </section>
 
-      {/* Main Choice Cards inspired by Xapo Bank */}
-      <section className="max-w-7xl mx-auto px-6">
+      {/* Main Choice Tiles Section */}
+      <section className="relative z-10 max-w-7xl mx-auto px-6 pt-10">
         <div className="grid md:grid-cols-2 gap-8">
-          {/* Card 1: Form a Circle */}
+          {/* Card 1: Create a Circle */}
           <Link
             href="/circles/new"
-            className="group relative rounded-3xl bg-gradient-to-b from-neutral-900/90 to-neutral-950 p-8 sm:p-10 border border-neutral-800 hover:border-red-600/50 shadow-2xl transition-all duration-300 flex flex-col justify-between overflow-hidden"
+            className="group relative rounded-3xl bg-gradient-to-b from-neutral-900/90 via-neutral-950 to-black p-8 sm:p-10 border border-neutral-800/80 hover:border-orange-500/50 shadow-2xl transition-all duration-300 flex flex-col justify-between overflow-hidden"
           >
-            <div className="absolute top-0 right-0 w-48 h-48 bg-red-600/10 rounded-full blur-3xl pointer-events-none group-hover:bg-red-600/20 transition-all" />
+            <div className="absolute top-0 right-0 w-48 h-48 bg-orange-600/10 rounded-full blur-3xl pointer-events-none group-hover:bg-orange-600/20 transition-all" />
 
             <div className="space-y-6 relative z-10">
-              <div className="h-16 w-16 rounded-2xl bg-red-600/10 border border-red-600/20 flex items-center justify-center text-red-400 group-hover:scale-105 transition-transform duration-300">
+              <div className="h-16 w-16 rounded-2xl bg-orange-600/10 border border-orange-500/20 flex items-center justify-center text-orange-400 group-hover:scale-105 transition-transform duration-300">
                 <PlusCircle className="h-8 w-8" />
               </div>
 
               <div className="space-y-3">
-                <span className="text-xs uppercase tracking-widest font-bold text-red-400">
+                <span className="text-xs uppercase tracking-widest font-bold text-orange-400">
                   Organizer Access
                 </span>
-                <h2 className="text-3xl font-bold text-white tracking-tight group-hover:text-red-300 transition-colors">
+                <h2 className="text-3xl font-bold text-white tracking-tight group-hover:text-orange-300 transition-colors">
                   Create a new circle
                 </h2>
                 <p className="text-neutral-400 text-sm leading-relaxed">
@@ -131,9 +86,9 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="mt-10 pt-6 border-t border-neutral-800/80 flex items-center justify-between text-sm font-bold text-white group-hover:text-red-400 transition-colors">
+            <div className="mt-10 pt-6 border-t border-neutral-800/80 flex items-center justify-between text-sm font-bold text-white group-hover:text-orange-400 transition-colors">
               <span>Initiate Setup</span>
-              <div className="h-9 w-9 rounded-full bg-neutral-800 group-hover:bg-red-600 group-hover:text-white flex items-center justify-center transition-colors">
+              <div className="h-9 w-9 rounded-full bg-neutral-800 group-hover:bg-orange-600 group-hover:text-white flex items-center justify-center transition-colors">
                 <ArrowRight className="h-4 w-4" />
               </div>
             </div>
@@ -142,7 +97,7 @@ export default function HomePage() {
           {/* Card 2: Existing Circles */}
           <Link
             href="/circles"
-            className="group relative rounded-3xl bg-gradient-to-b from-neutral-900/90 to-neutral-950 p-8 sm:p-10 border border-neutral-800 hover:border-neutral-700 shadow-2xl transition-all duration-300 flex flex-col justify-between overflow-hidden"
+            className="group relative rounded-3xl bg-gradient-to-b from-neutral-900/90 via-neutral-950 to-black p-8 sm:p-10 border border-neutral-800/80 hover:border-neutral-700 shadow-2xl transition-all duration-300 flex flex-col justify-between overflow-hidden"
           >
             <div className="space-y-6 relative z-10">
               <div className="h-16 w-16 rounded-2xl bg-neutral-800/80 border border-neutral-700 flex items-center justify-center text-white group-hover:scale-105 transition-transform duration-300">
@@ -173,10 +128,10 @@ export default function HomePage() {
       </section>
 
       {/* Protocol Architecture Features Strip */}
-      <section className="max-w-7xl mx-auto px-6 pt-12">
+      <section className="relative z-10 max-w-7xl mx-auto px-6 pt-16">
         <div className="grid sm:grid-cols-3 gap-6">
-          <div className="p-8 rounded-3xl bg-neutral-950 border border-neutral-900 space-y-4">
-            <div className="h-12 w-12 rounded-2xl bg-red-600/10 border border-red-600/20 text-red-400 flex items-center justify-center">
+          <div className="p-8 rounded-3xl bg-neutral-950/80 border border-neutral-900 space-y-4 backdrop-blur-md">
+            <div className="h-12 w-12 rounded-2xl bg-orange-600/10 border border-orange-500/20 text-orange-400 flex items-center justify-center">
               <Zap className="h-6 w-6" />
             </div>
             <h3 className="text-lg font-bold text-white">Automated Autopay</h3>
@@ -185,8 +140,8 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="p-8 rounded-3xl bg-neutral-950 border border-neutral-900 space-y-4">
-            <div className="h-12 w-12 rounded-2xl bg-red-600/10 border border-red-600/20 text-red-400 flex items-center justify-center">
+          <div className="p-8 rounded-3xl bg-neutral-950/80 border border-neutral-900 space-y-4 backdrop-blur-md">
+            <div className="h-12 w-12 rounded-2xl bg-orange-600/10 border border-orange-500/20 text-orange-400 flex items-center justify-center">
               <Lock className="h-6 w-6" />
             </div>
             <h3 className="text-lg font-bold text-white">Sealed Bidding Auctions</h3>
@@ -195,8 +150,8 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="p-8 rounded-3xl bg-neutral-950 border border-neutral-900 space-y-4">
-            <div className="h-12 w-12 rounded-2xl bg-red-600/10 border border-red-600/20 text-red-400 flex items-center justify-center">
+          <div className="p-8 rounded-3xl bg-neutral-950/80 border border-neutral-900 space-y-4 backdrop-blur-md">
+            <div className="h-12 w-12 rounded-2xl bg-orange-600/10 border border-orange-500/20 text-orange-400 flex items-center justify-center">
               <ShieldCheck className="h-6 w-6" />
             </div>
             <h3 className="text-lg font-bold text-white">Trustless Settlement</h3>

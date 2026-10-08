@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useDevUser } from "@/components/providers";
-import { Bell, Shield, PlusCircle, UserCheck, Wallet, Check, X, Sparkles, ChevronDown } from "lucide-react";
+import { Bell, Shield, UserCheck, Wallet, Check, X, ArrowUpRight, User, Menu } from "lucide-react";
 
 interface NotificationItem {
   id: string;
@@ -74,77 +74,94 @@ export function Navbar() {
   const unreadCount = notifications.filter((n) => !n.readAt).length;
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-neutral-800/80 bg-black/85 backdrop-blur-xl">
-      <div className="container mx-auto flex h-20 items-center justify-between px-6 max-w-7xl">
-        {/* Brand */}
-        <div className="flex items-center gap-10">
+    <header className="sticky top-0 z-50 w-full bg-black/80 backdrop-blur-xl border-b border-neutral-900/60">
+      <div className="container mx-auto flex h-24 items-center justify-between px-6 max-w-7xl">
+        
+        {/* Top Left: Floating Market Ticker Pill matching Xapo Bank screenshot */}
+        <div className="hidden lg:flex items-center gap-4 bg-neutral-900/90 hover:bg-neutral-900 border border-neutral-800 rounded-full px-5 py-2.5 shadow-2xl transition-all">
+          <div className="flex flex-col">
+            <span className="text-[11px] font-bold text-white tracking-wide">
+              ChitChain USD
+            </span>
+            <span className="text-[10px] text-emerald-400 font-mono font-semibold flex items-center gap-0.5">
+              <span>↑ 5.20%</span>
+              <span className="text-neutral-500 ml-1">Surplus</span>
+            </span>
+          </div>
+          <div className="h-6 w-px bg-neutral-800" />
+          <div className="text-[10px] font-mono text-neutral-400 space-y-0.5">
+            <div>Pool <span className="text-white font-bold">24,500.00</span></div>
+            <div>Yield <span className="text-white font-bold">5.2% APY</span></div>
+          </div>
+        </div>
+
+        {/* Center: Luxury XAPO BANK Styled Brand Logo */}
+        <div className="flex flex-col items-center justify-center">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-red-600 via-rose-600 to-amber-600 flex items-center justify-center shadow-lg shadow-red-900/30 group-hover:scale-105 transition-transform duration-300">
-              <Shield className="h-5 w-5 text-white" />
+            <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-amber-600 via-orange-600 to-red-600 flex items-center justify-center shadow-lg shadow-orange-950/50 group-hover:scale-105 transition-transform duration-300">
+              <Shield className="h-4 w-4 text-white fill-white/20" />
             </div>
-            <div className="flex flex-col">
-              <span className="font-bold text-xl tracking-tight text-white group-hover:text-red-400 transition-colors">
-                ChitChain
+            <div className="flex flex-col items-center">
+              <span className="font-bold text-xl tracking-[0.25em] text-white uppercase group-hover:text-amber-400 transition-colors">
+                CHITCHAIN
               </span>
-              <span className="text-[10px] tracking-widest uppercase text-neutral-400 font-semibold font-mono">
-                Private Wealth Circle
+              <span className="text-[9px] tracking-[0.35em] uppercase text-neutral-500 font-mono font-semibold">
+                EST. 2026
               </span>
             </div>
           </Link>
-
-          <nav className="hidden md:flex items-center gap-8 text-xs uppercase tracking-widest font-semibold text-neutral-400">
-            <Link
-              href="/"
-              className={`hover:text-white transition-colors ${
-                pathname === "/" ? "text-white" : ""
-              }`}
-            >
-              Overview
-            </Link>
-            <Link
-              href="/circles"
-              className={`hover:text-white transition-colors ${
-                pathname.startsWith("/circles") && pathname !== "/circles/new"
-                  ? "text-white"
-                  : ""
-              }`}
-            >
-              My Circles
-            </Link>
-            <Link
-              href="/circles/new"
-              className={`flex items-center gap-1.5 hover:text-red-400 transition-colors ${
-                pathname === "/circles/new" ? "text-red-400 font-bold" : ""
-              }`}
-            >
-              <PlusCircle className="h-3.5 w-3.5" />
-              <span>Create Circle</span>
-            </Link>
-          </nav>
         </div>
 
-        {/* Right Action & User Controls */}
-        <div className="flex items-center gap-4">
-          {/* Notification Bell */}
+        {/* Top Right: Member controls matching Xapo Bank screenshot pills */}
+        <div className="flex items-center gap-3">
+          {/* Become a Member / Create Circle Pill */}
+          <Link
+            href="/circles/new"
+            className="hidden sm:flex items-center gap-2 px-6 py-2.5 rounded-full bg-neutral-900/90 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-wider border border-neutral-800 transition-all shadow-xl"
+          >
+            <span>Join Now</span>
+            <User className="w-3.5 h-3.5 text-neutral-400" />
+          </Link>
+
+          {/* Dev User Switcher Pill */}
+          <div className="flex items-center gap-2 bg-neutral-900/90 rounded-full px-4 py-2 border border-neutral-800 text-xs">
+            <UserCheck className="h-3.5 w-3.5 text-orange-500" />
+            <select
+              value={user?.username || ""}
+              onChange={(e) => {
+                const found = users.find((u) => u.username === e.target.value);
+                if (found) setUser(found);
+              }}
+              className="bg-transparent font-bold text-white focus:outline-none cursor-pointer text-xs"
+            >
+              {users.map((u) => (
+                <option key={u.username} value={u.username} className="bg-neutral-950 text-white">
+                  {u.displayName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Notifications Button */}
           <div className="relative">
             <button
               onClick={() => setNotificationsOpen(!notificationsOpen)}
-              className="relative p-2.5 text-neutral-400 hover:text-white hover:bg-neutral-900 rounded-xl border border-neutral-800 transition-all"
+              className="p-2.5 text-neutral-400 hover:text-white hover:bg-neutral-900 rounded-full border border-neutral-800 transition-all"
               title="Notifications"
             >
               <Bell className="h-4 w-4" />
               {unreadCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-black animate-pulse" />
+                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-orange-500 ring-2 ring-black animate-pulse" />
               )}
             </button>
 
             {notificationsOpen && (
-              <div className="absolute right-0 mt-3 w-96 rounded-2xl bg-neutral-950 p-5 shadow-2xl border border-neutral-800 z-50 text-neutral-100">
+              <div className="absolute right-0 mt-3 w-96 rounded-3xl bg-neutral-950 p-5 shadow-2xl border border-neutral-800 z-50 text-neutral-100">
                 <div className="flex items-center justify-between border-b border-neutral-800 pb-3 mb-3">
                   <div className="flex items-center gap-2">
                     <h4 className="font-bold text-sm text-white">Notifications</h4>
                     {unreadCount > 0 && (
-                      <span className="px-2 py-0.5 rounded-full bg-red-950 border border-red-800/60 text-red-300 text-[10px] font-bold">
+                      <span className="px-2 py-0.5 rounded-full bg-orange-950 border border-orange-800 text-orange-300 text-[10px] font-bold">
                         {unreadCount} new
                       </span>
                     )}
@@ -164,31 +181,30 @@ export function Navbar() {
                     notifications.map((notif) => (
                       <div
                         key={notif.id}
-                        className={`p-3.5 rounded-xl border transition-all ${
+                        className={`p-3.5 rounded-2xl border transition-all ${
                           notif.type === "JOIN_REQUEST" && notif.inviteId && !notif.readAt
-                            ? "bg-red-950/30 border-red-800/40"
+                            ? "bg-orange-950/30 border-orange-800/40"
                             : "bg-neutral-900/80 border-neutral-800"
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className="font-bold text-[10px] uppercase tracking-wider text-red-400">
+                          <span className="font-bold text-[10px] uppercase tracking-wider text-orange-400">
                             {notif.type.replace("_", " ")}
                           </span>
                           <span className="text-[10px] text-neutral-500 font-mono">
                             {new Date(notif.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </span>
                         </div>
-                        <p className="text-neutral-200 leading-relaxed text-xs">
+                        <p className="text-neutral-200 leading-relaxed text-xs font-medium">
                           {notif.body}
                         </p>
 
-                        {/* Join Request Actions */}
                         {notif.type === "JOIN_REQUEST" && notif.inviteId && !notif.readAt && (
                           <div className="mt-3 flex items-center gap-2 pt-2 border-t border-neutral-800">
                             <button
                               disabled={respondingId === notif.inviteId}
                               onClick={() => handleRespond(notif.inviteId!, true, notif.id)}
-                              className="flex-1 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-lg shadow-red-900/30 transition-all"
+                              className="flex-1 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-lg shadow-orange-900/30 transition-all"
                             >
                               <Check className="h-3.5 w-3.5" />
                               Accept
@@ -196,7 +212,7 @@ export function Navbar() {
                             <button
                               disabled={respondingId === notif.inviteId}
                               onClick={() => handleRespond(notif.inviteId!, false, notif.id)}
-                              className="px-3 py-1.5 rounded-lg border border-neutral-700 hover:bg-neutral-800 text-neutral-300 font-bold text-xs flex items-center justify-center gap-1 transition-all"
+                              className="px-3 py-1.5 rounded-xl border border-neutral-700 hover:bg-neutral-800 text-neutral-300 font-bold text-xs flex items-center justify-center gap-1 transition-all"
                             >
                               <X className="h-3.5 w-3.5" />
                               Decline
@@ -211,39 +227,18 @@ export function Navbar() {
             )}
           </div>
 
-          {/* Dev User Switcher */}
-          <div className="flex items-center gap-2 bg-neutral-900/90 rounded-xl px-3.5 py-2 border border-neutral-800 text-xs">
-            <UserCheck className="h-4 w-4 text-red-400" />
-            <span className="text-neutral-400 font-medium hidden sm:inline">Member:</span>
-            <select
-              value={user?.username || ""}
-              onChange={(e) => {
-                const found = users.find((u) => u.username === e.target.value);
-                if (found) setUser(found);
-              }}
-              className="bg-transparent font-bold text-white focus:outline-none cursor-pointer text-xs"
-            >
-              {users.map((u) => (
-                <option key={u.username} value={u.username} className="bg-neutral-950 text-white">
-                  {u.displayName} (@{u.username})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Wallet Address badge */}
+          {/* Wallet Address Link */}
           {user && (
             <Link
               href="/account/wallet"
-              className="hidden lg:flex items-center gap-2 bg-gradient-to-r from-red-950/50 to-neutral-900 text-red-300 px-3.5 py-2 rounded-xl text-xs font-mono border border-red-800/40 hover:border-red-600/60 transition-all shadow-sm"
+              className="p-2.5 text-neutral-400 hover:text-white hover:bg-neutral-900 rounded-full border border-neutral-800 transition-all"
+              title="Smart Account Wallet"
             >
-              <Wallet className="h-3.5 w-3.5 text-red-400" />
-              <span>
-                {user.walletAddress.slice(0, 6)}...{user.walletAddress.slice(-4)}
-              </span>
+              <Wallet className="h-4 w-4" />
             </Link>
           )}
         </div>
+
       </div>
     </header>
   );
