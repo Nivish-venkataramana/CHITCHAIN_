@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "chainId": 84532,
+  "token": "0x0000000000000000000000000000000000000000",
+  "destinationVault": "0x0000000000000000000000000000000000000000",
+  "allowedCalls": [
+    {
+      "target": "token",
+      "function": "transfer(address,uint256)",
+      "constraints": {
+        "to": "destinationVault",
+        "amountMax": "monthlyAmount"
+      }
+    },
+    {
+      "target": "destinationVault",
+      "function": "recordContribution()"
+    }
+  ],
+  "maxExecutionsPerCycle": 1,
+  "validUntil": "circle end (start + durationMonths + grace)"
+}

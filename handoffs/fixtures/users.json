@@ -1,0 +1,32 @@
+[
+  {
+    "username": "asharao01",
+    "walletAddress": "0x1111111111111111111111111111111111111111",
+    "displayName": "Asha Rao"
+  },
+  {
+    "username": "vikramnair02",
+    "walletAddress": "0x2222222222222222222222222222222222222222",
+    "displayName": "Vikram Nair"
+  },
+  {
+    "username": "meerajoshi03",
+    "walletAddress": "0x3333333333333333333333333333333333333333",
+    "displayName": "Meera Joshi"
+  },
+  {
+    "username": "rohandas04",
+    "walletAddress": "0x4444444444444444444444444444444444444444",
+    "displayName": "Rohan Das"
+  },
+  {
+    "username": "kavyareddy05",
+    "walletAddress": "0x5555555555555555555555555555555555555555",
+    "displayName": "Kavya Reddy"
+  },
+  {
+    "username": "arjunpatel06",
+    "walletAddress": "0x6666666666666666666666666666666666666666",
+    "displayName": "Arjun Patel"
+  }
+]

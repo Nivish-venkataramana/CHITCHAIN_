@@ -1,0 +1,80 @@
+[
+  {
+    "name": "month 2, simple bid",
+    "members": 5,
+    "monthlyAmount": "1000000000",
+    "cycle": 2,
+    "carriedDividend": "0",
+    "paid": 5,
+    "winningBid": "3800000000",
+    "expect": {
+      "payout": "3800000000",
+      "dividendCarried": "1200000000"
+    }
+  },
+  {
+    "name": "month 3, carry-over dividend",
+    "members": 5,
+    "monthlyAmount": "1000000000",
+    "cycle": 3,
+    "carriedDividend": "1200000000",
+    "paid": 5,
+    "winningBid": "4200000000",
+    "expect": {
+      "payout": "4200000000",
+      "dividendCarried": "2000000000"
+    }
+  },
+  {
+    "name": "month 2, minimum floor bid 50%",
+    "members": 4,
+    "monthlyAmount": "1000000000",
+    "cycle": 2,
+    "carriedDividend": "0",
+    "paid": 4,
+    "winningBid": "2000000000",
+    "expect": {
+      "payout": "2000000000",
+      "dividendCarried": "2000000000"
+    }
+  },
+  {
+    "name": "month 2, full pool bid (no discount)",
+    "members": 4,
+    "monthlyAmount": "1000000000",
+    "cycle": 2,
+    "carriedDividend": "0",
+    "paid": 4,
+    "winningBid": "4000000000",
+    "expect": {
+      "payout": "4000000000",
+      "dividendCarried": "0"
+    }
+  },
+  {
+    "name": "month 2, 1 member missed payment",
+    "members": 5,
+    "monthlyAmount": "1000000000",
+    "cycle": 2,
+    "carriedDividend": "0",
+    "paid": 4,
+    "winningBid": "3200000000",
+    "expect": {
+      "payout": "3200000000",
+      "dividendCarried": "800000000"
+    }
+  },
+  {
+    "name": "month 2, no bids rollover",
+    "members": 5,
+    "monthlyAmount": "1000000000",
+    "cycle": 2,
+    "carriedDividend": "0",
+    "paid": 5,
+    "winningBid": "0",
+    "expect": {
+      "payout": "0",
+      "dividendCarried": "5000000000"
+    }
+  }
+]

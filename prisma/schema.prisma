@@ -1,0 +1,96 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ----------------------------------------------------------------------------
+// Pruthvik: Wallet, Account & Autopay Models
+// ----------------------------------------------------------------------------
+
+model User {
+  id            String   @id @default(cuid())
+  privyUserId   String?  @unique
+  walletAddress String   @unique // smart account address, lowercase
+  ownerAddress  String? // embedded wallet EOA, for reference
+  displayName   String // real name as entered
+  username      String   @unique // lowercase
+  createdAt     DateTime @default(now())
+}
+
+model AutopayConsent {
+  id            String    @id @default(cuid())
+  circleId      String
+  memberAddress String
+  status        String // NOT_GIVEN | GIVEN | REVOKED
+  sessionId     String?
+  txHash        String?
+  grantedAt     DateTime?
+  revokedAt     DateTime?
+
+  @@unique([circleId, memberAddress])
+}
+
+// ----------------------------------------------------------------------------
+// Ujwal: Circles, Invites, Issues & Notification Models
+// ----------------------------------------------------------------------------
+
+model Circle {
+  id              String    @id @default(cuid())
+  name            String
+  volunteerWallet String
+  numPeople       Int
+  monthlyAmount   String // base units
+  durationMonths  Int
+  status          String // INVITING | ISSUE_STAGE | FINALIZED
+  vaultAddress    String? // filled after Pruthvik's createCircle step
+  createdAt       DateTime  @default(now())
+  finalizedAt     DateTime?
+}
+
+model Invite {
+  id              String    @id @default(cuid())
+  circleId        String
+  inviteeWallet   String
+  inviteeUsername String
+  status          String // PENDING | ACCEPTED | REJECTED
+  balanceAtCheck  String // base units, for the record
+  createdAt       DateTime  @default(now())
+  respondedAt     DateTime?
+
+  @@unique([circleId, inviteeWallet])
+}
+
+model Issue {
+  id                 String    @id @default(cuid())
+  circleId           String
+  authorWallet       String
+  category           String // PEOPLE_COUNT | DURATION | AMOUNT | PEOPLE_JOINED
+  targetMemberWallet String? // only for PEOPLE_JOINED
+  comment            String // required
+  status             String // OPEN | RESOLVED
+  resolutionResponse String?
+  createdAt          DateTime  @default(now())
+  resolvedAt         DateTime?
+}
+
+model NoIssueConfirmation {
+  circleId     String
+  memberWallet String
+  confirmedAt  DateTime @default(now())
+
+  @@id([circleId, memberWallet])
+}
+
+model Notification {
+  id         String    @id @default(cuid())
+  userWallet String
+  type       String // JOIN_REQUEST | INVITE_ACCEPTED | INVITE_REJECTED | ISSUE_RAISED | ISSUE_RESOLVED | FINALIZED
+  circleId   String
+  body       String
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+}
