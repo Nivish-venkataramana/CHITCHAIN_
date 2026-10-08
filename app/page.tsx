@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useDevUser } from "@/components/providers";
 import { PlusCircle, Users, ArrowRight, ShieldCheck, Zap, Lock } from "lucide-react";
+import { DemoVideoModal } from "@/components/demo-video-modal";
 
 export default function HomePage() {
   const { user } = useDevUser();
 
   return (
     <div className="space-y-12 py-6">
+      <DemoVideoModal />
       {/* Hero Section */}
       <div className="text-center max-w-2xl mx-auto space-y-4">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold uppercase tracking-wider">
