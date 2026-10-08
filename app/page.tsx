@@ -11,23 +11,23 @@ export default function HomePage() {
 
   return (
     <div className="relative min-h-screen bg-black text-white overflow-hidden pb-24">
-      {/* 3D Floating Coins Interactive Dynamic Background Layer */}
+      {/* 3D Moving Floating Rupee Coins Dynamic Background Layer */}
       <FloatingCoinsBackground />
 
       <DemoVideoModal />
 
-      {/* Main Hero Section matching exact Xapo Bank screenshot */}
+      {/* Main Hero Section matching exact Xapo Bank layout and typography in Indian context */}
       <section className="relative z-10 max-w-7xl mx-auto px-6 pt-16 sm:pt-24 lg:pt-28 pb-16">
         <div className="max-w-2xl lg:max-w-3xl space-y-8">
           
           {/* Main Hero Headline matching typography in screenshot */}
           <h1 className="text-5xl sm:text-7xl lg:text-8xl font-extrabold tracking-tight text-white leading-[1.04]">
-            Crypto wealth since 2026. 5.2%* surplus on USD.
+            Chit funds for India. 0% commission on pool.
           </h1>
 
           {/* Subtitle matching style in screenshot */}
           <p className="text-base sm:text-lg lg:text-xl text-neutral-300 font-normal leading-relaxed max-w-2xl">
-            The decentralized chit fund protocol on Base Sepolia helps you pool capital with trusted circles without paying middleman fees. Secure, bid, and grow your wealth with us.
+            The decentralized chit fund protocol on Base Sepolia helps you pool monthly capital with trusted friends and family. Automate pooling via autopay, bid in confidential auctions, and grow wealth together.
           </p>
 
           {/* Action Buttons matching the Burnt Orange Pill in screenshot */}
@@ -36,7 +36,7 @@ export default function HomePage() {
               href="/circles/new"
               className="px-8 py-4 rounded-full bg-gradient-to-r from-orange-600 via-amber-600 to-orange-700 hover:from-orange-500 hover:to-amber-500 text-white font-bold text-sm tracking-wide transition-all shadow-2xl shadow-orange-900/50 flex items-center gap-2.5 transform hover:scale-105 duration-300 cursor-pointer"
             >
-              <span>Become a Member</span>
+              <span>Start a Chit Circle</span>
               <User className="h-4 w-4" />
             </Link>
 
@@ -44,7 +44,7 @@ export default function HomePage() {
               href="/circles"
               className="px-8 py-4 rounded-full bg-neutral-900/90 hover:bg-neutral-800 text-neutral-200 hover:text-white font-bold text-sm tracking-wide border border-neutral-800 transition-all flex items-center gap-2"
             >
-              <span>Explore Circles</span>
+              <span>Explore Active Chits</span>
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -52,9 +52,62 @@ export default function HomePage() {
           {/* Welcome User Pill */}
           <div className="pt-2 flex items-center gap-2 text-xs text-neutral-400 font-mono">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Active session: <strong className="text-white">{user?.displayName || "Private Member"}</strong> (@{user?.username})</span>
+            <span>Active member: <strong className="text-white">{user?.displayName || "Private Member"}</strong> (@{user?.username})</span>
           </div>
 
+        </div>
+
+        {/* Real Time Indian Rupee Volume Strip */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-20 pt-8 border-t border-neutral-900">
+          <div className="p-6 rounded-2xl bg-neutral-950/80 border border-neutral-900 space-y-1.5 backdrop-blur-md">
+            <div className="text-xs uppercase tracking-widest text-neutral-400 font-semibold">
+              Total Pooled Chit Volume
+            </div>
+            <div className="text-2xl sm:text-3xl font-bold text-white font-mono">
+              ₹24,50,000 <span className="text-xs font-normal text-neutral-400">INR</span>
+            </div>
+            <div className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
+              <TrendingUp className="w-3 h-3" />
+              <span>100% onchain accounting</span>
+            </div>
+          </div>
+
+          <div className="p-6 rounded-2xl bg-neutral-950/80 border border-neutral-900 space-y-1.5 backdrop-blur-md">
+            <div className="text-xs uppercase tracking-widest text-neutral-400 font-semibold">
+              Surplus Dividend Return
+            </div>
+            <div className="text-2xl sm:text-3xl font-bold text-orange-400 font-mono">
+              5.2% <span className="text-xs font-normal text-neutral-400">Surplus</span>
+            </div>
+            <div className="text-[11px] text-neutral-400">
+              Distributed to non winning members
+            </div>
+          </div>
+
+          <div className="p-6 rounded-2xl bg-neutral-950/80 border border-neutral-900 space-y-1.5 backdrop-blur-md">
+            <div className="text-xs uppercase tracking-widest text-neutral-400 font-semibold">
+              Payout Settlement
+            </div>
+            <div className="text-2xl sm:text-3xl font-bold text-white font-mono">
+              Instant
+            </div>
+            <div className="text-[11px] text-neutral-400">
+              Direct smart account payout
+            </div>
+          </div>
+
+          <div className="p-6 rounded-2xl bg-neutral-950/80 border border-neutral-900 space-y-1.5 backdrop-blur-md">
+            <div className="text-xs uppercase tracking-widest text-neutral-400 font-semibold">
+              Organizer Foreman Cut
+            </div>
+            <div className="text-2xl sm:text-3xl font-bold text-emerald-400 font-mono">
+              ₹0 Zero
+            </div>
+            <div className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span>Zero middleman commission</span>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -78,10 +131,10 @@ export default function HomePage() {
                   Organizer Access
                 </span>
                 <h2 className="text-3xl font-bold text-white tracking-tight group-hover:text-orange-300 transition-colors">
-                  Create a new circle
+                  Create a new chit circle
                 </h2>
                 <p className="text-neutral-400 text-sm leading-relaxed">
-                  Design parameters for your financial circle. Specify member capacity, fixed monthly pooling contributions, duration limits, and add trusted participants.
+                  Design parameters for your chit circle. Specify member capacity, fixed monthly pooling contributions in rupees, duration in months, and add trusted participants by username.
                 </p>
               </div>
             </div>
@@ -109,16 +162,16 @@ export default function HomePage() {
                   Membership Dashboard
                 </span>
                 <h2 className="text-3xl font-bold text-white tracking-tight group-hover:text-neutral-200 transition-colors">
-                  Are you in a circle?
+                  Are you in a chit circle?
                 </h2>
                 <p className="text-neutral-400 text-sm leading-relaxed">
-                  Access circles you belong to, verify invitations, review mutual issue resolutions, authorize monthly autopay, and bid in confidential monthly rounds.
+                  Access chit circles you belong to, verify invitations, review mutual issue resolutions, authorize monthly autopay, and bid in confidential monthly rounds.
                 </p>
               </div>
             </div>
 
             <div className="mt-10 pt-6 border-t border-neutral-800/80 flex items-center justify-between text-sm font-bold text-white group-hover:text-neutral-300 transition-colors">
-              <span>View Portfolio</span>
+              <span>View Chit Portfolio</span>
               <div className="h-9 w-9 rounded-full bg-neutral-800 group-hover:bg-neutral-700 flex items-center justify-center transition-colors">
                 <ArrowRight className="h-4 w-4" />
               </div>

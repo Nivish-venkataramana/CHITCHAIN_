@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useDevUser } from "@/components/providers";
-import { Bell, Shield, UserCheck, Wallet, Check, X, ArrowUpRight, User, Menu } from "lucide-react";
+import { Bell, Shield, UserCheck, Wallet, Check, X, User } from "lucide-react";
 
 interface NotificationItem {
   id: string;
@@ -77,36 +77,36 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full bg-black/80 backdrop-blur-xl border-b border-neutral-900/60">
       <div className="container mx-auto flex h-24 items-center justify-between px-6 max-w-7xl">
         
-        {/* Top Left: Floating Market Ticker Pill matching Xapo Bank screenshot */}
+        {/* Top Left: Live Indian Rupee Ticker Pill matching Xapo Bank screenshot */}
         <div className="hidden lg:flex items-center gap-4 bg-neutral-900/90 hover:bg-neutral-900 border border-neutral-800 rounded-full px-5 py-2.5 shadow-2xl transition-all">
           <div className="flex flex-col">
             <span className="text-[11px] font-bold text-white tracking-wide">
-              ChitChain USD
+              ChitChain INR
             </span>
             <span className="text-[10px] text-emerald-400 font-mono font-semibold flex items-center gap-0.5">
               <span>↑ 5.20%</span>
-              <span className="text-neutral-500 ml-1">Surplus</span>
+              <span className="text-neutral-500 ml-1">Dividend</span>
             </span>
           </div>
           <div className="h-6 w-px bg-neutral-800" />
           <div className="text-[10px] font-mono text-neutral-400 space-y-0.5">
-            <div>Pool <span className="text-white font-bold">24,500.00</span></div>
+            <div>Monthly Pot <span className="text-white font-bold">₹1,00,000</span></div>
             <div>Yield <span className="text-white font-bold">5.2% APY</span></div>
           </div>
         </div>
 
-        {/* Center: Luxury XAPO BANK Styled Brand Logo */}
+        {/* Center: Luxury ChitChain Logo */}
         <div className="flex flex-col items-center justify-center">
           <Link href="/" className="flex items-center gap-3 group">
             <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-amber-600 via-orange-600 to-red-600 flex items-center justify-center shadow-lg shadow-orange-950/50 group-hover:scale-105 transition-transform duration-300">
-              <Shield className="h-4 w-4 text-white fill-white/20" />
+              <span className="font-bold text-white text-base">₹</span>
             </div>
             <div className="flex flex-col items-center">
               <span className="font-bold text-xl tracking-[0.25em] text-white uppercase group-hover:text-amber-400 transition-colors">
                 CHITCHAIN
               </span>
               <span className="text-[9px] tracking-[0.35em] uppercase text-neutral-500 font-mono font-semibold">
-                EST. 2026
+                BHARAT PROTOCOL
               </span>
             </div>
           </Link>
@@ -114,12 +114,12 @@ export function Navbar() {
 
         {/* Top Right: Member controls matching Xapo Bank screenshot pills */}
         <div className="flex items-center gap-3">
-          {/* Become a Member / Create Circle Pill */}
+          {/* Join Circle Pill */}
           <Link
             href="/circles/new"
             className="hidden sm:flex items-center gap-2 px-6 py-2.5 rounded-full bg-neutral-900/90 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-wider border border-neutral-800 transition-all shadow-xl"
           >
-            <span>Join Now</span>
+            <span>Start Chit Circle</span>
             <User className="w-3.5 h-3.5 text-neutral-400" />
           </Link>
 
