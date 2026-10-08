@@ -15,6 +15,7 @@ import {
   AlertCircle,
   Clock,
   Coins,
+  Shield,
 } from "lucide-react";
 
 interface AutopayState {
@@ -78,7 +79,7 @@ export default function AutopayPermissionsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create vault");
 
-      setSuccessMsg("Circle vault clone successfully deployed on Base Sepolia!");
+      setSuccessMsg("Circle vault clone successfully deployed on Base Sepolia");
       loadAutopayState();
     } catch (err: any) {
       setError(err.message || "Failed to deploy vault");
@@ -101,7 +102,7 @@ export default function AutopayPermissionsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to sign mandate");
 
-      setSuccessMsg("EIP-712 Autopay SmartSession mandate signed & installed!");
+      setSuccessMsg("Autopay SmartSession mandate signed and installed");
       loadAutopayState();
     } catch (err: any) {
       setError(err.message || "Failed to grant autopay mandate");
@@ -124,7 +125,7 @@ export default function AutopayPermissionsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to revoke mandate");
 
-      setSuccessMsg("Autopay mandate revoked.");
+      setSuccessMsg("Autopay mandate revoked");
       loadAutopayState();
     } catch (err: any) {
       setError(err.message || "Failed to revoke mandate");
@@ -160,7 +161,7 @@ export default function AutopayPermissionsPage() {
 
   if (loading) {
     return (
-      <div className="p-12 text-center text-sm text-slate-500 bg-white rounded-2xl border">
+      <div className="p-16 text-center text-sm text-neutral-500 bg-neutral-950 rounded-3xl border border-neutral-900">
         Loading autopay status...
       </div>
     );
@@ -169,35 +170,35 @@ export default function AutopayPermissionsPage() {
   const allGiven = state?.members.length ? state.members.every((m) => m.status === "GIVEN") : false;
 
   return (
-    <div className="max-w-2xl mx-auto py-6 space-y-6">
+    <div className="max-w-4xl mx-auto py-8 px-6 space-y-8 text-neutral-100">
       <Link
         href={`/circles/${circleId}`}
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
+        className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-400 hover:text-white transition-colors"
       >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        Back to circle
+        <ArrowLeft className="h-4 w-4" />
+        <span>Return to Circle</span>
       </Link>
 
-      <div className="rounded-2xl border bg-white p-6 shadow-sm space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl">
+      <div className="rounded-3xl border border-neutral-900 bg-neutral-950 p-8 shadow-2xl space-y-8 relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-900 pb-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3.5 bg-red-600/10 border border-red-600/20 text-red-400 rounded-2xl">
               <ShieldCheck className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-900">Autopay SmartSession Permissions</h1>
-              <p className="text-xs text-slate-500">
-                EIP-712 Rhinestone SmartSession Mandates for Vault Autopay
+              <h1 className="text-2xl font-bold text-white tracking-tight">Autopay Mandate Signatures</h1>
+              <p className="text-xs text-neutral-400 mt-0.5">
+                Rhinestone SmartSession Permissions for Automatic Pooling
               </p>
             </div>
           </div>
           <span
-            className={`px-3 py-1 rounded-full text-xs font-bold ${
+            className={`px-4 py-1.5 rounded-full text-xs font-bold font-mono uppercase tracking-wider ${
               state?.isStarted
-                ? "bg-emerald-100 text-emerald-800"
+                ? "bg-emerald-950 text-emerald-300 border border-emerald-800/60"
                 : allGiven
-                ? "bg-blue-100 text-blue-800"
-                : "bg-amber-100 text-amber-800"
+                ? "bg-blue-950 text-blue-300 border border-blue-800/60"
+                : "bg-amber-950 text-amber-300 border border-amber-800/60"
             }`}
           >
             {state?.isStarted
@@ -209,69 +210,73 @@ export default function AutopayPermissionsPage() {
         </div>
 
         {error && (
-          <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0" />
+          <div className="p-4 rounded-2xl bg-red-950/60 border border-red-800/50 text-red-300 text-xs flex items-center gap-2.5">
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
             <span>{error}</span>
           </div>
         )}
 
         {successMsg && (
-          <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
+          <div className="p-4 rounded-2xl bg-emerald-950/60 border border-emerald-800/50 text-emerald-300 text-xs flex items-center gap-2.5">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
             <span>{successMsg}</span>
           </div>
         )}
 
         {/* Vault Status Card */}
-        <div className="p-4 rounded-xl bg-slate-50 border text-xs text-slate-700 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold">Circle Vault Address:</span>
+        <div className="p-6 rounded-2xl bg-neutral-900/80 border border-neutral-800 text-xs text-neutral-300 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <span className="font-bold text-white uppercase tracking-wider text-[11px]">Circle Vault Address:</span>
             {state?.vaultAddress ? (
-              <span className="font-mono text-slate-900 font-bold">{state.vaultAddress}</span>
+              <span className="font-mono text-white font-bold bg-neutral-950 px-3 py-1 rounded-xl border border-neutral-800 break-all">
+                {state.vaultAddress}
+              </span>
             ) : isVolunteer ? (
               <button
                 onClick={handleCreateVault}
                 disabled={actionLoading}
-                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold"
+                className="px-4 py-2 bg-white hover:bg-neutral-200 text-black rounded-xl font-bold text-xs uppercase tracking-wider shadow"
               >
                 Deploy Circle Vault Clone
               </button>
             ) : (
-              <span className="text-slate-400 italic">Waiting for volunteer to deploy vault...</span>
+              <span className="text-neutral-500 italic">Waiting for organizer to deploy vault...</span>
             )}
           </div>
-          <div className="text-[11px] text-slate-500 pt-1 border-t space-y-1">
-            <p><strong>Strict Mandate Scope:</strong> Only MockUSDC transfer to this vault (capped at monthly amount), once per cycle, valid until circle duration end.</p>
+          <div className="text-[11px] text-neutral-400 pt-2 border-t border-neutral-800/80 leading-relaxed">
+            <strong className="text-neutral-300">Strict Mandate Scope:</strong> Only MockUSDC transfer to this vault (capped at monthly amount), once per cycle, valid until circle duration end.
           </div>
         </div>
 
         {/* Member Permissions List */}
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-900">Member Permissions Board</h3>
-            <span className="text-xs text-slate-500">
-              {state?.members.filter((m) => m.status === "GIVEN").length} / {state?.members.length} Granted
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Member Authorization Matrix</h3>
+            <span className="text-xs font-mono text-neutral-400">
+              {state?.members.filter((m) => m.status === "GIVEN").length} of {state?.members.length} Granted
             </span>
           </div>
 
-          <div className="divide-y border rounded-xl overflow-hidden">
+          <div className="divide-y divide-neutral-900 border border-neutral-900 rounded-2xl overflow-hidden">
             {state?.members.map((m) => (
-              <div key={m.walletAddress} className="p-3.5 flex items-center justify-between text-xs bg-white">
-                <div>
-                  <span className="font-semibold text-slate-800">{m.displayName}</span>
-                  <span className="text-slate-400 ml-1.5 font-mono">@{m.username}</span>
-                  <p className="text-[10px] text-slate-400 font-mono">
+              <div key={m.walletAddress} className="p-4 flex items-center justify-between text-xs bg-neutral-950">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-white">{m.displayName}</span>
+                    <span className="text-neutral-500 font-mono text-[11px]">@{m.username}</span>
+                  </div>
+                  <p className="text-[10px] text-neutral-500 font-mono">
                     {m.walletAddress.slice(0, 8)}...{m.walletAddress.slice(-6)}
                   </p>
                 </div>
                 <div>
                   <span
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                       m.status === "GIVEN"
-                        ? "bg-emerald-100 text-emerald-800"
+                        ? "bg-emerald-950 text-emerald-300 border border-emerald-800/60"
                         : m.status === "REVOKED"
-                        ? "bg-red-100 text-red-800"
-                        : "bg-slate-100 text-slate-600"
+                        ? "bg-red-950 text-red-300 border border-red-800/60"
+                        : "bg-neutral-900 text-neutral-500 border border-neutral-800"
                     }`}
                   >
                     {m.status === "GIVEN" && <CheckCircle2 className="h-3 w-3" />}
@@ -286,51 +291,51 @@ export default function AutopayPermissionsPage() {
         </div>
 
         {/* Action Controls */}
-        <div className="space-y-3 pt-2">
+        <div className="space-y-4 pt-2">
           {currentMemberStatus?.status !== "GIVEN" ? (
             <button
               onClick={handleGrantAutopay}
               disabled={actionLoading}
-              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-4 rounded-2xl bg-white hover:bg-neutral-200 text-black font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl shadow-white/5 cursor-pointer"
             >
               <Key className="h-4 w-4" />
-              Sign EIP-712 Autopay Mandate (Rhinestone SmartSession)
+              <span>Authorize SmartSession Mandate</span>
             </button>
           ) : (
-            <div className="flex gap-3">
-              <div className="flex-1 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                Autopay Permission Active
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 p-4 rounded-2xl bg-emerald-950/40 border border-emerald-800/50 text-emerald-300 text-xs font-semibold flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                <span>Autopay Permission Active on Base Sepolia</span>
               </div>
               <button
                 onClick={handleRevokeAutopay}
                 disabled={actionLoading}
-                className="px-4 py-3 rounded-xl border border-red-300 text-red-700 hover:bg-red-50 text-xs font-bold transition-colors flex items-center gap-1.5"
+                className="px-6 py-4 rounded-2xl border border-red-900/60 bg-red-950/30 text-red-300 hover:bg-red-900/40 text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
-                Revoke Mandate
+                <span>Revoke</span>
               </button>
             </div>
           )}
 
           {/* Volunteer Start Circle Button */}
           {isVolunteer && (
-            <div className="border-t pt-4 space-y-2">
+            <div className="border-t border-neutral-900 pt-6 space-y-3">
               <button
                 onClick={handleStartCircle}
                 disabled={!state?.canStart || actionLoading}
-                className={`w-full py-3 rounded-xl font-bold text-xs shadow transition-all flex items-center justify-center gap-2 ${
+                className={`w-full py-4 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl ${
                   state?.canStart
-                    ? "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
-                    : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                    ? "bg-red-600 hover:bg-red-500 text-white cursor-pointer shadow-red-900/30"
+                    : "bg-neutral-900 text-neutral-600 border border-neutral-800 cursor-not-allowed"
                 }`}
               >
-                <Play className="h-4 w-4" />
-                Start Circle &amp; Pool Vault (Calls vault.start())
+                <Play className="h-4 w-4 fill-current" />
+                <span>Initialize Pool Clock (Calls vault start)</span>
               </button>
               {!state?.canStart && !state?.isStarted && (
-                <p className="text-center text-[11px] text-slate-400">
-                  `start()` activates automatically when all members grant autopay permissions.
+                <p className="text-center text-[11px] text-neutral-500">
+                  Activation unlocks automatically when all participants authorize mandates.
                 </p>
               )}
             </div>

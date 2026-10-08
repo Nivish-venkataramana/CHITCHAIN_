@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, User, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, User, CheckCircle2, AlertCircle, Shield } from "lucide-react";
 import { validateUsername } from "@/lib/username-rule";
 
 export default function CreateAccountProfilePage() {
@@ -62,54 +62,57 @@ export default function CreateAccountProfilePage() {
   };
 
   return (
-    <div className="max-w-md mx-auto py-6 space-y-6">
+    <div className="max-w-md mx-auto py-12 px-6 space-y-8 text-neutral-100">
       <Link
         href="/account/wallet"
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
+        className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-400 hover:text-white transition-colors"
       >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        Back to wallet
+        <ArrowLeft className="h-4 w-4" />
+        <span>Return to Wallet</span>
       </Link>
 
-      <div className="rounded-2xl border bg-white p-6 shadow-sm space-y-6">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Create Account Profile</h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Unique username containing your real name bound to your on-chain smart account.
+      <div className="rounded-3xl border border-neutral-900 bg-neutral-950 p-8 shadow-2xl space-y-6 relative overflow-hidden">
+        <div className="space-y-1.5">
+          <span className="text-xs uppercase tracking-widest font-bold text-red-500">
+            Identity Origination
+          </span>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Create Member Profile</h1>
+          <p className="text-xs text-neutral-400 leading-relaxed">
+            Unique username containing your real name bound to your onchain smart account.
           </p>
         </div>
 
         {error && (
-          <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0" />
+          <div className="p-4 rounded-2xl bg-red-950/60 border border-red-800/50 text-red-300 text-xs flex items-center gap-2.5">
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
             <span>{error}</span>
           </div>
         )}
 
         {success && (
-          <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
+          <div className="p-4 rounded-2xl bg-emerald-950/60 border border-emerald-800/50 text-emerald-300 text-xs flex items-center gap-2.5">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
             <span>{success}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+        <form onSubmit={handleSubmit} className="space-y-5 text-xs">
           <div className="space-y-1.5">
-            <label className="font-semibold text-slate-700">Real Full Name</label>
+            <label className="font-bold text-neutral-300 uppercase tracking-wider text-[10px]">Real Full Name</label>
             <input
               type="text"
               required
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="e.g. Asha Rao"
-              className="w-full rounded-xl border p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 p-3.5 text-xs text-white focus:outline-none focus:border-red-500 placeholder:text-neutral-600 font-medium"
             />
           </div>
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="font-semibold text-slate-700">Username</label>
-              <span className="text-[10px] text-slate-400">Must include real name + suffix</span>
+              <label className="font-bold text-neutral-300 uppercase tracking-wider text-[10px]">Unique Username</label>
+              <span className="text-[10px] text-neutral-500">Must include real name plus suffix</span>
             </div>
             <input
               type="text"
@@ -117,26 +120,26 @@ export default function CreateAccountProfilePage() {
               value={username}
               onChange={(e) => setUsername(e.target.value.toLowerCase())}
               placeholder="e.g. asharao01"
-              className="w-full rounded-xl border p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+              className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 p-3.5 text-xs text-white focus:outline-none focus:border-red-500 font-mono placeholder:text-neutral-600"
             />
           </div>
 
           {displayName.length > 0 && (
             <div
-              className={`p-3 rounded-xl border text-[11px] ${
+              className={`p-4 rounded-2xl border text-xs ${
                 validation.valid
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                  : "bg-amber-50 border-amber-200 text-amber-800"
+                  ? "bg-emerald-950/40 border-emerald-800/40 text-emerald-300"
+                  : "bg-amber-950/40 border-amber-800/40 text-amber-300"
               }`}
             >
               {validation.valid ? (
-                <div className="flex items-center gap-1.5 font-semibold">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                  Valid username format (&quot;{displayName}&quot; included in &quot;@{username}&quot;)
+                <div className="flex items-center gap-2 font-bold">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                  <span>Valid username format ({displayName} included in @{username})</span>
                 </div>
               ) : (
-                <div className="flex items-start gap-1.5">
-                  <AlertCircle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
                   <span>{validation.error}</span>
                 </div>
               )}
@@ -146,13 +149,13 @@ export default function CreateAccountProfilePage() {
           <button
             type="submit"
             disabled={!validation.valid || submitting}
-            className={`w-full py-2.5 rounded-xl font-bold transition-colors ${
+            className={`w-full py-4 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all shadow-xl ${
               validation.valid && !submitting
-                ? "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
-                : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                ? "bg-white hover:bg-neutral-200 text-black cursor-pointer shadow-white/5"
+                : "bg-neutral-900 text-neutral-600 border border-neutral-800 cursor-not-allowed"
             }`}
           >
-            {submitting ? "Creating & Binding Account..." : "Create & Bind Account to Wallet"}
+            {submitting ? "Binding Identity..." : "Bind Profile to Smart Account"}
           </button>
         </form>
       </div>
