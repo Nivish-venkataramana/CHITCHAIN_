@@ -4,7 +4,8 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDevUser } from "@/components/providers";
-import { ArrowLeft, CheckCircle2, AlertCircle, Info, ShieldAlert } from "lucide-react";
+import { ArrowLeft, AlertCircle, Info } from "lucide-react";
+import { validateCircleParams } from "@/lib/validation";
 
 export default function CreateCirclePage() {
   const router = useRouter();
@@ -17,18 +18,21 @@ export default function CreateCirclePage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Live validation calculations
+  // Live validation calculations using shared validation logic
+  const validation = validateCircleParams({
+    name,
+    numPeople,
+    monthlyAmount,
+    durationMonths,
+  });
+
   const parsedAmount = parseFloat(monthlyAmount) || 0;
-  const validAmount = parsedAmount > 0;
-  const validPeople = numPeople >= 2;
   const allowedDurations = [numPeople - 1, numPeople - 2].filter((d) => d >= 1);
-  const validDuration = allowedDurations.includes(durationMonths);
-  const isValid = validAmount && validPeople && validDuration && name.trim().length > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isValid) {
-      setError("Please ensure all parameters meet the chit circle conditions.");
+    if (!validation.valid) {
+      setError(validation.error || "Please check parameters.");
       return;
     }
 
@@ -36,12 +40,26 @@ export default function CreateCirclePage() {
     setError(null);
 
     try {
-      // Base units (6 decimals): 1,000 USDC = "1000000000"
-      const baseUnitsAmount = (BigInt(Math.round(parsedAmount * 1e6))).toString();
+      const res = await fetch("/api/circles", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(user?.username ? { "x-dev-user": user.username } : {}),
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          numPeople,
+          monthlyAmount,
+          durationMonths,
+        }),
+      });
 
-      // Placeholder circle creation submission
-      const newCircleId = "circle-" + Date.now();
-      router.push(`/circles/${newCircleId}`);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to create circle");
+      }
+
+      router.push(`/circles/${data.id}`);
     } catch (err: any) {
       setError(err.message || "Failed to create circle");
     } finally {
@@ -107,7 +125,6 @@ export default function CreateCirclePage() {
               onChange={(e) => {
                 const val = parseInt(e.target.value) || 2;
                 setNumPeople(val);
-                // Adjust duration default to N-1
                 if (val >= 2) setDurationMonths(val - 1);
               }}
               className="w-full rounded-xl border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -164,11 +181,6 @@ export default function CreateCirclePage() {
                 </option>
               ))}
             </select>
-            {!validDuration && (
-              <p className="text-xs text-red-600">
-                Duration must be N-1 or N-2 months for this circle size.
-              </p>
-            )}
           </div>
 
           {/* Rules Card */}
@@ -186,9 +198,9 @@ export default function CreateCirclePage() {
 
           <button
             type="submit"
-            disabled={!isValid || isSubmitting}
+            disabled={!validation.valid || isSubmitting}
             className={`w-full py-3 rounded-xl font-bold text-sm text-white shadow-sm transition-all ${
-              isValid && !isSubmitting
+              validation.valid && !isSubmitting
                 ? "bg-blue-600 hover:bg-blue-700 cursor-pointer"
                 : "bg-slate-300 cursor-not-allowed"
             }`}
