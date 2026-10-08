@@ -1,15 +1,77 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useDevUser } from "@/components/providers";
-import { Bell, Coins, PlusCircle, ShieldCheck, UserCheck, Wallet } from "lucide-react";
+import { Bell, Coins, PlusCircle, UserCheck, Wallet, Check, X } from "lucide-react";
+
+interface NotificationItem {
+  id: string;
+  type: string;
+  circleId: string;
+  inviteId?: string;
+  circleName: string;
+  volunteerName: string;
+  body: string;
+  readAt: string | null;
+  createdAt: string;
+}
 
 export function Navbar() {
   const pathname = usePathname();
   const { user, setUser, users } = useDevUser();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [respondingId, setRespondingId] = useState<string | null>(null);
+
+  const fetchNotifications = () => {
+    if (!user) return;
+    fetch("/api/notifications", {
+      headers: { "x-dev-user": user.username },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setNotifications(data);
+        }
+      })
+      .catch((err) => console.error("Error loading notifications:", err));
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 5000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+  const handleRespond = async (inviteId: string, accept: boolean, notifId: string) => {
+    if (!user) return;
+    setRespondingId(inviteId);
+    try {
+      const res = await fetch(`/api/invites/${inviteId}/respond`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-dev-user": user.username,
+        },
+        body: JSON.stringify({ accept }),
+      });
+      if (res.ok) {
+        await fetch(`/api/notifications/${notifId}/read`, {
+          method: "POST",
+          headers: { "x-dev-user": user.username },
+        });
+        fetchNotifications();
+      }
+    } catch (err) {
+      console.error("Error responding to invite:", err);
+    } finally {
+      setRespondingId(null);
+    }
+  };
+
+  const unreadCount = notifications.filter((n) => !n.readAt).length;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur shadow-sm">
@@ -62,26 +124,81 @@ export function Navbar() {
               title="Notifications"
             >
               <Bell className="h-5 w-5" />
-              <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-blue-600 ring-2 ring-white" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-blue-600 ring-2 ring-white animate-pulse" />
+              )}
             </button>
 
             {notificationsOpen && (
-              <div className="absolute right-0 mt-2 w-80 rounded-xl bg-white p-4 shadow-xl ring-1 ring-black/5 z-50">
-                <div className="flex items-center justify-between border-b pb-2 mb-2">
-                  <h4 className="font-semibold text-sm text-gray-800">In-App Notifications</h4>
-                  <span className="text-xs text-blue-600 cursor-pointer">Mark all read</span>
+              <div className="absolute right-0 mt-2 w-96 rounded-2xl bg-white p-4 shadow-xl ring-1 ring-black/5 z-50">
+                <div className="flex items-center justify-between border-b pb-2 mb-3">
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="font-bold text-sm text-gray-800">In-App Notifications</h4>
+                    {unreadCount > 0 && (
+                      <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold">
+                        {unreadCount} new
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setNotificationsOpen(false)}
+                    className="text-xs text-gray-400 hover:text-gray-600"
+                  >
+                    Close
+                  </button>
                 </div>
-                <div className="space-y-2 text-xs text-gray-600">
-                  <div className="p-2.5 rounded-lg bg-blue-50 border border-blue-100">
-                    <p className="font-medium text-blue-900">Join Request</p>
-                    <p className="mt-0.5">
-                      You were added to <strong>Alpha Friends Chit</strong> by <strong>Asha Rao</strong>. Verify whether you want to join.
-                    </p>
-                  </div>
-                  <div className="p-2 rounded-lg bg-gray-50">
-                    <p className="font-medium text-gray-800">Circle Update</p>
-                    <p className="text-gray-500 mt-0.5">All members agreed on terms. Circle is ready for autopay.</p>
-                  </div>
+
+                <div className="space-y-2.5 max-h-80 overflow-y-auto text-xs">
+                  {notifications.length === 0 ? (
+                    <p className="text-center py-6 text-gray-400">No notifications right now.</p>
+                  ) : (
+                    notifications.map((notif) => (
+                      <div
+                        key={notif.id}
+                        className={`p-3 rounded-xl border transition-all ${
+                          notif.type === "JOIN_REQUEST" && notif.inviteId && !notif.readAt
+                            ? "bg-blue-50/70 border-blue-200"
+                            : notif.type === "ISSUE_RAISED"
+                            ? "bg-amber-50/70 border-amber-200"
+                            : "bg-slate-50 border-slate-200"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-bold text-[11px] uppercase tracking-wider text-blue-900">
+                            {notif.type.replace("_", " ")}
+                          </span>
+                          <span className="text-[10px] text-gray-400 font-mono">
+                            {new Date(notif.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                        <p className="text-gray-800 leading-relaxed font-medium">
+                          {notif.body}
+                        </p>
+
+                        {/* Join Request Actions */}
+                        {notif.type === "JOIN_REQUEST" && notif.inviteId && !notif.readAt && (
+                          <div className="mt-3 flex items-center gap-2 pt-2 border-t border-blue-200/60">
+                            <button
+                              disabled={respondingId === notif.inviteId}
+                              onClick={() => handleRespond(notif.inviteId!, true, notif.id)}
+                              className="flex-1 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-sm transition-colors"
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                              Accept &amp; Join
+                            </button>
+                            <button
+                              disabled={respondingId === notif.inviteId}
+                              onClick={() => handleRespond(notif.inviteId!, false, notif.id)}
+                              className="px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-white text-gray-700 font-bold text-xs flex items-center justify-center gap-1 transition-colors"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             )}
