@@ -22,7 +22,7 @@ export default function HomePage() {
         </h1>
         <p className="text-lg text-slate-600">
           Welcome back, <span className="font-semibold text-slate-900">{user?.displayName || "Member"}</span> (@{user?.username}).
-          Form circles with verified friends, automate contributions, and bid with secret commit-reveal auctions.
+          Form circles with verified friends, automate contributions, and bid with secret auctions.
         </p>
       </div>
 
@@ -85,7 +85,7 @@ export default function HomePage() {
           </div>
           <div>
             <h4 className="font-semibold text-sm text-slate-800">Autopay Mandates</h4>
-            <p className="text-xs text-slate-500 mt-0.5">Pre-authorized, tightly scoped monthly smart session transfers.</p>
+            <p className="text-xs text-slate-500 mt-0.5">Preapproved monthly smart session transfers.</p>
           </div>
         </div>
 
@@ -94,7 +94,7 @@ export default function HomePage() {
             <Lock className="h-5 w-5" />
           </div>
           <div>
-            <h4 className="font-semibold text-sm text-slate-800">Commit-Reveal Bidding</h4>
+            <h4 className="font-semibold text-sm text-slate-800">Secret Sealed Bidding</h4>
             <p className="text-xs text-slate-500 mt-0.5">Bids stay secret until reveal. Lowest valid bid wins pot.</p>
           </div>
         </div>
@@ -105,7 +105,7 @@ export default function HomePage() {
           </div>
           <div>
             <h4 className="font-semibold text-sm text-slate-800">Carried Dividends</h4>
-            <p className="text-xs text-slate-500 mt-0.5">Surplus funds roll into the next month's pool automatically.</p>
+            <p className="text-xs text-slate-500 mt-0.5">Surplus funds roll into the next month pool automatically.</p>
           </div>
         </div>
       </div>

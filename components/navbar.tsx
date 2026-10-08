@@ -133,7 +133,7 @@ export function Navbar() {
               <div className="absolute right-0 mt-2 w-96 rounded-2xl bg-white p-4 shadow-xl ring-1 ring-black/5 z-50">
                 <div className="flex items-center justify-between border-b pb-2 mb-3">
                   <div className="flex items-center gap-1.5">
-                    <h4 className="font-bold text-sm text-gray-800">In-App Notifications</h4>
+                    <h4 className="font-bold text-sm text-gray-800">In App Notifications</h4>
                     {unreadCount > 0 && (
                       <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold">
                         {unreadCount} new
