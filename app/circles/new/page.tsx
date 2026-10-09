@@ -319,53 +319,37 @@ export default function CreateCirclePage() {
             </div>
 
             {isBalanceInsufficient ? (
-              <div className="p-4 rounded-2xl bg-red-950/40 border border-red-500/30 text-red-300 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-2">
-                <div className="flex items-start gap-2.5">
-                  <AlertTriangle className="h-4 w-4 shrink-0 text-red-400 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="font-bold text-red-200">3× Agreed Price Commitment Verification</p>
-                    <p className="text-[11px] leading-relaxed text-red-300/90">
-                      Your current wallet balance is{" "}
-                      <strong className="text-white font-mono">
-                        {creatorBalance !== null ? `${creatorBalance.toFixed(2)} USDC` : "0.00 USDC"}
-                      </strong>
-                      . Under ChitChain rules, each participant must hold at least{" "}
-                      <strong className="text-white font-mono">
-                        {required3xBalance.toLocaleString()} USDC
-                      </strong>{" "}
-                      (3× the agreed monthly price of {parsedAmount.toLocaleString()} USDC) to ensure financial commitment and prevent payment defaults.
-                    </p>
-                  </div>
+              <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-neutral-900/80 border border-neutral-800 text-xs mt-2">
+                <div className="flex items-center gap-2 text-neutral-400">
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                  <span>
+                    Min. <strong className="text-white font-mono">{required3xBalance.toLocaleString()} USDC</strong> required (3× monthly) · Balance: <span className="text-neutral-300 font-mono">{creatorBalance?.toFixed(0) ?? 0} USDC</span>
+                  </span>
                 </div>
 
                 <button
                   type="button"
                   onClick={handleQuickMint}
                   disabled={isMinting}
-                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-[11px] uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-md shadow-amber-500/20"
+                  className="px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
                 >
                   {isMinting ? (
                     <>
-                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      <RefreshCw className="h-3 w-3 animate-spin" />
                       <span>Minting...</span>
                     </>
                   ) : (
                     <>
-                      <Coins className="h-3.5 w-3.5" />
-                      <span>Deposit Faucet USDC ({Math.max(required3xBalance, 10000).toLocaleString()})</span>
+                      <Coins className="h-3 w-3" />
+                      <span>+ Mint Faucet</span>
                     </>
                   )}
                 </button>
               </div>
             ) : (
-              <p className="text-xs text-emerald-400 font-mono mt-1">
-                Required 3× agreed price check:{" "}
-                <strong>{required3xBalance.toLocaleString()} USDC</strong>
-                {creatorBalance !== null && (
-                  <span className="text-neutral-400 text-[11px] ml-2 font-normal">
-                    (Your wallet holds: <strong className="text-emerald-300">{creatorBalance.toFixed(2)} USDC</strong>)
-                  </span>
-                )}
+              <p className="text-[11px] text-neutral-400 font-mono mt-1 flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 inline-block" />
+                <span>3× Balance requirement satisfied ({required3xBalance.toLocaleString()} USDC)</span>
               </p>
             )}
           </div>
