@@ -5,7 +5,7 @@ import { prisma } from "./prisma";
 const isTestEnv = process.env.NODE_ENV === "test";
 
 const g = globalThis as any;
-if (!g.__chitchain_users__) {
+if (!g.__chitchain_users__ || !isTestEnv) {
   g.__chitchain_users__ = isTestEnv ? [...(usersFixture as UserProfile[])] : [];
 }
 
@@ -15,21 +15,16 @@ const users: UserProfile[] = g.__chitchain_users__;
 if (!isTestEnv) {
   prisma.user.findMany()
     .then((dbUsers) => {
+      // Reset in-memory cache to strictly match database records
+      users.length = 0;
       dbUsers.forEach((u) => {
-        const exists = users.find((existing) => existing.username === u.username);
-        if (exists) {
-          exists.walletAddress = u.walletAddress as `0x${string}`;
-          exists.displayName = u.displayName;
-          if (u.privyUserId) exists.privyUserId = u.privyUserId;
-        } else {
-          users.push({
-            privyUserId: u.privyUserId || undefined,
-            username: u.username,
-            walletAddress: u.walletAddress as `0x${string}`,
-            displayName: u.displayName,
-            createdAt: u.createdAt.toISOString(),
-          });
-        }
+        users.push({
+          privyUserId: u.privyUserId || undefined,
+          username: u.username,
+          walletAddress: u.walletAddress as `0x${string}`,
+          displayName: u.displayName,
+          createdAt: u.createdAt.toISOString(),
+        });
       });
     })
     .catch((err) => console.warn("Prisma user hydration notice:", err.message));
@@ -39,15 +34,44 @@ export function getFixtureUsers(): UserProfile[] {
   return users;
 }
 
-export function searchUsers(q: string): UserProfile[] {
-  if (!q || !q.trim()) return users;
-  const query = q.toLowerCase().trim().replace(/^@/, "");
-  return users.filter(
-    (u) =>
-      u.username.toLowerCase().includes(query) ||
-      u.displayName.toLowerCase().includes(query) ||
-      u.walletAddress.toLowerCase().includes(query)
-  );
+export async function searchUsers(q: string): Promise<UserProfile[]> {
+  if (isTestEnv) {
+    if (!q || !q.trim()) return users;
+    const query = q.toLowerCase().trim().replace(/^@/, "");
+    return users.filter(
+      (u) =>
+        u.username.toLowerCase().includes(query) ||
+        u.displayName.toLowerCase().includes(query) ||
+        u.walletAddress.toLowerCase().includes(query)
+    );
+  }
+
+  try {
+    const query = q ? q.toLowerCase().trim().replace(/^@/, "") : "";
+    const dbUsers = await prisma.user.findMany({
+      where: query
+        ? {
+            OR: [
+              { username: { contains: query, mode: "insensitive" } },
+              { displayName: { contains: query, mode: "insensitive" } },
+              { walletAddress: { contains: query, mode: "insensitive" } },
+            ],
+          }
+        : undefined,
+      orderBy: { createdAt: "desc" },
+    });
+
+    return dbUsers.map((u) => ({
+      privyUserId: u.privyUserId || undefined,
+      username: u.username,
+      walletAddress: u.walletAddress as `0x${string}`,
+      displayName: u.displayName,
+      createdAt: u.createdAt.toISOString(),
+    }));
+  } catch (err) {
+    console.warn("Error searching users from database:", err);
+    return users;
+  }
 }
 
 export function getUserByUsername(username: string): UserProfile | undefined {
@@ -258,3 +282,6 @@ export function getSessionUser(reqOrHeaders?: Headers | Request): UserProfile {
   // Default to the first fixture user if no session header provided
   return users[0];
 }
+
+export const findUserByUsername = getUserByUsername;
+

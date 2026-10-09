@@ -16,15 +16,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-const BASE_SEPOLIA_USDC = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
-
-const publicClient = createPublicClient({
-  chain: baseSepolia,
-  transport: http(process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org", {
-    timeout: 3500,
-    retryCount: 1,
-  }),
-});
+import { fetchLiveBalanceUSDC } from "@/lib/client-balance";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -70,36 +62,14 @@ export default function ProfilePage() {
       return;
     }
     setLoadingBalance(true);
-    try {
-      const raw = await publicClient.readContract({
-        address: BASE_SEPOLIA_USDC,
-        abi: erc20Abi,
-        functionName: "balanceOf",
-        args: [activeWalletAddress as `0x${string}`],
-      });
-      const formatted = Number(formatUnits(raw, 6)).toLocaleString(undefined, {
+    const val = await fetchLiveBalanceUSDC(activeWalletAddress, dynamicUsername);
+    setBalance(
+      val.toLocaleString(undefined, {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
-      });
-      setBalance(formatted);
-    } catch {
-      if (dynamicUsername) {
-        fetch("/api/account/faucet", { headers: { "x-dev-user": dynamicUsername } })
-          .then((r) => r.json())
-          .then((data) => {
-            if (data?.balanceUSDC) {
-              setBalance(Number(data.balanceUSDC).toLocaleString(undefined, { minimumFractionDigits: 2 }));
-            } else {
-              setBalance("0.00");
-            }
-          })
-          .catch(() => setBalance("0.00"));
-      } else {
-        setBalance("0.00");
-      }
-    } finally {
-      setLoadingBalance(false);
-    }
+      })
+    );
+    setLoadingBalance(false);
   };
 
   useEffect(() => {
@@ -186,34 +156,34 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 space-y-6 text-neutral-100 flex flex-col justify-between min-h-[calc(100vh-6rem)]">
+    <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 space-y-6 text-neutral-100 flex flex-col justify-between min-h-[calc(100vh-6rem)] py-2">
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col justify-center">
         {/* Symmetrical Profile Details Card */}
-        <div className="rounded-3xl border border-white/10 bg-transparent p-6 sm:p-7 space-y-5 shadow-2xl">
+        <div className="p-6 sm:p-8 space-y-6">
           {/* Row 1: Username & Name */}
-          <div className="grid sm:grid-cols-2 gap-6 pb-5 border-b border-white/10">
+          <div className="grid sm:grid-cols-2 gap-6 pb-2">
             <div className="space-y-1">
-              <span className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider font-semibold">
+              <span className="text-xs font-mono text-neutral-400 uppercase tracking-wider font-semibold">
                 Display Name
               </span>
-              <p className="text-base sm:text-lg font-bold text-white tracking-tight">{dynamicDisplayName}</p>
+              <p className="text-lg sm:text-xl font-bold text-white tracking-tight">{dynamicDisplayName}</p>
             </div>
 
             <div className="space-y-1">
-              <span className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider font-semibold">
+              <span className="text-xs font-mono text-neutral-400 uppercase tracking-wider font-semibold">
                 Username
               </span>
-              <p className="text-base sm:text-lg font-mono font-bold text-white tracking-tight">@{dynamicUsername}</p>
+              <p className="text-lg sm:text-xl font-mono font-bold text-white tracking-tight">@{dynamicUsername}</p>
             </div>
           </div>
 
           {/* Row 2: Smart Wallet Address */}
-          <div className="space-y-2 pb-5 border-b border-white/10">
-            <span className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider font-semibold">
+          <div className="space-y-2 pb-2">
+            <span className="text-xs font-mono text-neutral-400 uppercase tracking-wider font-semibold">
               Smart Wallet Address
             </span>
-            <div className="flex items-center justify-between gap-3 p-3.5 rounded-xl border border-white/10 bg-white/[0.03] font-mono text-xs sm:text-sm">
+            <div className="flex items-center justify-between gap-3 p-4 font-mono text-sm">
               <span className="text-neutral-200 truncate">{activeWalletAddress || "No wallet connected"}</span>
               <button
                 type="button"
@@ -228,9 +198,9 @@ export default function ProfilePage() {
           </div>
 
           {/* Row 3: Live Balance & Gasless Faucet */}
-          <div className="grid sm:grid-cols-2 gap-6 items-center pb-5 border-b border-white/10">
+          <div className="grid sm:grid-cols-2 gap-6 items-center pb-2">
             <div className="space-y-1">
-              <span className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider font-semibold">
+              <span className="text-xs font-mono text-neutral-400 uppercase tracking-wider font-semibold">
                 Onchain USDC Balance
               </span>
               <p className="text-2xl sm:text-3xl font-extrabold font-mono text-white tracking-tight">
@@ -247,21 +217,21 @@ export default function ProfilePage() {
                 }
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-5 py-2.5 rounded-xl border border-white/10 bg-white/[0.05] hover:bg-white/[0.1] text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md"
+                className="px-5 py-3 rounded-xl bg-white text-black hover:bg-neutral-200 font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
                 title="View on Base Sepolia Explorer"
               >
-                <ExternalLink className="h-4 w-4 text-neutral-300" />
+                <ExternalLink className="h-4 w-4" />
                 <span>See Transactions</span>
               </a>
             </div>
           </div>
 
           {/* Row 4: Disconnect Button */}
-          <div className="flex justify-end">
+          <div className="flex justify-end pt-2">
             <button
               type="button"
               onClick={handleLogout}
-              className="px-5 py-2.5 rounded-xl border border-white/10 text-neutral-400 hover:text-red-400 hover:border-red-900/50 transition-colors text-xs sm:text-sm font-semibold flex items-center gap-2 cursor-pointer"
+              className="px-5 py-2.5 rounded-xl text-neutral-400 hover:text-red-400 transition-colors text-xs sm:text-sm font-semibold flex items-center gap-2 cursor-pointer"
             >
               <LogOut className="h-4 w-4" />
               <span>Sign Out</span>

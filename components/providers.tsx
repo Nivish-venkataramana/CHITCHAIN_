@@ -28,11 +28,15 @@ function PrivyUserSync({ onSync }: { onSync?: () => void }) {
   const { user: privyUser, authenticated } = usePrivy();
   const { wallets } = useWallets();
   const { setUser } = useDevUser();
+  const syncedRef = React.useRef<string>("");
 
   useEffect(() => {
     if (!authenticated || !privyUser) return;
 
     let isMounted = true;
+    const syncKey = `${privyUser.id}_${wallets.map((w) => w.address).join(",")}`;
+    if (syncedRef.current === syncKey) return;
+    syncedRef.current = syncKey;
 
     async function syncAccount() {
       try {

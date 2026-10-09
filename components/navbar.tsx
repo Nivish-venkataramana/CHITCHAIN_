@@ -9,15 +9,7 @@ import { createPublicClient, http, formatUnits, erc20Abi } from "viem";
 import { baseSepolia } from "viem/chains";
 import { Bell, Check, X, LogOut, User } from "lucide-react";
 
-const BASE_SEPOLIA_USDC = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
-
-const publicClient = createPublicClient({
-  chain: baseSepolia,
-  transport: http(process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org", {
-    timeout: 3500,
-    retryCount: 1,
-  }),
-});
+import { fetchLiveBalanceUSDC } from "@/lib/client-balance";
 
 interface NotificationItem {
   id: string;
@@ -69,34 +61,13 @@ export function Navbar() {
       setBalance("0.00");
       return;
     }
-    try {
-      const rawBalance = await publicClient.readContract({
-        address: BASE_SEPOLIA_USDC,
-        abi: erc20Abi,
-        functionName: "balanceOf",
-        args: [activeWalletAddress as `0x${string}`],
-      });
-      const formatted = Number(formatUnits(rawBalance, 6)).toLocaleString(undefined, {
+    const val = await fetchLiveBalanceUSDC(activeWalletAddress, dynamicUsername);
+    setBalance(
+      val.toLocaleString(undefined, {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
-      });
-      setBalance(formatted);
-    } catch {
-      if (dynamicUsername) {
-        fetch("/api/account/faucet", { headers: { "x-dev-user": dynamicUsername } })
-          .then((r) => r.json())
-          .then((data) => {
-            if (data?.balanceUSDC) {
-              setBalance(Number(data.balanceUSDC).toLocaleString(undefined, { minimumFractionDigits: 2 }));
-            } else {
-              setBalance("0.00");
-            }
-          })
-          .catch(() => setBalance("0.00"));
-      } else {
-        setBalance("0.00");
-      }
-    }
+      })
+    );
   };
 
   const fetchNotifications = () => {

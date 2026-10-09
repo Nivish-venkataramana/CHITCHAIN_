@@ -51,7 +51,7 @@ export interface NoIssueConfirmationRecord {
 export interface NotificationRecord {
   id: string;
   userWallet: string;
-  type: "JOIN_REQUEST" | "INVITE_ACCEPTED" | "INVITE_REJECTED" | "ISSUE_RAISED" | "ISSUE_RESOLVED" | "FINALIZED";
+  type: "JOIN_REQUEST" | "INVITE_ACCEPTED" | "INVITE_REJECTED" | "ISSUE_RAISED" | "ISSUE_RESOLVED" | "FINALIZED" | "INVITE_RECEIVED";
   circleId: string;
   inviteId?: string;
   circleName: string;
@@ -644,6 +644,72 @@ export async function createInviteRecord(params: {
   }
 
   return { invite: newInvite, circle };
+}
+
+export async function removeInviteRecord(params: {
+  circleId: string;
+  inviteId: string;
+  callerWallet: string;
+}): Promise<{ success: boolean; circle: CircleRecord }> {
+  const circle = memoryCircles.find((c) => c.id === params.circleId);
+  if (!circle) throw new Error("Circle not found");
+
+  if (circle.status === "FINALIZED") {
+    throw new Error("Cannot remove members from an activated / finalized circle");
+  }
+
+  if (circle.volunteerWallet.toLowerCase() !== params.callerWallet.toLowerCase()) {
+    throw new Error("Only the volunteer can remove members");
+  }
+
+  const inviteIndex = memoryInvites.findIndex(
+    (i) => i.id === params.inviteId && i.circleId === params.circleId
+  );
+  if (inviteIndex === -1) {
+    throw new Error("Invite not found for this circle");
+  }
+
+  const invite = memoryInvites[inviteIndex];
+  if (invite.inviteeWallet.toLowerCase() === circle.volunteerWallet.toLowerCase()) {
+    throw new Error("Volunteer cannot remove themselves from the circle");
+  }
+
+  // Remove the invite
+  memoryInvites.splice(inviteIndex, 1);
+
+  // If circle was in ISSUE_STAGE and now accepted count < numPeople, revert to INVITING
+  const remainingAccepted = memoryInvites.filter(
+    (i) => i.circleId === circle.id && i.status === "ACCEPTED"
+  ).length;
+
+  if (circle.status === "ISSUE_STAGE" && remainingAccepted < circle.numPeople) {
+    circle.status = "INVITING";
+  }
+
+  // Clean up any confirmations or issues by this removed member
+  const remainingConfirmations = memoryConfirmations.filter(
+    (c) => !(c.circleId === circle.id && c.memberWallet.toLowerCase() === invite.inviteeWallet.toLowerCase())
+  );
+  memoryConfirmations.splice(0, memoryConfirmations.length, ...remainingConfirmations);
+
+  // Clean up notifications for this invite
+  const remainingNotifs = memoryNotifications.filter(
+    (n) => !(n.circleId === circle.id && n.userWallet.toLowerCase() === invite.inviteeWallet.toLowerCase() && n.type === "INVITE_RECEIVED")
+  );
+  memoryNotifications.splice(0, memoryNotifications.length, ...remainingNotifs);
+
+  if (!isTestEnv) {
+    prisma.invite.delete({ where: { id: invite.id } })
+      .catch((err) => console.warn("Prisma invite delete notice:", err.message));
+    if (circle.status === "INVITING") {
+      prisma.circle.update({
+        where: { id: circle.id },
+        data: { status: "INVITING" },
+      }).catch((err) => console.warn("Prisma circle revert notice:", err.message));
+    }
+  }
+
+  return { success: true, circle };
 }
 
 export async function respondToInvite(params: {

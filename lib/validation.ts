@@ -44,10 +44,29 @@ export function fromBaseUnits(baseUnits: string): string {
 }
 
 /**
- * Validates circle creation parameters according to README.md §8.4:
+ * Computes allowed duration options (in months) based on capacity N:
+ * For N < 5: N - 1
+ * For every 5-member increase, an additional -1 offset is allowed (5 -> N-1, N-2; 10 -> N-1..N-2; 15 -> N-1..N-3, etc.)
+ */
+export function getAllowedDurations(numPeople: number): number[] {
+  const N = Math.floor(numPeople);
+  if (isNaN(N) || N < 2) return [];
+  const maxOffset = Math.max(2, Math.floor(N / 5));
+  const durations: number[] = [];
+  for (let k = 1; k <= maxOffset; k++) {
+    const d = N - k;
+    if (d >= 1 && !durations.includes(d)) {
+      durations.push(d);
+    }
+  }
+  return durations;
+}
+
+/**
+ * Validates circle creation parameters according to rules:
  * A > 0n
  * N >= 2
- * D >= 1 && (D === N - 1 || D === N - 2)
+ * D in allowedDurations(N)
  */
 export function validateCircleParams(input: CircleInput): ValidationResult {
   if (!input.name || input.name.trim().length === 0) {
@@ -64,11 +83,11 @@ export function validateCircleParams(input: CircleInput): ValidationResult {
     return { valid: false, error: "Duration must be at least 1 month." };
   }
 
-  const allowedDurations = [N - 1, N - 2].filter((d) => d >= 1);
+  const allowedDurations = getAllowedDurations(N);
   if (!allowedDurations.includes(D)) {
     return {
       valid: false,
-      error: "Duration must be N-1 or N-2 months for this circle size.",
+      error: `Duration must be one of ${allowedDurations.join(", ")} months for ${N} members.`,
     };
   }
 

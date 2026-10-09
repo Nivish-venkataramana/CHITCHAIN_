@@ -146,20 +146,17 @@ export default function LoginPage() {
 
   return (
     <div className="w-full max-w-md mx-auto px-4 my-auto text-neutral-100">
-      <div className="rounded-3xl border border-neutral-800 bg-neutral-950 p-6 sm:p-8 space-y-5 shadow-2xl">
+      <div className="p-6 sm:p-8 space-y-6">
         
         {/* Header */}
-        <div className="text-center space-y-1 border-b border-neutral-800/80 pb-4">
-          <h1 className="text-xl font-bold font-mono tracking-[0.2em] text-white uppercase">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold font-mono tracking-[0.2em] text-white uppercase">
             CHITCHAIN
           </h1>
-          <p className="text-xs text-neutral-400">
-            {step === "email" ? "Sign in to access wealth circles" : `Verification code sent to ${email}`}
-          </p>
         </div>
 
         {error && (
-          <div className="p-3 rounded-xl border border-red-900/60 bg-red-950/40 text-red-300 text-xs flex items-center gap-2.5">
+          <div className="p-3 rounded-xl text-red-300 text-xs flex items-center gap-2.5">
             <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
             <span>{error}</span>
           </div>
@@ -167,28 +164,30 @@ export default function LoginPage() {
 
         {/* Step 1: Email Form */}
         {step === "email" ? (
-          <form onSubmit={handleSendOtp} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-neutral-300">
+          <form onSubmit={handleSendOtp} className="space-y-6">
+            <div className="relative h-14 border-b border-white/20 focus-within:border-white transition-colors">
+              <input
+                type="email"
+                id="login-email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder=" "
+                required
+                autoFocus
+                className="peer w-full h-full bg-transparent border-none outline-none pt-4 pb-1 text-sm text-white font-mono placeholder-transparent"
+              />
+              <label
+                htmlFor="login-email"
+                className="absolute left-0 top-4 text-sm text-neutral-400 pointer-events-none transition-all duration-200 origin-[0] peer-focus:top-0 peer-focus:text-xs peer-focus:text-white peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:text-neutral-400"
+              >
                 Email Address
               </label>
-              <div className="relative flex items-center">
-                <Mail className="absolute left-3.5 h-4 w-4 text-neutral-500" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoFocus
-                  className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-neutral-800 bg-neutral-900/60 text-white focus:outline-none focus:border-neutral-500 font-mono transition-colors"
-                />
-              </div>
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 rounded-xl bg-white text-black font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 hover:bg-neutral-200 transition-colors disabled:opacity-50 cursor-pointer shadow-md"
+              className="w-full py-3 rounded-xl bg-white text-black font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 hover:bg-neutral-200 transition-colors disabled:opacity-50 cursor-pointer"
             >
               <span>{isLoading ? "Sending Code..." : "Continue with Email"}</span>
               <ArrowRight className="h-4 w-4" />
@@ -196,35 +195,37 @@ export default function LoginPage() {
           </form>
         ) : (
           /* Step 2: OTP Form */
-          <form onSubmit={handleVerifyOtp} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-neutral-300">
+          <form onSubmit={handleVerifyOtp} className="space-y-6">
+            <div className="relative h-14 border-b border-white/20 focus-within:border-white transition-colors">
+              <input
+                type="text"
+                id="login-otp"
+                maxLength={6}
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                placeholder=" "
+                required
+                autoFocus
+                className="peer w-full h-full bg-transparent border-none outline-none pt-4 pb-1 text-base tracking-widest text-white font-mono placeholder-transparent"
+              />
+              <label
+                htmlFor="login-otp"
+                className="absolute left-0 top-4 text-sm text-neutral-400 pointer-events-none transition-all duration-200 origin-[0] peer-focus:top-0 peer-focus:text-xs peer-focus:text-white peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:text-neutral-400"
+              >
                 6-Digit Verification Code
               </label>
-              <div className="relative flex items-center">
-                <KeyRound className="absolute left-3.5 h-4 w-4 text-neutral-500" />
-                <input
-                  type="text"
-                  maxLength={6}
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                  required
-                  autoFocus
-                  className="w-full pl-10 pr-4 py-2.5 text-base tracking-widest rounded-xl border border-neutral-800 bg-neutral-900/60 text-white focus:outline-none focus:border-neutral-500 font-mono transition-colors"
-                />
-              </div>
             </div>
 
             <button
               type="submit"
               disabled={isLoading || otpCode.length < 6}
-              className="w-full py-3 rounded-xl bg-white text-black font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 hover:bg-neutral-200 transition-colors disabled:opacity-50 cursor-pointer shadow-md"
+              className="w-full py-3 rounded-xl bg-white text-black font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 hover:bg-neutral-200 transition-colors disabled:opacity-50 cursor-pointer"
             >
               <span>{isLoading ? "Verifying..." : "Verify & Sign In"}</span>
               <ArrowRight className="h-4 w-4" />
             </button>
 
-            <div className="flex items-center justify-between text-xs text-neutral-400 pt-2 border-t border-neutral-800/60">
+            <div className="flex items-center justify-between text-xs text-neutral-400 pt-2">
               <button
                 type="button"
                 onClick={() => setStep("email")}

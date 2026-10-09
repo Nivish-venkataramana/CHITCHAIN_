@@ -67,3 +67,20 @@ input::-webkit-inner-spin-button {
 input[type="number"] {
   -moz-appearance: textfield !important;
 }
+
+/* Ensure inputs, textareas, and selects are strictly transparent with no white background */
+input, textarea, select {
+  background-color: transparent;
+  color: #f3f4f6;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: #ffffff !important;
+  -webkit-box-shadow: 0 0 0px 1000px #000000 inset !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+}
+
