@@ -18,12 +18,11 @@ export default function AutoPayDedicatedPage() {
   useEffect(() => {
     async function fetchCircle() {
       try {
-        const res = await fetch(`/api/circles/mine`);
+        const res = await fetch(`/api/circles/${circleId}`);
         if (res.ok) {
           const json = await res.json();
-          const found = (json.circles || []).find((c: any) => c.id === circleId);
-          if (found) {
-            setCircle(found);
+          if (json && !json.error) {
+            setCircle(json);
           }
         }
       } catch (e) {
@@ -38,6 +37,23 @@ export default function AutoPayDedicatedPage() {
   const monthlyAmount = circle ? fromBaseUnits(circle.monthlyAmount) : 25000;
   const durationMonths = circle?.durationMonths || 3;
   const circleName = circle?.name || "Chit Circle";
+
+  const membersList = circle
+    ? [
+        {
+          walletAddress: circle.volunteerWallet,
+          username: circle.volunteerUsername || "volunteer",
+          displayName: circle.volunteerUsername ? `@${circle.volunteerUsername}` : "Volunteer Leader",
+          isVolunteer: true,
+        },
+        ...(circle.invites || []).map((inv: any) => ({
+          walletAddress: inv.inviteeWallet,
+          username: inv.inviteeUsername,
+          displayName: `@${inv.inviteeUsername}`,
+          isVolunteer: false,
+        })),
+      ]
+    : [];
 
   return (
     <div className="min-h-screen bg-[#07090e] text-white p-4 sm:p-8">
@@ -67,6 +83,7 @@ export default function AutoPayDedicatedPage() {
             monthlyAmountUSDC={monthlyAmount}
             durationMonths={durationMonths}
             vaultAddress={circle?.vaultAddress}
+            members={membersList}
           />
         )}
       </div>

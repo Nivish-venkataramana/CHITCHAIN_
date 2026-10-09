@@ -577,6 +577,20 @@ export default function CircleDetailPage() {
               monthlyAmountUSDC={fromBaseUnits(circle.monthlyAmount)}
               durationMonths={circle.durationMonths}
               vaultAddress={circle.vaultAddress}
+              members={[
+                {
+                  walletAddress: circle.volunteerWallet,
+                  username: circle.volunteerUsername || "volunteer",
+                  displayName: circle.volunteerUsername ? `@${circle.volunteerUsername}` : "Volunteer Leader",
+                  isVolunteer: true,
+                },
+                ...circle.invites.map((inv) => ({
+                  walletAddress: inv.inviteeWallet,
+                  username: inv.inviteeUsername,
+                  displayName: `@${inv.inviteeUsername}`,
+                  isVolunteer: false,
+                })),
+              ]}
             />
           </div>
         )}

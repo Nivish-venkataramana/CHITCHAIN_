@@ -7,20 +7,27 @@ export async function GET(req: NextRequest) {
     const circleId = searchParams.get("circleId");
     const memberAddress = searchParams.get("memberAddress")?.toLowerCase();
 
-    if (!circleId || !memberAddress) {
-      return NextResponse.json({ error: "Missing circleId or memberAddress" }, { status: 400 });
+    if (!circleId) {
+      return NextResponse.json({ error: "Missing circleId" }, { status: 400 });
     }
 
-    const consent = await prisma.autopayConsent.findUnique({
-      where: {
-        circleId_memberAddress: {
-          circleId,
-          memberAddress,
+    if (memberAddress) {
+      const consent = await prisma.autopayConsent.findUnique({
+        where: {
+          circleId_memberAddress: {
+            circleId,
+            memberAddress,
+          },
         },
-      },
+      });
+      return NextResponse.json({ success: true, consent });
+    }
+
+    const allConsents = await prisma.autopayConsent.findMany({
+      where: { circleId },
     });
 
-    return NextResponse.json({ success: true, consent });
+    return NextResponse.json({ success: true, consents: allConsents });
   } catch (error: any) {
     console.error("GET /api/autopay/consent error:", error);
     return NextResponse.json({ error: error.message || "Failed to fetch consent" }, { status: 500 });
