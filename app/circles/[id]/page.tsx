@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { fromBaseUnits } from "@/lib/validation";
 import { EditCircleModal, DeleteCircleModal } from "@/components/circle-action-modals";
+import { AutoPayAuthorization } from "@/components/AutoPayAuthorization";
 
 interface CircleDetails {
   id: string;
@@ -528,6 +529,17 @@ export default function CircleDetailPage() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Web3 Auto-Pay Engine Section */}
+      <div className="pt-6 border-t border-white/10">
+        <AutoPayAuthorization
+          circleId={circleId}
+          circleName={circle.name}
+          monthlyAmountUSDC={fromBaseUnits(circle.monthlyAmount)}
+          durationMonths={circle.durationMonths}
+          vaultAddress={circle.vaultAddress}
+        />
       </div>
     </div>
   );
