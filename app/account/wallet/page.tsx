@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useDevUser } from "@/components/providers";
-import { Wallet, Coins, ArrowLeft, CheckCircle, AlertCircle, Sparkles } from "lucide-react";
+import { Wallet, Coins, ArrowLeft, CheckCircle2 } from "lucide-react";
 
 export default function AccountWalletPage() {
   const { user } = useDevUser();
@@ -18,9 +18,7 @@ export default function AccountWalletPage() {
     })
       .then((r) => r.json())
       .then((data) => {
-        if (data.balanceUSDC) {
-          setBalance(data.balanceUSDC);
-        }
+        if (data.balanceUSDC) setBalance(data.balanceUSDC);
       })
       .catch((err) => console.error("Error loading balance:", err));
   };
@@ -42,9 +40,9 @@ export default function AccountWalletPage() {
       const data = await res.json();
       if (data.balanceUSDC) {
         setBalance(data.balanceUSDC);
-        setMessage("Successfully minted 1,000 MockUSDC via gasless paymaster faucet!");
+        setMessage("Minted 1,000 MockUSDC via gasless paymaster.");
       }
-    } catch (err: any) {
+    } catch {
       setMessage("Failed to mint from faucet.");
     } finally {
       setMinting(false);
@@ -52,57 +50,59 @@ export default function AccountWalletPage() {
   };
 
   return (
-    <div className="max-w-xl mx-auto py-6 space-y-6">
+    <div className="max-w-xl mx-auto py-8 space-y-8">
       <Link
         href="/"
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
+        className="inline-flex items-center gap-2 text-xs text-neutral-400 hover:text-white transition-colors"
       >
-        <ArrowLeft className="h-3.5 w-3.5" />
+        <ArrowLeft className="h-4 w-4" />
         Back to home
       </Link>
 
-      <div className="rounded-2xl border bg-white p-6 shadow-sm space-y-6">
+      <div className="rounded-3xl glass-panel-glow p-8 space-y-8">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
-            <Wallet className="h-6 w-6" />
+          <div className="p-2.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-2xl">
+            <Wallet className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Smart Account Wallet</h1>
-            <p className="text-xs text-slate-500">
-              Account: <strong>{user?.displayName}</strong> (@{user?.username})
+            <h1 className="text-xl font-bold text-white tracking-tight">Smart Account</h1>
+            <p className="text-xs text-neutral-400 font-mono">
+              @{user?.username}
             </p>
           </div>
         </div>
 
         {/* Address Card */}
-        <div className="p-4 bg-slate-50 rounded-xl border space-y-1 text-xs">
-          <span className="text-slate-500 font-semibold block">Public Key (Smart Account Address):</span>
-          <p className="font-mono font-bold text-slate-800 break-all">{user?.walletAddress}</p>
+        <div className="p-5 bg-white/[0.02] rounded-2xl border border-white/5 space-y-1.5 text-xs">
+          <span className="text-neutral-500 font-medium block uppercase tracking-wider text-[10px]">
+            Public Key (Smart Account Address)
+          </span>
+          <p className="font-mono text-neutral-300 break-all text-xs">{user?.walletAddress}</p>
         </div>
 
         {/* Balance Card */}
-        <div className="p-6 bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-2xl space-y-4 shadow-md">
-          <span className="text-xs font-medium text-blue-100 uppercase tracking-wider block">
-            MockUSDC Balance (Base Sepolia)
+        <div className="p-8 bg-gradient-to-br from-neutral-900 to-black rounded-3xl border border-emerald-500/30 space-y-6 shadow-[0_0_30px_rgba(16,185,129,0.15)]">
+          <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-widest block">
+            MockUSDC Balance
           </span>
-          <div className="text-3xl font-extrabold flex items-baseline gap-2">
+          <div className="text-4xl font-extrabold text-white flex items-baseline gap-2">
             <span>{Number(balance).toLocaleString()}</span>
-            <span className="text-sm font-semibold text-blue-200">USDC</span>
+            <span className="text-sm font-semibold text-neutral-400">USDC</span>
           </div>
 
           <button
             onClick={handleMint}
             disabled={minting}
-            className="w-full py-2.5 rounded-xl bg-white text-blue-700 font-bold text-xs hover:bg-blue-50 transition-colors flex items-center justify-center gap-1.5 shadow cursor-pointer"
+            className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Coins className="h-4 w-4" />
-            {minting ? "Minting Gasless Test USDC..." : "Faucet: Add 1,000 MockUSDC"}
+            {minting ? "Minting..." : "Faucet: Mint 1,000 MockUSDC"}
           </button>
         </div>
 
         {message && (
-          <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 shrink-0 text-emerald-600" />
+          <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
             <span>{message}</span>
           </div>
         )}

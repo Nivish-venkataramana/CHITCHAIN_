@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDevUser } from "@/components/providers";
-import { ArrowLeft, AlertCircle, Info } from "lucide-react";
+import { ArrowLeft, AlertCircle } from "lucide-react";
 import { validateCircleParams } from "@/lib/validation";
 
 export default function CreateCirclePage() {
@@ -12,27 +12,31 @@ export default function CreateCirclePage() {
   const { user } = useDevUser();
 
   const [name, setName] = useState("");
-  const [numPeople, setNumPeople] = useState<number>(4);
-  const [monthlyAmount, setMonthlyAmount] = useState<string>("1000");
-  const [durationMonths, setDurationMonths] = useState<number>(3);
+  const [numPeople, setNumPeople] = useState<string>("");
+  const [monthlyAmount, setMonthlyAmount] = useState<string>("");
+  const [durationMonths, setDurationMonths] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Live validation calculations using shared validation logic
+  const parsedPeople = parseInt(numPeople) || 0;
+  const parsedAmount = parseFloat(monthlyAmount) || 0;
+  const parsedDuration = parseInt(durationMonths) || 0;
+
   const validation = validateCircleParams({
     name,
-    numPeople,
+    numPeople: parsedPeople,
     monthlyAmount,
-    durationMonths,
+    durationMonths: parsedDuration,
   });
 
-  const parsedAmount = parseFloat(monthlyAmount) || 0;
-  const allowedDurations = [numPeople - 1, numPeople - 2].filter((d) => d >= 1);
+  const allowedDurations = parsedPeople >= 2
+    ? [parsedPeople - 1, parsedPeople - 2].filter((d) => d >= 1)
+    : [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validation.valid) {
-      setError(validation.error || "Please check parameters.");
+      setError(validation.error || "Please verify parameters.");
       return;
     }
 
@@ -48,16 +52,14 @@ export default function CreateCirclePage() {
         },
         body: JSON.stringify({
           name: name.trim(),
-          numPeople,
+          numPeople: parsedPeople,
           monthlyAmount,
-          durationMonths,
+          durationMonths: parsedDuration,
         }),
       });
 
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to create circle");
-      }
+      if (!res.ok) throw new Error(data.error || "Failed to create circle");
 
       router.push(`/circles/${data.id}`);
     } catch (err: any) {
@@ -68,144 +70,134 @@ export default function CreateCirclePage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto py-4 space-y-6">
+    <div className="w-full max-w-xl mx-auto py-8 space-y-6">
       <Link
         href="/circles"
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
+        className="inline-flex items-center gap-2 text-xs text-neutral-400 hover:text-white transition-colors"
       >
-        <ArrowLeft className="h-3.5 w-3.5" />
+        <ArrowLeft className="h-4 w-4" />
         Back to circles
       </Link>
 
-      <div className="rounded-2xl border bg-white p-8 shadow-sm space-y-6">
+      <div className="rounded-3xl glass-panel-glow p-8 sm:p-10 space-y-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Create a New Chit Circle</h1>
-          <p className="text-slate-600 text-sm mt-1">
-            As volunteer organizer (<span className="font-semibold">{user?.displayName}</span>), set the pool terms. You count as member 1 of N.
-          </p>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Create a Chit Circle</h1>
         </div>
 
         {error && (
-          <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-2">
-            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+          <div className="p-3.5 rounded-2xl bg-red-950/30 border border-red-500/30 text-red-300 text-xs flex items-center gap-2.5">
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
             <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-8">
           {/* Circle Name */}
-          <div className="space-y-2">
-            <label className="block text-sm font-semibold text-slate-800">
-              Circle Name
-            </label>
+          <div className="line-input-group">
             <input
               type="text"
+              id="circle-name"
               required
+              placeholder=" "
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Alpha Friends Chit"
-              className="w-full rounded-xl border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="line-input"
             />
+            <label htmlFor="circle-name" className="line-label">
+              Circle Name
+            </label>
           </div>
 
-          {/* Number of People */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="block text-sm font-semibold text-slate-800">
-                Number of People (N)
-              </label>
-              <span className="text-xs text-slate-500">Minimum 2 people</span>
-            </div>
-            <input
-              type="number"
-              min={2}
-              max={20}
-              required
-              value={numPeople}
-              onChange={(e) => {
-                const val = parseInt(e.target.value) || 2;
-                setNumPeople(val);
-                if (val >= 2) setDurationMonths(val - 1);
-              }}
-              className="w-full rounded-xl border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <p className="text-xs text-blue-600">
-              ℹ️ Invites needed: <strong>{Math.max(0, numPeople - 1)} members</strong> (you are 1).
-            </p>
-          </div>
-
-          {/* Monthly Amount */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="block text-sm font-semibold text-slate-800">
-                Monthly Amount per Member (MockUSDC)
-              </label>
-              <span className="text-xs text-slate-500">Fixed 6 decimals</span>
-            </div>
-            <div className="relative">
+          {/* Members Count & Monthly Amount in the Same Line */}
+          <div className="grid grid-cols-2 gap-6">
+            <div className="line-input-group">
               <input
                 type="number"
+                id="members-count"
+                min={2}
+                max={20}
+                required
+                placeholder=" "
+                value={numPeople}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setNumPeople(val);
+                  const p = parseInt(val) || 0;
+                  if (p >= 2) {
+                    setDurationMonths(String(p - 1));
+                  } else {
+                    setDurationMonths("");
+                  }
+                }}
+                className="line-input"
+              />
+              <label htmlFor="members-count" className="line-label">
+                Members Count (N)
+              </label>
+            </div>
+
+            <div className="line-input-group">
+              <input
+                type="number"
+                id="monthly-amount"
                 min={1}
                 step={1}
                 required
+                placeholder=" "
                 value={monthlyAmount}
                 onChange={(e) => setMonthlyAmount(e.target.value)}
-                placeholder="1000"
-                className="w-full rounded-xl border pl-4 pr-16 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="line-input"
               />
-              <span className="absolute right-4 top-2.5 text-xs font-bold text-slate-400">
-                USDC
-              </span>
+              <label htmlFor="monthly-amount" className="line-label">
+                Monthly Amount (USDC)
+              </label>
             </div>
-            <p className="text-xs text-emerald-600">
-              💳 Required 3x balance per invitee at invite time: <strong>{(parsedAmount * 3).toLocaleString()} USDC</strong>.
-            </p>
           </div>
 
-          {/* Duration */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="block text-sm font-semibold text-slate-800">
-                Duration (Months)
-              </label>
-              <span className="text-xs font-medium text-amber-600">Must be N-1 or N-2 months</span>
+          {/* Live helper status if values entered */}
+          {(parsedPeople >= 2 || parsedAmount > 0) && (
+            <div className="flex items-center justify-between text-[11px] text-neutral-400 px-0.5 -mt-4">
+              <span>{parsedPeople >= 2 ? `${parsedPeople - 1} invites required` : ""}</span>
+              <span className="text-emerald-400">
+                {parsedAmount > 0 ? `${(parsedAmount * 3).toLocaleString()} USDC required at invite` : ""}
+              </span>
             </div>
+          )}
+
+          {/* Duration */}
+          <div className="line-input-group">
             <select
+              id="circle-duration"
               value={durationMonths}
-              onChange={(e) => setDurationMonths(parseInt(e.target.value))}
-              className="w-full rounded-xl border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              onChange={(e) => setDurationMonths(e.target.value)}
+              className={`line-input cursor-pointer bg-transparent appearance-none ${
+                durationMonths ? "line-input-active text-white" : "text-transparent"
+              }`}
             >
+              <option value="" disabled className="bg-neutral-950 text-neutral-500">
+                Select duration
+              </option>
               {allowedDurations.map((d) => (
-                <option key={d} value={d}>
-                  {d} Month{d > 1 ? "s" : ""} {d === numPeople - 1 ? "(N - 1)" : "(N - 2)"}
+                <option key={d} value={String(d)} className="bg-neutral-950 text-white">
+                  {d} Month{d > 1 ? "s" : ""}
                 </option>
               ))}
             </select>
-          </div>
-
-          {/* Rules Card */}
-          <div className="rounded-xl bg-slate-50 border p-4 text-xs text-slate-600 space-y-2">
-            <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-              <Info className="h-4 w-4 text-blue-600" />
-              Circle Rules Summary
-            </div>
-            <ul className="list-disc pl-4 space-y-1">
-              <li>Candidate balance must be at least 3 x monthly amount at invite time.</li>
-              <li>Once all {numPeople} members join, the group enters the Issue Stage to review terms.</li>
-              <li>When all members submit &quot;No issues&quot;, the circle becomes Finalized.</li>
-            </ul>
+            <label htmlFor="circle-duration" className={`line-label ${durationMonths ? "!top-0 !scale-[0.8] !text-emerald-400 !font-semibold" : ""}`}>
+              Duration (Months)
+            </label>
           </div>
 
           <button
             type="submit"
             disabled={!validation.valid || isSubmitting}
-            className={`w-full py-3 rounded-xl font-bold text-sm text-white shadow-sm transition-all ${
+            className={`w-full py-3.5 rounded-xl font-semibold text-xs tracking-wider uppercase transition-all ${
               validation.valid && !isSubmitting
-                ? "bg-blue-600 hover:bg-blue-700 cursor-pointer"
-                : "bg-slate-300 cursor-not-allowed"
+                ? "bg-emerald-500 hover:bg-emerald-400 text-black shadow-[0_0_25px_rgba(16,185,129,0.35)] cursor-pointer"
+                : "bg-white/5 text-neutral-600 border border-white/5 cursor-not-allowed"
             }`}
           >
-            {isSubmitting ? "Creating Circle..." : "Create Circle & Start Inviting"}
+            {isSubmitting ? "Creating..." : "Create Circle & Invite Members"}
           </button>
         </form>
       </div>

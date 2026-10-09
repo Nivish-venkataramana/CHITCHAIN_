@@ -2,44 +2,44 @@
 
 import Link from "next/link";
 import { useDevUser } from "@/components/providers";
-import { KeyRound, ShieldCheck, Wallet } from "lucide-react";
+import { KeyRound } from "lucide-react";
 
 export default function AccountLoginPage() {
   const { user } = useDevUser();
 
   return (
-    <div className="max-w-md mx-auto py-12 space-y-6 text-center">
-      <div className="h-16 w-16 bg-blue-100 text-blue-600 rounded-3xl flex items-center justify-center mx-auto">
+    <div className="max-w-md mx-auto py-16 space-y-8 text-center">
+      <div className="h-16 w-16 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-3xl flex items-center justify-center mx-auto shadow-lg shadow-emerald-950/40">
         <KeyRound className="h-8 w-8" />
       </div>
 
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold text-slate-900">Wallet Login & Smart Account</h1>
-        <p className="text-xs text-slate-500">
-          [Pruthvik Slice: Privy Auth + Biconomy Smart Account on Base Sepolia]
+        <h1 className="text-2xl font-bold text-white tracking-tight">Smart Account Wallet</h1>
+        <p className="text-xs text-neutral-400">
+          Privy session authentication and Biconomy smart accounts on Base Sepolia.
         </p>
       </div>
 
-      <div className="rounded-2xl border bg-white p-6 shadow-sm space-y-4 text-left text-xs">
-        <div className="p-3 bg-slate-50 rounded-xl border space-y-1">
-          <p className="font-semibold text-slate-700">Currently Active Fixture Account:</p>
-          <p className="font-bold text-blue-600 text-sm">{user?.displayName}</p>
-          <p className="font-mono text-slate-500">@{user?.username}</p>
-          <p className="font-mono text-[11px] text-slate-400 break-all">{user?.walletAddress}</p>
+      <div className="glass-panel p-6 space-y-5 text-left text-xs">
+        <div className="p-4 bg-neutral-900/60 rounded-xl border border-white/5 space-y-2">
+          <p className="text-[11px] font-medium text-neutral-400">Active Profile</p>
+          <p className="font-bold text-emerald-400 text-sm">{user?.displayName}</p>
+          <p className="font-mono text-neutral-400">@{user?.username}</p>
+          <p className="font-mono text-[11px] text-neutral-500 break-all">{user?.walletAddress}</p>
         </div>
 
-        <div className="space-y-2 pt-2">
+        <div className="space-y-3 pt-2">
           <Link
             href="/account/wallet"
-            className="block w-full text-center py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors"
+            className="block w-full text-center py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-all shadow-lg shadow-emerald-900/30"
           >
-            Go to Smart Account Wallet
+            Open Wallet
           </Link>
           <Link
             href="/account/create"
-            className="block w-full text-center py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold transition-colors"
+            className="block w-full text-center py-3 rounded-xl border border-white/10 hover:bg-white/5 text-neutral-300 font-semibold transition-colors"
           >
-            Create New Account Profile
+            Create New Profile
           </Link>
         </div>
       </div>

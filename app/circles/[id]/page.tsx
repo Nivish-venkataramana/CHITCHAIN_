@@ -7,18 +7,16 @@ import { useDevUser } from "@/components/providers";
 import {
   ArrowLeft,
   Users,
-  ShieldCheck,
-  UserPlus,
-  CheckCircle,
+  Shield,
+  Plus,
+  CheckCircle2,
   XCircle,
   Clock,
-  AlertTriangle,
-  Search,
   AlertCircle,
-  CheckCircle2,
+  Search,
+  ArrowRight,
 } from "lucide-react";
 import { fromBaseUnits } from "@/lib/validation";
-import { UserProfile } from "@/handoffs/user-profile";
 
 interface CircleDetails {
   id: string;
@@ -55,9 +53,7 @@ export default function CircleDetailPage() {
     fetch(`/api/circles/${circleId}`)
       .then((res) => res.json())
       .then((data) => {
-        if (data && !data.error) {
-          setCircle(data);
-        }
+        if (data && !data.error) setCircle(data);
       })
       .catch((err) => console.error("Error loading circle:", err))
       .finally(() => setLoading(false));
@@ -88,11 +84,9 @@ export default function CircleDetailPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to send invite");
-      }
+      if (!res.ok) throw new Error(data.error || "Failed to send invite");
 
-      setInviteSuccess(`Invite sent successfully to @${targetUsername}!`);
+      setInviteSuccess(`Invite sent to @${targetUsername}`);
       fetchCircle();
       setSearchQuery("");
     } catch (err: any) {
@@ -110,7 +104,7 @@ export default function CircleDetailPage() {
 
   if (loading) {
     return (
-      <div className="p-12 text-center text-sm text-slate-500 bg-white rounded-2xl border">
+      <div className="p-16 text-center text-sm text-neutral-500 glass-panel rounded-3xl">
         Loading circle details...
       </div>
     );
@@ -118,9 +112,9 @@ export default function CircleDetailPage() {
 
   if (!circle) {
     return (
-      <div className="p-12 text-center bg-white rounded-2xl border space-y-3">
-        <p className="text-slate-600 text-sm">Circle not found.</p>
-        <Link href="/circles" className="text-xs font-semibold text-blue-600">
+      <div className="p-16 text-center glass-panel rounded-3xl space-y-4">
+        <p className="text-neutral-400 text-sm">Circle not found.</p>
+        <Link href="/circles" className="text-xs font-medium text-emerald-400">
           ← Back to circles
         </Link>
       </div>
@@ -131,112 +125,106 @@ export default function CircleDetailPage() {
   const monthlyUSDC = fromBaseUnits(circle.monthlyAmount);
 
   return (
-    <div className="space-y-8 py-4">
+    <div className="space-y-10 py-6">
       <Link
         href="/circles"
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
+        className="inline-flex items-center gap-2 text-xs text-neutral-400 hover:text-white transition-colors"
       >
-        <ArrowLeft className="h-3.5 w-3.5" />
+        <ArrowLeft className="h-4 w-4" />
         Back to circles
       </Link>
 
       {/* Header Banner */}
-      <div className="rounded-2xl border bg-white p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-1">
+      <div className="rounded-3xl glass-panel p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-1.5">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-slate-900">{circle.name}</h1>
+            <h1 className="text-2xl font-bold text-white tracking-tight">{circle.name}</h1>
             <span
-              className={`px-3 py-1 rounded-full text-xs font-semibold ${
+              className={`px-3 py-1 rounded-full text-xs font-medium border ${
                 circle.status === "FINALIZED"
-                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                  ? "bg-emerald-950/40 text-emerald-300 border-emerald-500/30"
                   : circle.status === "ISSUE_STAGE"
-                  ? "bg-amber-100 text-amber-800 border border-amber-200"
-                  : "bg-blue-100 text-blue-800 border border-blue-200"
+                  ? "bg-amber-950/40 text-amber-300 border-amber-500/30"
+                  : "bg-neutral-800 text-neutral-300 border-white/10"
               }`}
             >
               {circle.status}
             </span>
           </div>
-          <p className="text-xs text-slate-500">
-            Volunteer Organizer:{" "}
-            <strong>
-              {circle.volunteerUsername ? `@${circle.volunteerUsername}` : circle.volunteerWallet}
-            </strong>{" "}
-            • Circle ID: <span className="font-mono">{circle.id}</span>
+          <p className="text-xs text-neutral-400">
+            Organizer:{" "}
+            <span className="text-neutral-300">
+              {circle.volunteerUsername ? `@${circle.volunteerUsername}` : circle.volunteerWallet.slice(0, 8)}
+            </span>
           </p>
         </div>
 
-        {/* Hand-off action pills */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Action Pills */}
+        <div className="flex flex-wrap items-center gap-2.5">
           <Link
             href={`/circles/${circle.id}/issues`}
-            className="px-4 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold border border-amber-200 transition-colors flex items-center gap-1.5"
+            className="px-4 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-neutral-300 hover:text-white text-xs font-medium border border-white/10 transition-colors"
           >
-            <AlertTriangle className="h-3.5 w-3.5" />
-            Issue Stage
+            Issues
           </Link>
-
           <Link
             href={`/circles/${circle.id}/autopay`}
-            className="px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200 transition-colors flex items-center gap-1.5"
+            className="px-4 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-medium border border-emerald-500/20 transition-colors"
           >
-            <ShieldCheck className="h-3.5 w-3.5" />
             Autopay
           </Link>
-
           <Link
             href={`/circles/${circle.id}/pool`}
-            className="px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 text-xs font-bold border border-blue-200 transition-colors"
+            className="px-4 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-neutral-300 hover:text-white text-xs font-medium border border-white/10 transition-colors"
           >
-            Pool Vault
+            Pool
           </Link>
-
           <Link
             href={`/circles/${circle.id}/bidding`}
-            className="px-4 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-bold border border-purple-200 transition-colors"
+            className="px-4 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-neutral-300 hover:text-white text-xs font-medium border border-white/10 transition-colors"
           >
-            Bidding Auction
+            Auction
           </Link>
         </div>
       </div>
 
-      {/* Circle Stats */}
+      {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="rounded-xl border bg-white p-4">
-          <span className="text-xs text-slate-500">Total Members (N)</span>
-          <p className="text-xl font-bold text-slate-900 mt-1">{circle.numPeople}</p>
+        <div className="rounded-2xl glass-panel p-5">
+          <span className="text-[11px] text-neutral-500 block">Members</span>
+          <p className="text-xl font-bold text-white mt-1">{circle.numPeople}</p>
         </div>
-        <div className="rounded-xl border bg-white p-4">
-          <span className="text-xs text-slate-500">Monthly Contribution</span>
-          <p className="text-xl font-bold text-slate-900 mt-1">{monthlyUSDC} USDC</p>
+        <div className="rounded-2xl glass-panel p-5">
+          <span className="text-[11px] text-neutral-500 block">Monthly</span>
+          <p className="text-xl font-bold text-white mt-1">{monthlyUSDC} USDC</p>
         </div>
-        <div className="rounded-xl border bg-white p-4">
-          <span className="text-xs text-slate-500">Duration</span>
-          <p className="text-xl font-bold text-slate-900 mt-1">{circle.durationMonths} Months</p>
+        <div className="rounded-2xl glass-panel p-5">
+          <span className="text-[11px] text-neutral-500 block">Duration</span>
+          <p className="text-xl font-bold text-white mt-1">{circle.durationMonths} Mos</p>
         </div>
-        <div className="rounded-xl border bg-white p-4">
-          <span className="text-xs text-slate-500">Required 3x Balance</span>
-          <p className="text-xl font-bold text-emerald-600 mt-1">
+        <div className="rounded-2xl glass-panel p-5">
+          <span className="text-[11px] text-neutral-500 block">3x Invite Req</span>
+          <p className="text-xl font-bold text-emerald-400 mt-1">
             {(Number(monthlyUSDC) * 3).toLocaleString()} USDC
           </p>
         </div>
       </div>
 
-      {/* Invite Status Board & Search */}
+      {/* Status Board & Invite Search */}
       <div className="grid md:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Status Board */}
-        <div className="md:col-span-2 rounded-2xl border bg-white p-6 shadow-sm space-y-4">
+        {/* Member Status Board */}
+        <div className="md:col-span-2 rounded-3xl glass-panel p-8 space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Users className="h-5 w-5 text-blue-600" />
-              Member Status Board ({acceptedInvites.length} / {circle.numPeople})
+            <h2 className="text-base font-semibold text-white flex items-center gap-2">
+              <Users className="h-4 w-4 text-emerald-400" />
+              Members ({acceptedInvites.length} / {circle.numPeople})
             </h2>
-            <span className="text-xs text-slate-500">
-              {Math.max(0, circle.numPeople - acceptedInvites.length)} spots remaining
+            <span className="text-xs text-neutral-500">
+              {Math.max(0, circle.numPeople - acceptedInvites.length)} slots left
             </span>
           </div>
 
-          <div className="divide-y border rounded-xl overflow-hidden">
+          <div className="divide-y divide-white/5 border border-white/5 rounded-2xl overflow-hidden">
             {circle.invites.map((inv) => {
               const u = users.find((usr) => usr.username === inv.inviteeUsername);
               const isVol = inv.inviteeWallet.toLowerCase() === circle.volunteerWallet.toLowerCase();
@@ -244,81 +232,73 @@ export default function CircleDetailPage() {
               return (
                 <div
                   key={inv.id}
-                  className="p-4 flex items-center justify-between bg-white hover:bg-slate-50 transition-colors"
+                  className="p-4 flex items-center justify-between bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
                 >
-                  <div className="space-y-0.5">
+                  <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm text-slate-900">
+                      <span className="font-medium text-sm text-white">
                         {u?.displayName || inv.inviteeUsername}
                       </span>
-                      <span className="text-xs text-slate-500">@{inv.inviteeUsername}</span>
+                      <span className="text-xs text-neutral-400 font-mono">@{inv.inviteeUsername}</span>
                       {isVol && (
-                        <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700">
+                        <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                           Volunteer
                         </span>
                       )}
                     </div>
-                    <p className="text-xs font-mono text-slate-400">
-                      {inv.inviteeWallet.slice(0, 8)}...{inv.inviteeWallet.slice(-6)} • Balance checked:{" "}
-                      {fromBaseUnits(inv.balanceAtCheck)} USDC
+                    <p className="text-[11px] font-mono text-neutral-500">
+                      {inv.inviteeWallet.slice(0, 6)}...{inv.inviteeWallet.slice(-4)} • Balance check: {fromBaseUnits(inv.balanceAtCheck)} USDC
                     </p>
                   </div>
 
-                  <div>
-                    <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                        inv.status === "ACCEPTED"
-                          ? "bg-emerald-100 text-emerald-800"
-                          : inv.status === "PENDING"
-                          ? "bg-amber-100 text-amber-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {inv.status === "ACCEPTED" && <CheckCircle className="h-3.5 w-3.5" />}
-                      {inv.status === "PENDING" && <Clock className="h-3.5 w-3.5" />}
-                      {inv.status === "REJECTED" && <XCircle className="h-3.5 w-3.5" />}
-                      {inv.status}
-                    </span>
-                  </div>
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium border ${
+                      inv.status === "ACCEPTED"
+                        ? "bg-emerald-950/40 text-emerald-300 border-emerald-500/30"
+                        : inv.status === "PENDING"
+                        ? "bg-amber-950/40 text-amber-300 border-amber-500/30"
+                        : "bg-red-950/40 text-red-300 border-red-500/30"
+                    }`}
+                  >
+                    {inv.status === "ACCEPTED" && <CheckCircle2 className="h-3 w-3" />}
+                    {inv.status === "PENDING" && <Clock className="h-3 w-3" />}
+                    {inv.status === "REJECTED" && <XCircle className="h-3 w-3" />}
+                    {inv.status}
+                  </span>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Right Col: Invite Candidate Search */}
-        <div className="rounded-2xl border bg-white p-6 shadow-sm space-y-4">
-          <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <UserPlus className="h-4 w-4 text-blue-600" />
-            Add People by Username
-          </h3>
+        {/* Add Members by Username */}
+        <div className="rounded-3xl glass-panel p-8 space-y-6">
+          <h3 className="text-base font-semibold text-white">Add People</h3>
 
           <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-neutral-500" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search username or name..."
-              className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Search username..."
+              className="w-full pl-10 pr-4 py-2.5 text-xs rounded-xl glass-input focus:outline-none"
             />
           </div>
 
           {inviteError && (
-            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-1.5">
-              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>{inviteError}</span>
+            <div className="p-3.5 rounded-xl bg-red-950/40 border border-red-500/30 text-red-300 text-xs">
+              {inviteError}
             </div>
           )}
 
           {inviteSuccess && (
-            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-center gap-1.5">
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
-              <span>{inviteSuccess}</span>
+            <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs">
+              {inviteSuccess}
             </div>
           )}
 
-          <div className="space-y-2 max-h-60 overflow-y-auto">
+          <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
             {filteredUsers.map((u) => {
               const alreadyInvited = circle.invites.some(
                 (i) => i.inviteeUsername === u.username && i.status !== "REJECTED"
@@ -328,21 +308,21 @@ export default function CircleDetailPage() {
               return (
                 <div
                   key={u.username}
-                  className="p-2.5 rounded-xl border flex items-center justify-between text-xs bg-slate-50"
+                  className="p-3 rounded-xl border border-white/5 bg-white/[0.02] flex items-center justify-between text-xs"
                 >
                   <div>
-                    <p className="font-semibold text-slate-800">{u.displayName}</p>
-                    <p className="text-slate-400 font-mono">@{u.username}</p>
+                    <p className="font-medium text-white">{u.displayName}</p>
+                    <p className="text-neutral-500 font-mono text-[11px]">@{u.username}</p>
                   </div>
                   <button
                     disabled={alreadyInvited || isInvitingThis || !isVolunteer}
                     onClick={() => handleInviteUser(u.username)}
-                    className={`px-3 py-1 rounded-lg font-semibold transition-colors ${
+                    className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
                       alreadyInvited
-                        ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                        ? "bg-white/5 text-neutral-500 cursor-not-allowed"
                         : !isVolunteer
-                        ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                        : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
+                        ? "bg-white/5 text-neutral-500 cursor-not-allowed"
+                        : "bg-emerald-500 hover:bg-emerald-400 text-black font-semibold cursor-pointer"
                     }`}
                   >
                     {isInvitingThis ? "Checking..." : alreadyInvited ? "Added" : "Add"}

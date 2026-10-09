@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, User, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react";
 import { validateUsername } from "@/lib/username-rule";
 
 export default function CreateAccountProfilePage() {
@@ -14,13 +14,12 @@ export default function CreateAccountProfilePage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Live validation
   const validation = validateUsername(displayName, username);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validation.valid) {
-      setError(validation.error || "Please check username format");
+      setError(validation.error || "Invalid username format");
       return;
     }
 
@@ -29,7 +28,6 @@ export default function CreateAccountProfilePage() {
     setSuccess(null);
 
     try {
-      // Deterministic mock smart account address for demo
       const randomHex = Array.from({ length: 40 }, () =>
         Math.floor(Math.random() * 16).toString(16)
       ).join("");
@@ -50,7 +48,7 @@ export default function CreateAccountProfilePage() {
         throw new Error(data.error || "Failed to create account");
       }
 
-      setSuccess(`Account @${data.username} created and bound to smart account wallet!`);
+      setSuccess(`Account @${data.username} created successfully`);
       setTimeout(() => {
         router.push("/account/wallet");
       }, 1200);
@@ -62,54 +60,54 @@ export default function CreateAccountProfilePage() {
   };
 
   return (
-    <div className="max-w-md mx-auto py-6 space-y-6">
+    <div className="max-w-md mx-auto py-8 space-y-6">
       <Link
         href="/account/wallet"
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
+        className="inline-flex items-center gap-2 text-xs font-semibold text-neutral-400 hover:text-white transition-colors"
       >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        Back to wallet
+        <ArrowLeft className="h-4 w-4" />
+        Back to Wallet
       </Link>
 
-      <div className="rounded-2xl border bg-white p-6 shadow-sm space-y-6">
+      <div className="glass-panel p-8 space-y-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Create Account Profile</h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Unique username containing your real name bound to your on-chain smart account.
+          <h1 className="text-xl font-bold text-white tracking-tight">Create Profile</h1>
+          <p className="text-xs text-neutral-400 mt-1">
+            Register a username containing your name, bound to your smart account.
           </p>
         </div>
 
         {error && (
-          <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0" />
+          <div className="p-4 rounded-xl bg-red-950/40 border border-red-500/30 text-red-300 text-xs flex items-center gap-2.5">
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
             <span>{error}</span>
           </div>
         )}
 
         {success && (
-          <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
+          <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2.5">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
             <span>{success}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-          <div className="space-y-1.5">
-            <label className="font-semibold text-slate-700">Real Full Name</label>
+        <form onSubmit={handleSubmit} className="space-y-5 text-xs">
+          <div className="space-y-2">
+            <label className="font-semibold text-neutral-300">Full Name</label>
             <input
               type="text"
               required
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="e.g. Asha Rao"
-              className="w-full rounded-xl border p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-xl bg-neutral-900/80 border border-white/10 px-3.5 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="font-semibold text-slate-700">Username</label>
-              <span className="text-[10px] text-slate-400">Must include real name + suffix</span>
+              <label className="font-semibold text-neutral-300">Username</label>
+              <span className="text-[10px] text-neutral-500">Must include full name</span>
             </div>
             <input
               type="text"
@@ -117,26 +115,26 @@ export default function CreateAccountProfilePage() {
               value={username}
               onChange={(e) => setUsername(e.target.value.toLowerCase())}
               placeholder="e.g. asharao01"
-              className="w-full rounded-xl border p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+              className="w-full rounded-xl bg-neutral-900/80 border border-white/10 px-3.5 py-2.5 text-xs font-mono text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
             />
           </div>
 
           {displayName.length > 0 && (
             <div
-              className={`p-3 rounded-xl border text-[11px] ${
+              className={`p-3.5 rounded-xl border text-[11px] ${
                 validation.valid
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                  : "bg-amber-50 border-amber-200 text-amber-800"
+                  ? "bg-emerald-950/30 border-emerald-500/30 text-emerald-300"
+                  : "bg-amber-950/30 border-amber-500/30 text-amber-300"
               }`}
             >
               {validation.valid ? (
-                <div className="flex items-center gap-1.5 font-semibold">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                  Valid username format (&quot;{displayName}&quot; included in &quot;@{username}&quot;)
+                <div className="flex items-center gap-2 font-semibold">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                  <span>Valid username pattern</span>
                 </div>
               ) : (
-                <div className="flex items-start gap-1.5">
-                  <AlertCircle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-3.5 w-3.5 text-amber-400 shrink-0 mt-0.5" />
                   <span>{validation.error}</span>
                 </div>
               )}
@@ -146,13 +144,13 @@ export default function CreateAccountProfilePage() {
           <button
             type="submit"
             disabled={!validation.valid || submitting}
-            className={`w-full py-2.5 rounded-xl font-bold transition-colors ${
+            className={`w-full py-3 rounded-xl font-semibold transition-all ${
               validation.valid && !submitting
-                ? "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
-                : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/30 cursor-pointer"
+                : "bg-neutral-800 text-neutral-500 cursor-not-allowed"
             }`}
           >
-            {submitting ? "Creating & Binding Account..." : "Create & Bind Account to Wallet"}
+            {submitting ? "Creating Profile..." : "Create Profile"}
           </button>
         </form>
       </div>
