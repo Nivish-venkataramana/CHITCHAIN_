@@ -186,6 +186,65 @@ export function useAutoPaySession(circleId: string, monthlyAmountUSDC: number, v
     }
   }, [circleId, monthlyAmountUSDC, smartWalletAddress, vaultAddress, loadConsent]);
 
+  const [walletBalanceUSDC, setWalletBalanceUSDC] = useState<number>(100000);
+  const [circleVaultUSDC, setCircleVaultUSDC] = useState<number>(0);
+  const [isClaimingFaucet, setIsClaimingFaucet] = useState(false);
+  const [isBatchDebiting, setIsBatchDebiting] = useState(false);
+  const [lastBatchResult, setLastBatchResult] = useState<any | null>(null);
+
+  // Load balance for current wallet
+  const loadBalance = useCallback(async () => {
+    if (!smartWalletAddress || !/^0x[a-f0-9]{40}$/i.test(smartWalletAddress)) return;
+    try {
+      const res = await fetch(`/api/account/faucet?walletAddress=${smartWalletAddress.toLowerCase()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.balanceUSDC !== undefined) {
+          setWalletBalanceUSDC(data.balanceUSDC);
+        }
+      }
+    } catch {}
+  }, [smartWalletAddress]);
+
+  useEffect(() => {
+    loadBalance();
+  }, [loadBalance]);
+
+  /**
+   * Claim USDC Faucet Tokens to Active Smart Account
+   */
+  const claimFaucetUSDC = useCallback(
+    async (amount: number = 25000) => {
+      if (!smartWalletAddress || !/^0x[a-f0-9]{40}$/i.test(smartWalletAddress)) {
+        setError("Please connect your wallet first.");
+        return;
+      }
+      setIsClaimingFaucet(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/account/faucet", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            walletAddress: smartWalletAddress.toLowerCase(),
+            amount,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok && data.balanceUSDC !== undefined) {
+          setWalletBalanceUSDC(data.balanceUSDC);
+        }
+        return data;
+      } catch (err: any) {
+        console.error("Faucet error:", err);
+        setError(err.message || "Failed to claim faucet");
+      } finally {
+        setIsClaimingFaucet(false);
+      }
+    },
+    [smartWalletAddress]
+  );
+
   /**
    * Layer 1 + 3: Trigger Chainlink Automation Keeper / Fast-Forward Simulation
    */
@@ -212,6 +271,7 @@ export function useAutoPaySession(circleId: string, monthlyAmountUSDC: number, v
         }
 
         setLastKeeperResult(data);
+        await loadBalance();
         return data;
       } catch (err: any) {
         console.error("Keeper Trigger Error:", err);
@@ -221,19 +281,61 @@ export function useAutoPaySession(circleId: string, monthlyAmountUSDC: number, v
         setIsTriggeringKeeper(false);
       }
     },
-    [circleId, smartWalletAddress, monthlyAmountUSDC]
+    [circleId, smartWalletAddress, monthlyAmountUSDC, loadBalance]
   );
+
+  /**
+   * Batch Keeper Debit: Pulls funds from all consented members and pools them into the circle vault
+   */
+  const triggerBatchKeeperDebit = useCallback(async () => {
+    setIsBatchDebiting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/keeper/trigger-batch-debit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          circleId,
+          monthlyAmount: monthlyAmountUSDC,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Batch debit failed");
+      }
+      setLastBatchResult(data);
+      if (data.circleVaultTotalUSDC !== undefined) {
+        setCircleVaultUSDC(data.circleVaultTotalUSDC);
+      }
+      await loadBalance();
+      await loadConsent();
+      return data;
+    } catch (err: any) {
+      console.error("Batch Keeper Debit Error:", err);
+      setError(err.message || "Batch debit failed");
+      throw err;
+    } finally {
+      setIsBatchDebiting(false);
+    }
+  }, [circleId, monthlyAmountUSDC, loadBalance, loadConsent]);
 
   return {
     smartWalletAddress,
     isAuthorizing,
     isTriggeringKeeper,
+    isBatchDebiting,
+    isClaimingFaucet,
+    walletBalanceUSDC,
+    circleVaultUSDC,
     sessionData,
     allMemberConsents,
     error,
     lastKeeperResult,
+    lastBatchResult,
     authorizeSmartSession,
     triggerKeeperExecution,
+    triggerBatchKeeperDebit,
+    claimFaucetUSDC,
     refreshSession: loadConsent,
   };
 }

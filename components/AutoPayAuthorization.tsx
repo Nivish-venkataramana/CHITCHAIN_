@@ -48,12 +48,19 @@ export function AutoPayAuthorization({
     smartWalletAddress,
     isAuthorizing,
     isTriggeringKeeper,
+    isBatchDebiting,
+    isClaimingFaucet,
+    walletBalanceUSDC,
+    circleVaultUSDC,
     sessionData,
     allMemberConsents,
     error,
     lastKeeperResult,
+    lastBatchResult,
     authorizeSmartSession,
     triggerKeeperExecution,
+    triggerBatchKeeperDebit,
+    claimFaucetUSDC,
     refreshSession,
   } = useAutoPaySession(circleId, monthlyAmountUSDC, vaultAddress);
 
@@ -102,7 +109,28 @@ export function AutoPayAuthorization({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Faucet Claim Button */}
+          <button
+            onClick={() => claimFaucetUSDC(25000)}
+            disabled={isClaimingFaucet}
+            className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            title="Claim 25,000 MockUSDC to test account"
+          >
+            {isClaimingFaucet ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+            ) : (
+              <Coins className="w-3.5 h-3.5 text-emerald-400" />
+            )}
+            <span>+25k USDC Faucet</span>
+          </button>
+
+          {/* User Account Balance Tag */}
+          <div className="px-3.5 py-2 rounded-xl bg-gray-900/80 border border-gray-700 text-xs flex items-center gap-2">
+            <span className="text-gray-400">Balance:</span>
+            <span className="font-mono font-bold text-white">${walletBalanceUSDC.toLocaleString()} USDC</span>
+          </div>
+
           {isCurrentUserAuthorized ? (
             <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 px-4 py-2 rounded-xl text-emerald-400">
               <CheckCircle2 className="w-5 h-5 text-emerald-400" />
@@ -191,41 +219,82 @@ export function AutoPayAuthorization({
       {/* Tab: Overview */}
       {activeTab === "overview" && (
         <div className="space-y-4 mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-4 sm:p-5">
               <div className="flex items-center justify-between text-gray-400 mb-2">
-                <span className="text-xs uppercase tracking-wider font-semibold">Monthly Limit / Member</span>
+                <span className="text-xs uppercase tracking-wider font-semibold">Monthly Limit</span>
                 <Coins className="w-5 h-5 text-cyan-400" />
               </div>
-              <p className="text-2xl font-bold text-white">${monthlyAmountUSDC.toLocaleString()} USDC</p>
-              <p className="text-xs text-gray-400 mt-2">
-                Strictly enforced on-chain via <span className="text-cyan-300">ERC20SpendingLimitPolicy</span>
+              <p className="text-xl sm:text-2xl font-bold text-white">${monthlyAmountUSDC.toLocaleString()} USDC</p>
+              <p className="text-[11px] text-gray-400 mt-2">
+                Enforced via <span className="text-cyan-300">ERC20SpendingLimit</span>
               </p>
             </div>
 
-            <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-5">
+            <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-4 sm:p-5">
               <div className="flex items-center justify-between text-gray-400 mb-2">
-                <span className="text-xs uppercase tracking-wider font-semibold">Locked 3-Mo Reserve</span>
+                <span className="text-xs uppercase tracking-wider font-semibold">Locked Reserve</span>
                 <Lock className="w-5 h-5 text-purple-400" />
               </div>
-              <p className="text-2xl font-bold text-white">${totalReserveBuffer.toLocaleString()} USDC</p>
-              <p className="text-xs text-gray-400 mt-2">
-                Layer 3 Solvency Collateral. Slashed 1-month if pull bounces.
+              <p className="text-xl sm:text-2xl font-bold text-white">${totalReserveBuffer.toLocaleString()} USDC</p>
+              <p className="text-[11px] text-gray-400 mt-2">
+                Layer 3 Solvency Collateral.
               </p>
             </div>
 
-            <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-5">
+            <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-4 sm:p-5">
               <div className="flex items-center justify-between text-gray-400 mb-2">
-                <span className="text-xs uppercase tracking-wider font-semibold">Mandate Completion</span>
+                <span className="text-xs uppercase tracking-wider font-semibold">Mandates</span>
                 <Clock className="w-5 h-5 text-emerald-400" />
               </div>
-              <p className="text-2xl font-bold text-white">
+              <p className="text-xl sm:text-2xl font-bold text-white">
                 {activeMandateCount} of {totalMembersCount} Signed
               </p>
-              <p className="text-xs text-gray-400 mt-2">
-                Each member must mandate independently from their wallet
+              <p className="text-[11px] text-gray-400 mt-2">
+                Individual wallet signatures.
               </p>
             </div>
+
+            <div className="bg-gray-900/60 border border-cyan-500/30 rounded-xl p-4 sm:p-5 bg-gradient-to-br from-cyan-950/30 to-blue-950/20">
+              <div className="flex items-center justify-between text-cyan-400 mb-2">
+                <span className="text-xs uppercase tracking-wider font-semibold">Circle Vault Pool</span>
+                <Zap className="w-5 h-5 text-cyan-300" />
+              </div>
+              <p className="text-xl sm:text-2xl font-bold text-cyan-300">${circleVaultUSDC.toLocaleString()} USDC</p>
+              <p className="text-[11px] text-cyan-400/80 mt-2">
+                Pooled & ready for Month 1 Aave V3.
+              </p>
+            </div>
+          </div>
+
+          {/* Batch Debit & Pool Action Banner */}
+          <div className="bg-gradient-to-r from-blue-950/40 via-cyan-950/30 to-purple-950/40 border border-cyan-500/30 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <p className="font-bold text-white text-sm flex items-center gap-2">
+                <Zap className="w-4 h-4 text-cyan-400" />
+                <span>Automated Keeper Pooling Pipeline</span>
+              </p>
+              <p className="text-xs text-neutral-300 mt-0.5">
+                Pulls authorized monthly USDC contributions from each member account directly into the communal circle vault.
+              </p>
+            </div>
+            <button
+              onClick={() => triggerBatchKeeperDebit()}
+              disabled={isBatchDebiting}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-bold text-xs transition-all shadow-lg shadow-cyan-500/20 flex items-center gap-2 shrink-0 cursor-pointer disabled:opacity-50"
+            >
+              {isBatchDebiting ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Executing Batch Debit...</span>
+                </>
+              ) : (
+                <>
+                  <Coins className="w-3.5 h-3.5 text-black" />
+                  <span>Pool Monthly Pot Now</span>
+                </>
+              )}
+            </button>
           </div>
 
           <div className="bg-cyan-950/20 border border-cyan-500/30 rounded-xl p-4 text-xs text-neutral-300 flex items-start gap-3">
@@ -504,10 +573,64 @@ export function AutoPayAuthorization({
             </div>
           </div>
 
+          {/* Batch Debit Section in Simulator */}
+          <div className="mt-6 pt-6 border-t border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h5 className="font-bold text-sm text-white flex items-center gap-2">
+                <Users className="w-4 h-4 text-cyan-400" />
+                <span>Full Circle Batch Debit & Communal Pooling</span>
+              </h5>
+              <p className="text-xs text-gray-400">
+                Executes automated smart session debits across all authorized circle participants simultaneously.
+              </p>
+            </div>
+
+            <button
+              onClick={() => triggerBatchKeeperDebit()}
+              disabled={isBatchDebiting}
+              className="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-black font-bold text-xs transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+            >
+              {isBatchDebiting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Coins className="w-3.5 h-3.5" />}
+              Pool All Member Funds ($25k each)
+            </button>
+          </div>
+
+          {lastBatchResult && (
+            <div className="mt-4 bg-black/60 border border-emerald-500/30 rounded-lg p-4 font-mono text-xs text-gray-300 space-y-2">
+              <div className="flex items-center justify-between text-emerald-400 font-bold border-b border-gray-800 pb-1">
+                <span>Batch Pooling Result</span>
+                <span>{lastBatchResult.timestamp}</span>
+              </div>
+              <p>
+                <strong className="text-cyan-400">Total Participants Debited:</strong> {lastBatchResult.totalParticipants} members
+              </p>
+              <p>
+                <strong className="text-emerald-400">Total USDC Pooled This Batch:</strong> ${lastBatchResult.totalPooledUSDC.toLocaleString()} USDC
+              </p>
+              <p>
+                <strong className="text-purple-400">Circle Vault Pooled Total:</strong> ${lastBatchResult.circleVaultTotalUSDC.toLocaleString()} USDC
+              </p>
+              <p>
+                <strong className="text-blue-400">Batch TxHash:</strong> {lastBatchResult.batchTxHash}
+              </p>
+              <div className="mt-2 pt-2 border-t border-gray-800">
+                <span className="text-gray-400 font-bold text-[11px] block mb-1">Debited Member Wallets:</span>
+                <div className="space-y-1">
+                  {lastBatchResult.debitedMembers?.map((dm: any) => (
+                    <div key={dm.walletAddress} className="flex items-center justify-between text-[11px] text-gray-400">
+                      <span>{dm.walletAddress.slice(0, 10)}...{dm.walletAddress.slice(-6)}</span>
+                      <span className="text-emerald-400">-${dm.debitedAmountUSDC.toLocaleString()} USDC (New Bal: ${dm.newBalanceUSDC.toLocaleString()} USDC)</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {lastKeeperResult && (
             <div className="mt-4 bg-black/60 border border-gray-800 rounded-lg p-4 font-mono text-xs text-gray-300 space-y-2">
               <div className="flex items-center justify-between text-cyan-400 font-bold border-b border-gray-800 pb-1">
-                <span>Execution Result</span>
+                <span>Single Execution Result</span>
                 <span>{lastKeeperResult.timestamp}</span>
               </div>
               <p>

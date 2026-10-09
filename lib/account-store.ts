@@ -142,7 +142,7 @@ const ERC20_ABI = [
 // In-Memory RPC Cache to avoid blocking network calls and lag
 const balanceCache: Record<string, { usdc: bigint; eth: string; expiry: number }> = {};
 
-export async function mintFaucetTokens(walletAddress: string, amountUSDC = 1000): Promise<bigint> {
+export async function mintFaucetTokens(walletAddress: string, amountUSDC = 25000): Promise<bigint> {
   const cleanWallet = walletAddress.toLowerCase().trim();
   const mintBaseUnits = BigInt(amountUSDC) * 1_000_000n;
   const current = userBalances[cleanWallet] || 0n;
@@ -153,6 +153,30 @@ export async function mintFaucetTokens(walletAddress: string, amountUSDC = 1000)
   delete balanceCache[cleanWallet];
 
   return getUserBalance(walletAddress);
+}
+
+export async function debitUserBalance(walletAddress: string, amountUSDC: number): Promise<{ success: boolean; newBalance: bigint }> {
+  const cleanWallet = walletAddress.toLowerCase().trim();
+  const debitBaseUnits = BigInt(amountUSDC) * 1_000_000n;
+  const current = await getUserBalance(cleanWallet);
+  const updated = current >= debitBaseUnits ? current - debitBaseUnits : 0n;
+  userBalances[cleanWallet] = updated;
+  delete balanceCache[cleanWallet];
+  return { success: true, newBalance: updated };
+}
+
+const circlePoolBalances: Record<string, bigint> = {};
+
+export async function depositToCirclePool(circleId: string, amountUSDC: number): Promise<bigint> {
+  const depositBaseUnits = BigInt(amountUSDC) * 1_000_000n;
+  const current = circlePoolBalances[circleId] || 0n;
+  const updated = current + depositBaseUnits;
+  circlePoolBalances[circleId] = updated;
+  return updated;
+}
+
+export async function getCirclePoolBalance(circleId: string): Promise<bigint> {
+  return circlePoolBalances[circleId] || 0n;
 }
 
 export async function getUserBalance(walletAddress: string): Promise<bigint> {
