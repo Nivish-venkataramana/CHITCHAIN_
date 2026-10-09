@@ -112,7 +112,7 @@
   color: rgba(255, 255, 255, 0.5);
 }
 
-/* 3D Smooth Moving & Floating Coin Animations */
+/* 3D Smooth Moving & Floating Coin Animations (GPU Accelerated) */
 @keyframes giantCoinDrift {
   0% {
     transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
@@ -133,48 +133,52 @@
 
 @keyframes coinFloatSlow {
   0%, 100% {
-    transform: translateY(0px) rotate(0deg);
+    transform: translate3d(0, 0, 0) rotate(0deg);
   }
   50% {
-    transform: translateY(-28px) rotate(8deg);
+    transform: translate3d(0, -28px, 0) rotate(8deg);
   }
 }
 
 @keyframes coinFloatMedium {
   0%, 100% {
-    transform: translateY(0px) rotate(0deg) scale(1);
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
   }
   50% {
-    transform: translateY(-20px) rotate(-12deg) scale(1.08);
+    transform: translate3d(0, -20px, 0) rotate(-12deg) scale(1.08);
   }
 }
 
 @keyframes shimmerPass {
   0% {
-    transform: translateX(-150%) rotate(45deg);
+    transform: translate3d(-150%, 0, 0) rotate(45deg);
     opacity: 0;
   }
   50% {
     opacity: 0.6;
   }
   100% {
-    transform: translateX(200%) rotate(45deg);
+    transform: translate3d(200%, 0, 0) rotate(45deg);
     opacity: 0;
   }
 }
 
 .animate-giant-coin {
   animation: giantCoinDrift 20s ease-in-out infinite;
+  will-change: transform;
 }
 
 .animate-coin-slow {
   animation: coinFloatSlow 7s ease-in-out infinite;
+  will-change: transform;
 }
 
 .animate-coin-medium {
   animation: coinFloatMedium 5.5s ease-in-out infinite;
+  will-change: transform;
 }
 
 .animate-shimmer {
   animation: shimmerPass 8s ease-in-out infinite;
+  will-change: transform, opacity;
 }

@@ -330,7 +330,7 @@ export default function AccountProfilePage() {
           </Link>
           <h1 className="text-3xl font-extrabold text-white tracking-tight">Member Account Hub</h1>
           <p className="text-xs text-neutral-400 mt-1 font-mono">
-            Privy Embedded Smart Account on Base Sepolia
+            Base Sepolia Smart Account
           </p>
         </div>
 
@@ -339,19 +339,19 @@ export default function AccountProfilePage() {
           className="self-start sm:self-auto px-4 py-2.5 rounded-full bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-red-300 text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer shadow-lg"
         >
           <LogOut className="w-3.5 h-3.5" />
-          <span>Disconnect / Logout</span>
+          <span>Logout</span>
         </button>
       </div>
 
-      {/* Top Section Grid (Metal Card + Profile Card Layout) */}
+      {/* Top Section Grid (Balance Card + Profile Card) */}
       <div className="grid md:grid-cols-2 gap-6">
         
-        {/* Left: ChitChain Private Custody Metal Card */}
-        <div className="relative rounded-3xl bg-gradient-to-br from-neutral-900 via-neutral-950 to-neutral-900 p-8 border border-neutral-800/90 shadow-2xl flex flex-col justify-between space-y-6 overflow-hidden">
-          <div className="flex items-center justify-between text-neutral-400">
-            <div className="flex items-center gap-2 text-xs uppercase tracking-widest font-bold text-amber-400">
+        {/* Left: Custody Balance Card */}
+        <div className="rounded-3xl bg-neutral-950 p-8 border border-neutral-900 shadow-xl flex flex-col justify-between space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-wider font-bold text-amber-400">
               <Shield className="w-4 h-4" />
-              <span>CHITCHAIN PRIVATE CUSTODY</span>
+              <span>Wallet Custody</span>
             </div>
             <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-neutral-900 border border-neutral-800 text-[10px] font-mono text-emerald-400">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -360,8 +360,8 @@ export default function AccountProfilePage() {
           </div>
 
           <div className="space-y-1">
-            <span className="text-[11px] uppercase tracking-widest text-neutral-400 block font-semibold">
-              LIVE WALLET BALANCE
+            <span className="text-[11px] uppercase tracking-wider text-neutral-500 block font-semibold">
+              Live USDC Balance
             </span>
             <div className="text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-tight flex items-baseline gap-2">
               {loadingBalance ? (
@@ -375,9 +375,9 @@ export default function AccountProfilePage() {
             </div>
           </div>
 
-          <div className="pt-3 border-t border-neutral-800/80 space-y-2 text-xs">
+          <div className="pt-3 border-t border-neutral-900 space-y-2 text-xs">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase tracking-wider text-neutral-500">EMBEDDED SMART WALLET</span>
+              <span className="text-[10px] uppercase tracking-wider text-neutral-500">Address</span>
               {activeWalletAddress && (
                 <button
                   onClick={handleCopyWallet}
@@ -397,7 +397,7 @@ export default function AccountProfilePage() {
                 </button>
               )}
             </div>
-            <div className="p-2.5 rounded-xl bg-black/70 border border-neutral-800 font-mono text-[11px] text-neutral-300 break-all select-all">
+            <div className="p-2.5 rounded-xl bg-neutral-900/90 border border-neutral-800 font-mono text-[11px] text-neutral-300 break-all select-all">
               {activeWalletAddress || "No wallet address attached"}
             </div>
 
@@ -408,18 +408,18 @@ export default function AccountProfilePage() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-amber-400 hover:text-amber-300 text-[11px] font-medium pt-0.5"
               >
-                <span>View on BaseScan Explorer</span>
+                <span>View on BaseScan</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             )}
           </div>
         </div>
 
-        {/* Right: Member Profile & Status Card */}
-        <div className="rounded-3xl border border-neutral-800/90 bg-neutral-950/95 p-8 shadow-2xl flex flex-col justify-between space-y-6">
+        {/* Right: Member Profile Card */}
+        <div className="rounded-3xl border border-neutral-900 bg-neutral-950 p-8 shadow-xl flex flex-col justify-between space-y-6">
           <div className="space-y-6">
             <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-600 flex items-center justify-center font-bold text-black text-xl shadow-lg">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500 flex items-center justify-center font-bold text-black text-xl shadow-lg">
                 {dynamicDisplayName.slice(0, 1).toUpperCase()}
               </div>
               <div>
@@ -429,8 +429,7 @@ export default function AccountProfilePage() {
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-neutral-900/60 border border-neutral-800 space-y-3 text-xs">
-              {/* Account Status: Verified Member only if authenticated */}
+            <div className="p-4 rounded-2xl bg-neutral-900/50 border border-neutral-800 space-y-3 text-xs">
               <div className="flex justify-between items-center text-neutral-400">
                 <span>Account Status</span>
                 {authenticated ? (
@@ -439,40 +438,31 @@ export default function AccountProfilePage() {
                     <span>Verified Member</span>
                   </span>
                 ) : (
-                  <span className="text-neutral-500 font-medium flex items-center gap-1">
-                    <span>Guest / Unverified</span>
-                  </span>
+                  <span className="text-neutral-500 font-medium">Guest</span>
                 )}
               </div>
 
-              {/* Autopay Smart Mandate: Reactive check */}
               <div className="flex justify-between items-center text-neutral-400">
-                <span>Autopay Smart Mandate</span>
+                <span>Autopay Mandate</span>
                 {hasAutopaySession ? (
                   <span className="text-amber-300 font-semibold flex items-center gap-1">
                     <Zap className="w-3.5 h-3.5" />
-                    <span>Active Session</span>
+                    <span>Active</span>
                   </span>
                 ) : (
                   <span className="text-neutral-500 font-medium font-mono text-[11px]">
-                    Inactive / Not Configured
+                    Not Configured
                   </span>
                 )}
               </div>
 
-              {/* Active Chits Joined: Dynamic variable */}
               <div className="flex justify-between items-center text-neutral-400">
-                <span>Active Chits Joined</span>
+                <span>Active Circles</span>
                 <span className="text-white font-bold font-mono">
                   {loadingCircles ? "..." : `${myCircles.length} Circles`}
                 </span>
               </div>
             </div>
-          </div>
-
-          <div className="pt-2 text-[11px] font-mono text-neutral-500 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Connected to Base Sepolia smart contract network</span>
           </div>
         </div>
 

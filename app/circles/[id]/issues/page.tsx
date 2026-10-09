@@ -389,14 +389,14 @@ export default function IssuesStagePage() {
                   <div className="rounded-2xl bg-emerald-950/40 border border-emerald-800/40 p-4 text-xs text-emerald-300 space-y-1">
                     <p className="font-bold flex items-center gap-1.5 text-emerald-400">
                       <CheckCircle2 className="h-4 w-4" />
-                      Organizer Resolution Response:
+                      Volunteer Resolution Response:
                     </p>
                     <p className="text-emerald-200 mt-1">{iss.resolutionResponse}</p>
                   </div>
                 ) : isVolunteer ? (
                   <div className="space-y-2 border-t border-neutral-900 pt-4">
                     <label className="block text-[10px] uppercase tracking-wider font-bold text-neutral-400">
-                      Organizer Resolution Response
+                      Volunteer Resolution Response
                     </label>
                     <div className="flex gap-2">
                       <input
@@ -418,7 +418,7 @@ export default function IssuesStagePage() {
                   </div>
                 ) : (
                   <p className="text-[11px] text-amber-400/80 italic">
-                    Waiting for volunteer organizer to review and resolve...
+                    Waiting for volunteer to review and resolve...
                   </p>
                 )}
               </div>

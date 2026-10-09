@@ -23,33 +23,41 @@ export interface AutopayConsentRecord {
   revokedAt: Date | null;
 }
 
-// Global user store seeded with deterministic fixtures
-let usersDb: UserRecord[] = (usersFixture as UserProfile[]).map((u, i) => ({
-  ...u,
-  id: `user-${i + 1}`,
-  createdAt: new Date(),
-}));
+const isTestEnv = process.env.NODE_ENV === "test";
+
+// Global user store (empty by default in production/runtime)
+let usersDb: UserRecord[] = isTestEnv
+  ? (usersFixture as UserProfile[]).map((u, i) => ({
+      ...u,
+      id: `user-${i + 1}`,
+      createdAt: new Date(),
+    }))
+  : [];
 
 // Global autopay consents store
 let autopayConsents: AutopayConsentRecord[] = [];
 
 // Vault addresses mapping
-let circleVaults: Record<string, { vaultAddress: string; isStarted: boolean }> = {
-  "sample-circle-4m-3mo": {
-    vaultAddress: "0x8888888888888888888888888888888888888888",
-    isStarted: false,
-  },
-};
+let circleVaults: Record<string, { vaultAddress: string; isStarted: boolean }> = isTestEnv
+  ? {
+      "sample-circle-4m-3mo": {
+        vaultAddress: "0x8888888888888888888888888888888888888888",
+        isStarted: false,
+      },
+    }
+  : {};
 
 // Simulated faucet balance tracking
-let userBalances: Record<string, bigint> = {
-  "0x1111111111111111111111111111111111111111": 10000_000000n,
-  "0x2222222222222222222222222222222222222222": 5000_000000n,
-  "0x3333333333333333333333333333333333333333": 4000_000000n,
-  "0x4444444444444444444444444444444444444444": 3500_000000n,
-  "0x5555555555555555555555555555555555555555": 3000_000000n,
-  "0x6666666666666666666666666666666666666666": 400_000000n,
-};
+let userBalances: Record<string, bigint> = isTestEnv
+  ? {
+      "0x1111111111111111111111111111111111111111": 10000_000000n,
+      "0x2222222222222222222222222222222222222222": 5000_000000n,
+      "0x3333333333333333333333333333333333333333": 4000_000000n,
+      "0x4444444444444444444444444444444444444444": 3500_000000n,
+      "0x5555555555555555555555555555555555555555": 3000_000000n,
+      "0x6666666666666666666666666666666666666666": 400_000000n,
+    }
+  : {};
 
 export async function createUserAccount(params: {
   displayName?: string;

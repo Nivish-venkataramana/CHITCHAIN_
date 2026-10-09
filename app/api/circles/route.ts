@@ -27,10 +27,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const volunteerUsername = body.volunteerUsername || user.username;
+    const volunteerWallet = (body.volunteerWallet || user.walletAddress).toLowerCase();
+
     const circle = await createCircleRecord({
       name: body.name.trim(),
-      volunteerWallet: user.walletAddress,
-      volunteerUsername: user.username,
+      volunteerWallet: volunteerWallet,
+      volunteerUsername: volunteerUsername,
       numPeople: Number(body.numPeople),
       monthlyAmount: validation.baseUnitAmount,
       durationMonths: Number(body.durationMonths),

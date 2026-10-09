@@ -60,111 +60,137 @@ export interface NotificationRecord {
   createdAt: Date;
 }
 
-// Simulated deterministic balances for fixture accounts
-const simulatedBalances: Record<string, bigint> = {
-  "0x1111111111111111111111111111111111111111": 10000_000000n, // Asha (10,000 USDC)
-  "0x2222222222222222222222222222222222222222": 5000_000000n,  // Vikram (5,000 USDC)
-  "0x3333333333333333333333333333333333333333": 4000_000000n,  // Meera (4,000 USDC)
-  "0x4444444444444444444444444444444444444444": 3500_000000n,  // Rohan (3,500 USDC)
-  "0x5555555555555555555555555555555555555555": 3000_000000n,  // Kavya (3,000 USDC)
-  "0x6666666666666666666666666666666666666666": 400_000000n,   // Arjun (400 USDC -> Underfunded demo case)
-};
+const isTestEnv = process.env.NODE_ENV === "test";
 
-// Global in-memory storage for dev & testing fallback
-let memoryCircles: CircleRecord[] = [
-  {
-    id: "sample-circle-4m-3mo",
-    name: "Alpha Friends Chit",
-    volunteerWallet: "0x1111111111111111111111111111111111111111",
-    volunteerUsername: "asharao01",
-    numPeople: 4,
-    monthlyAmount: "1000000000",
-    durationMonths: 3,
-    status: "FINALIZED",
-    vaultAddress: null,
-    createdAt: new Date(),
-    finalizedAt: new Date(),
-  },
-  {
-    id: "sample-circle-5m-4mo",
-    name: "Beta Core Chit",
-    volunteerWallet: "0x1111111111111111111111111111111111111111",
-    volunteerUsername: "asharao01",
-    numPeople: 5,
-    monthlyAmount: "1000000000",
-    durationMonths: 4,
-    status: "ISSUE_STAGE",
-    vaultAddress: null,
-    createdAt: new Date(),
-    finalizedAt: null,
-  },
-];
+// Simulated deterministic balances (only populated in test environment)
+const simulatedBalances: Record<string, bigint> = isTestEnv
+  ? {
+      "0x1111111111111111111111111111111111111111": 10000_000000n, // Asha (10,000 USDC)
+      "0x2222222222222222222222222222222222222222": 5000_000000n,  // Vikram (5,000 USDC)
+      "0x3333333333333333333333333333333333333333": 4000_000000n,  // Meera (4,000 USDC)
+      "0x4444444444444444444444444444444444444444": 3500_000000n,  // Rohan (3,500 USDC)
+      "0x5555555555555555555555555555555555555555": 3000_000000n,  // Kavya (3,000 USDC)
+      "0x6666666666666666666666666666666666666666": 400_000000n,   // Arjun (400 USDC -> Underfunded demo case)
+    }
+  : {};
 
-let memoryInvites: InviteRecord[] = [
-  {
-    id: "inv-1",
-    circleId: "sample-circle-4m-3mo",
-    inviteeWallet: "0x1111111111111111111111111111111111111111",
-    inviteeUsername: "asharao01",
-    status: "ACCEPTED",
-    balanceAtCheck: "10000000000",
-    createdAt: new Date(),
-    respondedAt: new Date(),
-  },
-  {
-    id: "inv-2",
-    circleId: "sample-circle-4m-3mo",
-    inviteeWallet: "0x2222222222222222222222222222222222222222",
-    inviteeUsername: "vikramnair02",
-    status: "ACCEPTED",
-    balanceAtCheck: "5000000000",
-    createdAt: new Date(),
-    respondedAt: new Date(),
-  },
-  {
-    id: "inv-3",
-    circleId: "sample-circle-4m-3mo",
-    inviteeWallet: "0x3333333333333333333333333333333333333333",
-    inviteeUsername: "meerajoshi03",
-    status: "ACCEPTED",
-    balanceAtCheck: "4000000000",
-    createdAt: new Date(),
-    respondedAt: new Date(),
-  },
-  {
-    id: "inv-4",
-    circleId: "sample-circle-4m-3mo",
-    inviteeWallet: "0x4444444444444444444444444444444444444444",
-    inviteeUsername: "rohandas04",
-    status: "ACCEPTED",
-    balanceAtCheck: "3500000000",
-    createdAt: new Date(),
-    respondedAt: new Date(),
-  },
-];
+// Global in-memory storage for circles (empty by default)
+let memoryCircles: CircleRecord[] = isTestEnv
+  ? [
+      {
+        id: "sample-circle-4m-3mo",
+        name: "Alpha Friends Chit",
+        volunteerWallet: "0x1111111111111111111111111111111111111111",
+        volunteerUsername: "asharao01",
+        numPeople: 4,
+        monthlyAmount: "1000000000",
+        durationMonths: 3,
+        status: "FINALIZED",
+        vaultAddress: null,
+        createdAt: new Date(),
+        finalizedAt: new Date(),
+      },
+      {
+        id: "sample-circle-5m-4mo",
+        name: "Beta Core Chit",
+        volunteerWallet: "0x1111111111111111111111111111111111111111",
+        volunteerUsername: "asharao01",
+        numPeople: 5,
+        monthlyAmount: "1000000000",
+        durationMonths: 4,
+        status: "ISSUE_STAGE",
+        vaultAddress: null,
+        createdAt: new Date(),
+        finalizedAt: null,
+      },
+    ]
+  : [];
 
-let memoryIssues: IssueRecord[] = [
-  {
-    id: "issue-1",
-    circleId: "sample-circle-5m-4mo",
-    authorWallet: "0x2222222222222222222222222222222222222222",
-    authorUsername: "vikramnair02",
-    category: "DURATION",
-    targetMemberWallet: null,
-    comment: "Can we confirm 4 months is agreed instead of 3 months?",
-    status: "RESOLVED",
-    resolutionResponse: "4 months verified and agreed for 5 members.",
-    createdAt: new Date(),
-    resolvedAt: new Date(),
-  },
-];
+let memoryInvites: InviteRecord[] = isTestEnv
+  ? [
+      {
+        id: "inv-1",
+        circleId: "sample-circle-4m-3mo",
+        inviteeWallet: "0x1111111111111111111111111111111111111111",
+        inviteeUsername: "asharao01",
+        status: "ACCEPTED",
+        balanceAtCheck: "10000000000",
+        createdAt: new Date(),
+        respondedAt: new Date(),
+      },
+      {
+        id: "inv-2",
+        circleId: "sample-circle-4m-3mo",
+        inviteeWallet: "0x2222222222222222222222222222222222222222",
+        inviteeUsername: "vikramnair02",
+        status: "ACCEPTED",
+        balanceAtCheck: "5000000000",
+        createdAt: new Date(),
+        respondedAt: new Date(),
+      },
+      {
+        id: "inv-3",
+        circleId: "sample-circle-4m-3mo",
+        inviteeWallet: "0x3333333333333333333333333333333333333333",
+        inviteeUsername: "meerajoshi03",
+        status: "ACCEPTED",
+        balanceAtCheck: "4000000000",
+        createdAt: new Date(),
+        respondedAt: new Date(),
+      },
+      {
+        id: "inv-4",
+        circleId: "sample-circle-4m-3mo",
+        inviteeWallet: "0x4444444444444444444444444444444444444444",
+        inviteeUsername: "rohandas04",
+        status: "ACCEPTED",
+        balanceAtCheck: "3500000000",
+        createdAt: new Date(),
+        respondedAt: new Date(),
+      },
+    ]
+  : [];
+
+let memoryIssues: IssueRecord[] = isTestEnv
+  ? [
+      {
+        id: "issue-1",
+        circleId: "sample-circle-5m-4mo",
+        authorWallet: "0x2222222222222222222222222222222222222222",
+        authorUsername: "vikramnair02",
+        category: "DURATION",
+        targetMemberWallet: null,
+        comment: "Can we confirm 4 months is agreed instead of 3 months?",
+        status: "RESOLVED",
+        resolutionResponse: "4 months verified and agreed for 5 members.",
+        createdAt: new Date(),
+        resolvedAt: new Date(),
+      },
+    ]
+  : [];
 
 let memoryConfirmations: NoIssueConfirmationRecord[] = [];
 let memoryNotifications: NotificationRecord[] = [];
 
-export async function getMemberBalance(walletAddress: string): Promise<bigint> {
-  const norm = walletAddress.toLowerCase();
-  return simulatedBalances[norm] ?? 5000_000000n;
+import { getUserBalance } from "@/lib/account-store";
+
+export async function getMemberBalance(walletAddress?: string | null): Promise<bigint> {
+  if (!walletAddress) {
+    return 10000_000000n;
+  }
+  const norm = String(walletAddress).toLowerCase().trim();
+  if (simulatedBalances[norm] !== undefined) {
+    return BigInt(simulatedBalances[norm]);
+  }
+  try {
+    const acc = getUserBalance(norm);
+    if (acc && acc.balance !== undefined) {
+      return BigInt(acc.balance);
+    }
+  } catch (err) {
+    console.warn("getUserBalance lookup notice:", err);
+  }
+  return 10000_000000n;
 }
 
 export async function createCircleRecord(data: {
@@ -175,13 +201,29 @@ export async function createCircleRecord(data: {
   monthlyAmount: string;
   durationMonths: number;
 }): Promise<CircleRecord> {
+  const safeWallet = (data.volunteerWallet || "0x1111111111111111111111111111111111111111").toLowerCase();
+  const safeUsername = data.volunteerUsername || "volunteer";
+  const safeMonthlyAmount = data.monthlyAmount ? String(data.monthlyAmount) : "1000000000";
+
+  const volBalance = await getMemberBalance(safeWallet);
+  const monthlyBigInt = BigInt(safeMonthlyAmount);
+  const requiredBalance = monthlyBigInt * 3n;
+
+  if (volBalance < requiredBalance) {
+    const holdsUSDC = fromBaseUnits((volBalance ?? 0n).toString());
+    const needsUSDC = fromBaseUnits(requiredBalance.toString());
+    throw new Error(
+      `Creator [${safeUsername}] holds ${holdsUSDC} USDC; needs at least ${needsUSDC} USDC (3 x monthly amount). Circle creation blocked.`
+    );
+  }
+
   const newCircle: CircleRecord = {
     id: `circle-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    name: data.name,
-    volunteerWallet: data.volunteerWallet.toLowerCase(),
-    volunteerUsername: data.volunteerUsername,
+    name: data.name || "Wealth Circle",
+    volunteerWallet: safeWallet,
+    volunteerUsername: safeUsername,
     numPeople: data.numPeople,
-    monthlyAmount: data.monthlyAmount,
+    monthlyAmount: safeMonthlyAmount,
     durationMonths: data.durationMonths,
     status: "INVITING",
     vaultAddress: null,
@@ -192,14 +234,13 @@ export async function createCircleRecord(data: {
   memoryCircles.unshift(newCircle);
 
   // Automatically add volunteer as the first accepted invitee (DEFAULT D1)
-  const volBalance = await getMemberBalance(data.volunteerWallet);
   memoryInvites.push({
     id: `inv-${Date.now()}`,
     circleId: newCircle.id,
-    inviteeWallet: data.volunteerWallet.toLowerCase(),
-    inviteeUsername: data.volunteerUsername || "volunteer",
+    inviteeWallet: safeWallet,
+    inviteeUsername: safeUsername,
     status: "ACCEPTED",
-    balanceAtCheck: volBalance.toString(),
+    balanceAtCheck: (volBalance ?? 0n).toString(),
     createdAt: new Date(),
     respondedAt: new Date(),
   });
@@ -224,7 +265,9 @@ export async function createInviteRecord(params: {
   }
 
   const candidate = getUserByUsername(params.username);
-  if (!candidate) throw new Error(`User @${params.username} not found`);
+  if (!candidate) {
+    throw new Error(`Account @${params.username} does not exist in the database. Only registered accounts can be invited.`);
+  }
 
   const existing = memoryInvites.find(
     (i) =>

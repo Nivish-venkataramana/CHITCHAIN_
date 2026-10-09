@@ -96,10 +96,20 @@ export default function CirclesListPage() {
                     <div>
                       <h3 className="text-2xl font-bold text-white group-hover:text-red-300 transition-colors">{circle.name}</h3>
                       <p className="text-xs text-neutral-400 mt-1">
-                        Organizer:{" "}
-                        <span className="font-medium text-neutral-200">
-                          {circle.volunteerUsername ? `@${circle.volunteerUsername}` : `${circle.volunteerWallet.slice(0, 6)}...`}
-                        </span>
+                        {circle.status !== "FINALIZED" ? (
+                          isVolunteer ? (
+                            <span className="font-medium text-neutral-300">Initiated by you (Volunteer)</span>
+                          ) : (
+                            <>
+                              Volunteer:{" "}
+                              <span className="font-medium text-neutral-200">
+                                {circle.volunteerUsername ? `@${circle.volunteerUsername}` : `${circle.volunteerWallet.slice(0, 6)}...`}
+                              </span>
+                            </>
+                          )
+                        ) : (
+                          <span className="text-emerald-400 font-medium">Decentralized Autonomous Circle</span>
+                        )}
                       </p>
                     </div>
                     <span
@@ -142,7 +152,7 @@ export default function CirclesListPage() {
                   <span className="text-neutral-400">
                     Role:{" "}
                     <span className="text-white font-bold">
-                      {isVolunteer ? "Organizer" : "Member"}
+                      {circle.status === "FINALIZED" ? "Member" : isVolunteer ? "Volunteer" : "Member"}
                     </span>
                   </span>
 

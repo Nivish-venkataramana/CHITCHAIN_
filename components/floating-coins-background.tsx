@@ -20,7 +20,10 @@ export function FloatingCoinsBackground() {
     };
 
     const updatePhysics = () => {
-      // Smooth interpolation (lerp) for fluid luxury motion
+      if (document.hidden) {
+        animationFrameId = requestAnimationFrame(updatePhysics);
+        return;
+      }
       currentX += (targetX - currentX) * 0.05;
       currentY += (targetY - currentY) * 0.05;
 
@@ -39,7 +42,7 @@ export function FloatingCoinsBackground() {
       animationFrameId = requestAnimationFrame(updatePhysics);
     };
 
-    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
     animationFrameId = requestAnimationFrame(updatePhysics);
 
     return () => {
