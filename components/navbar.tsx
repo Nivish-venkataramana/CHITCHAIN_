@@ -123,6 +123,21 @@ export function Navbar() {
             <User className="w-3.5 h-3.5 text-neutral-400" />
           </Link>
 
+          {/* 3D Hubtown Starting View Button */}
+          <Link
+            href="/"
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                sessionStorage.removeItem("chitchain_intro_seen");
+              }
+            }}
+            className="hidden md:flex items-center gap-1.5 px-4 py-2 rounded-full bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-500/40 text-cyan-300 font-mono text-xs transition-all"
+            title="Open 3D Hubtown Starting Screen"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+            <span>3D Monolith</span>
+          </Link>
+
           {/* Dev User Switcher Pill */}
           <div className="flex items-center gap-2 bg-neutral-900/90 rounded-full px-4 py-2 border border-neutral-800 text-xs">
             <UserCheck className="h-3.5 w-3.5 text-orange-500" />

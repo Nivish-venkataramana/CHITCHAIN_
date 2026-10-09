@@ -1,16 +1,42 @@
 "use client";
 
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useDevUser } from "@/components/providers";
-import { PlusCircle, Users, ArrowRight, ShieldCheck, Zap, Lock, Sparkles, TrendingUp, Coins, User, ArrowUpRight } from "lucide-react";
+import { PlusCircle, Users, ArrowRight, ShieldCheck, Zap, Lock, Sparkles, TrendingUp, Coins, User, ArrowUpRight, Box, Compass } from "lucide-react";
 import { DemoVideoModal } from "@/components/demo-video-modal";
 import { FloatingCoinsBackground } from "@/components/floating-coins-background";
+import { HubtownIntro } from "@/components/hubtown-intro";
 
 export default function HomePage() {
   const { user } = useDevUser();
+  const [showIntro, setShowIntro] = useState<boolean>(true);
+
+  // Check session storage so return navigation feels natural, but initial load triggers the starting screen
+  useEffect(() => {
+    const hasSeenIntro = sessionStorage.getItem("chitchain_intro_seen");
+    if (hasSeenIntro === "true") {
+      setShowIntro(false);
+    }
+  }, []);
+
+  const handleEnterFromIntro = () => {
+    sessionStorage.setItem("chitchain_intro_seen", "true");
+    setShowIntro(false);
+  };
+
+  const handleReopenIntro = () => {
+    setShowIntro(true);
+  };
 
   return (
     <div className="relative min-h-screen bg-black text-white overflow-hidden pb-24">
+      {/* Starting Screen: Hubtown Style 3D Interactive Rotating Box Monolith Screen */}
+      <HubtownIntro
+        isOpen={showIntro}
+        onEnter={handleEnterFromIntro}
+      />
+
       {/* 3D Moving Floating Rupee Coins Dynamic Background Layer */}
       <FloatingCoinsBackground />
 
@@ -20,6 +46,17 @@ export default function HomePage() {
       <section className="relative z-10 max-w-7xl mx-auto px-6 pt-16 sm:pt-24 lg:pt-28 pb-16">
         <div className="max-w-2xl lg:max-w-3xl space-y-8">
           
+          {/* Top Quick Trigger for 3D Cinematic Starting View */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleReopenIntro}
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-500/40 text-cyan-300 text-xs font-mono tracking-wider transition-all duration-300 shadow-lg shadow-cyan-950/50 cursor-pointer group"
+            >
+              <Box className="w-3.5 h-3.5 text-cyan-400 group-hover:rotate-45 transition-transform duration-300" />
+              <span>Launch 3D Hubtown View</span>
+            </button>
+          </div>
+
           {/* Main Hero Headline matching typography in screenshot */}
           <h1 className="text-5xl sm:text-7xl lg:text-8xl font-extrabold tracking-tight text-white leading-[1.04]">
             Chit funds for India. 0% commission on pool.
