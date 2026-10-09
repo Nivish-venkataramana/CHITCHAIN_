@@ -144,7 +144,7 @@ async function runAccountServerTests() {
   // 5. Dynamic User Lookup & Search Integration
   {
     console.log("\n[Test 5] Dynamic search & lookup API verifies newly created user:");
-    const searched = searchUsers("freshuser99");
+    const searched = await searchUsers("freshuser99");
     assert(searched.length > 0, "Search endpoint should find newly registered user");
     assert(
       searched[0].username === "freshuser99",

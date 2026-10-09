@@ -57,6 +57,14 @@ export function calculateTieredDuration(numPeople: number): number {
   return Math.max(1, N - diff);
 }
 
+export function getAllowedDurations(numPeople: number): number[] {
+  const N = Math.floor(numPeople);
+  if (isNaN(N) || N < 2) return [1];
+  const tiered = calculateTieredDuration(N);
+  return Array.from(new Set([tiered, N - 1, N - 2])).filter((d) => d >= 1);
+}
+
+
 /**
  * Validates circle creation parameters
  */
