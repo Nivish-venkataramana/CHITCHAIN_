@@ -1,0 +1,106 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Syne:wght@600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 4%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 354 85% 54%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 64%;
+    --accent: 354 85% 54%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
+    --ring: 354 85% 54%;
+    --radius: 1rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-black text-neutral-100 antialiased selection:bg-orange-900 selection:text-white;
+  }
+}
+
+/* 3D Smooth Moving & Floating Coin Animations */
+@keyframes giantCoinDrift {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  25% {
+    transform: translate3d(-15px, -20px, 0) rotate(2deg) scale(1.02);
+  }
+  50% {
+    transform: translate3d(-25px, 15px, 0) rotate(-1deg) scale(1.04);
+  }
+  75% {
+    transform: translate3d(10px, -15px, 0) rotate(-3deg) scale(1.01);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+}
+
+@keyframes coinFloatSlow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-28px) rotate(8deg);
+  }
+}
+
+@keyframes coinFloatMedium {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translateY(-20px) rotate(-12deg) scale(1.08);
+  }
+}
+
+@keyframes shimmerPass {
+  0% {
+    transform: translateX(-150%) rotate(45deg);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateX(200%) rotate(45deg);
+    opacity: 0;
+  }
+}
+
+.animate-giant-coin {
+  animation: giantCoinDrift 20s ease-in-out infinite;
+}
+
+.animate-coin-slow {
+  animation: coinFloatSlow 7s ease-in-out infinite;
+}
+
+.animate-coin-medium {
+  animation: coinFloatMedium 5.5s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  animation: shimmerPass 8s ease-in-out infinite;
+}

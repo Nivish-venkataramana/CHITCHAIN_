@@ -108,7 +108,7 @@ const BIDDING_ABI = [
 
 const PhaseNames = ["NotStarted", "Collect", "Bidding", "Settle", "Completed"];
 
-interface SchedulerState {
+export interface SchedulerState {
   isDemoMode: boolean;
   vaultAddress: `0x${string}`;
   currentCycle: number;
@@ -129,6 +129,27 @@ let state: SchedulerState = {
   lastAction: null,
   poolAmount: "0"
 };
+
+export function getSchedulerState(): any {
+  return {
+    circleId: "sample-circle-4m-3mo",
+    cycle: state.currentCycle,
+    phase: state.phase === "NotStarted" ? "Collect" : state.phase,
+    isHolding: state.isWaiting,
+    waitingFor: state.holdReason || `Phase ${state.phase} active`,
+    poolAmount: state.poolAmount || "4000000000",
+    carriedDividend: "0",
+  };
+}
+
+export function advanceSchedulerState(): any {
+  if (continueResolver) {
+    const fn = continueResolver;
+    continueResolver = null;
+    fn();
+  }
+  return getSchedulerState();
+}
 
 let continueResolver: (() => void) | null = null;
 
