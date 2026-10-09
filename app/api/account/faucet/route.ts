@@ -12,13 +12,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized session" }, { status: 401 });
     }
 
-    const updatedBalance = await mintFaucetTokens(user.walletAddress, 1000);
+    let mintAmount = 10000;
+    try {
+      const body = await req.json();
+      if (body?.amount && Number(body.amount) > 0) {
+        mintAmount = Number(body.amount);
+      }
+    } catch {
+      // no body passed, use default 10,000
+    }
+
+    const updatedBalance = await mintFaucetTokens(user.walletAddress, mintAmount);
 
     return NextResponse.json({
       success: true,
       balanceBaseUnits: updatedBalance.toString(),
       balanceUSDC: fromBaseUnits(updatedBalance.toString()),
-      message: "Minted 1,000 MockUSDC to smart account via gasless paymaster",
+      message: `Minted ${mintAmount.toLocaleString()} MockUSDC to smart account via gasless paymaster`,
     });
   } catch (err: any) {
     return NextResponse.json(
