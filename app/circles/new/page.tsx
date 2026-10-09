@@ -40,9 +40,9 @@ export default function CreateCirclePage() {
   const [isMinting, setIsMinting] = useState<boolean>(false);
 
   const [name, setName] = useState("");
-  const [numPeople, setNumPeople] = useState<number>(4);
+  const [numPeople, setNumPeople] = useState<string>("4");
   const [monthlyAmount, setMonthlyAmount] = useState<string>("1000");
-  const [durationMonths, setDurationMonths] = useState<number>(3);
+  const [durationMonths, setDurationMonths] = useState<string>("3");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -125,20 +125,22 @@ export default function CreateCirclePage() {
     }
   };
 
-  // Live validation calculations
-  const validation = validateCircleParams({
-    name,
-    numPeople,
-    monthlyAmount,
-    durationMonths,
-  });
-
+  const parsedNumPeople = parseInt(numPeople, 10) || 0;
+  const parsedDuration = parseInt(durationMonths, 10) || 0;
   const parsedAmount = parseFloat(monthlyAmount) || 0;
   const required3xBalance = parsedAmount * 3;
   const isBalanceInsufficient =
     loadingBalance || (creatorBalance !== null && creatorBalance < required3xBalance);
 
-  const allowedDurations = [numPeople - 1, numPeople - 2].filter((d) => d >= 1);
+  // Live validation calculations
+  const validation = validateCircleParams({
+    name,
+    numPeople: parsedNumPeople,
+    monthlyAmount,
+    durationMonths: parsedDuration,
+  });
+
+  const allowedDurations = [parsedNumPeople - 1, parsedNumPeople - 2].filter((d) => d >= 1);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,9 +174,9 @@ export default function CreateCirclePage() {
         },
         body: JSON.stringify({
           name: name.trim(),
-          numPeople,
-          monthlyAmount,
-          durationMonths,
+          numPeople: parsedNumPeople,
+          monthlyAmount: monthlyAmount.trim(),
+          durationMonths: parsedDuration,
           volunteerUsername: dynamicUsername,
           volunteerWallet: activeWalletAddress,
         }),
@@ -265,14 +267,17 @@ export default function CreateCirclePage() {
               required
               value={numPeople}
               onChange={(e) => {
-                const val = parseInt(e.target.value) || 2;
+                const val = e.target.value;
                 setNumPeople(val);
-                if (val >= 2) setDurationMonths(val - 1);
+                const n = parseInt(val, 10);
+                if (!isNaN(n) && n >= 2) {
+                  setDurationMonths(String(n - 1));
+                }
               }}
               className="w-full rounded-2xl border border-neutral-800 bg-neutral-900/90 px-4 py-3.5 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors font-mono"
             />
             <p className="text-xs text-neutral-400">
-              Invites required: <strong className="text-white">{Math.max(0, numPeople - 1)} members</strong> (you count as 1).
+              Invites required: <strong className="text-white">{Math.max(0, parsedNumPeople - 1)} members</strong> (you count as 1).
             </p>
           </div>
 
@@ -362,12 +367,12 @@ export default function CreateCirclePage() {
             </div>
             <select
               value={durationMonths}
-              onChange={(e) => setDurationMonths(parseInt(e.target.value))}
+              onChange={(e) => setDurationMonths(e.target.value)}
               className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-sm text-white focus:outline-none focus:border-amber-500 cursor-pointer font-mono"
             >
               {allowedDurations.map((d) => (
                 <option key={d} value={d} className="bg-neutral-950 text-white">
-                  {d} Months ({d === numPeople - 1 ? "N minus 1" : "N minus 2"})
+                  {d} Months ({d === parsedNumPeople - 1 ? "N minus 1" : "N minus 2"})
                 </option>
               ))}
             </select>
