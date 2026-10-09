@@ -53,7 +53,10 @@ export function useAccount() {
     );
   }, [ready, wallets]);
 
-  const rawAddress = embeddedWallet?.address || privyUser?.wallet?.address;
+  const linkedWallet = privyUser?.linkedAccounts?.find(
+    (a: any) => a.type === "wallet" || a.walletClientType === "privy"
+  ) as any;
+  const rawAddress = embeddedWallet?.address || privyUser?.wallet?.address || linkedWallet?.address;
 
   // Normalization: lowercased for DB storage, checksummed for UI display
   const address = useMemo(() => {

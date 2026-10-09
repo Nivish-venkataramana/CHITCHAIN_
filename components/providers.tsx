@@ -21,17 +21,22 @@ export function useDevUser() {
 
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "cmv07umju004s0fjtwjr9l71v";
 
-function PrivyUserSync({ onSync }: { onSync?: () => void }) {
-  const { user: privyUser, authenticated } = usePrivy();
+function PrivyUserSync({ setUser, onSync }: { setUser: (u: UserProfile | null) => void; onSync?: () => void }) {
+  const { user: privyUser, authenticated, ready } = usePrivy();
   const { wallets } = useWallets();
 
   useEffect(() => {
     if (!authenticated || !privyUser) return;
 
     const embeddedWallet = wallets.find((w) => w.walletClientType === "privy") || wallets[0];
+    const linkedWallet = privyUser?.linkedAccounts?.find(
+      (a: any) => a.type === "wallet" || a.walletClientType === "privy"
+    ) as any;
+
     const walletAddress = (
       embeddedWallet?.address ||
       privyUser?.wallet?.address ||
+      linkedWallet?.address ||
       ""
     ).toLowerCase();
 
@@ -54,10 +59,29 @@ function PrivyUserSync({ onSync }: { onSync?: () => void }) {
           displayName,
         }),
       })
-        .then(() => onSync?.())
-        .catch((err) => console.warn("Privy user sync notice:", err));
+        .then((res) => (res.ok ? res.json() : null))
+        .then((syncedUser) => {
+          if (syncedUser && syncedUser.walletAddress) {
+            setUser(syncedUser);
+          } else {
+            setUser({
+              username,
+              walletAddress: walletAddress as `0x${string}`,
+              displayName,
+            });
+          }
+          onSync?.();
+        })
+        .catch((err) => {
+          console.warn("Privy user sync notice:", err);
+          setUser({
+            username,
+            walletAddress: walletAddress as `0x${string}`,
+            displayName,
+          });
+        });
     }
-  }, [authenticated, privyUser, wallets]);
+  }, [authenticated, privyUser, wallets, ready]);
 
   return null;
 }
@@ -89,6 +113,31 @@ export function Providers({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    // Restore user from localStorage immediately on refresh/mount
+    try {
+      const savedProfile = localStorage.getItem("chitchain_user_profile");
+      if (savedProfile) {
+        const parsed = JSON.parse(savedProfile);
+        if (parsed && parsed.walletAddress) {
+          setUser(parsed);
+        }
+      } else {
+        const savedUsername = localStorage.getItem("chitchain_dev_user");
+        if (savedUsername) {
+          fetch(`/api/users/by-username/${savedUsername}`)
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+              if (data && data.walletAddress) {
+                setUser(data);
+              }
+            })
+            .catch(() => {});
+        }
+      }
+    } catch (e) {
+      console.warn("Error restoring cached user session:", e);
+    }
+
     refreshUsers();
   }, []);
 
@@ -96,8 +145,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
     setUser(u);
     if (u) {
       localStorage.setItem("chitchain_dev_user", u.username);
+      localStorage.setItem("chitchain_user_profile", JSON.stringify(u));
     } else {
       localStorage.removeItem("chitchain_dev_user");
+      localStorage.removeItem("chitchain_user_profile");
     }
   };
 
@@ -117,7 +168,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           },
         }}
       >
-        <PrivyUserSync onSync={refreshUsers} />
+        <PrivyUserSync setUser={handleSetUser} onSync={refreshUsers} />
         <UserContext.Provider value={{ user, setUser: handleSetUser, users }}>
           {children}
         </UserContext.Provider>

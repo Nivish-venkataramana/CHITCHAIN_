@@ -40,9 +40,13 @@ export function Navbar() {
 
   // Dynamic Identity extraction
   const embeddedWallet = wallets.find((w) => w.walletClientType === "privy") || wallets[0];
+  const linkedWallet = privyUser?.linkedAccounts?.find(
+    (a: any) => a.type === "wallet" || a.walletClientType === "privy"
+  ) as any;
   const activeWalletAddress = (
     embeddedWallet?.address ||
     privyUser?.wallet?.address ||
+    linkedWallet?.address ||
     user?.walletAddress ||
     ""
   ).toLowerCase();
