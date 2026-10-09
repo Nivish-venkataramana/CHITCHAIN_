@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDevUser } from "@/components/providers";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { createPublicClient, http, formatUnits, erc20Abi } from "viem";
 import { baseSepolia } from "viem/chains";
-import { ArrowLeft, AlertCircle, AlertTriangle, Shield, PlusCircle, ArrowRight } from "lucide-react";
+import { ArrowLeft, AlertCircle, AlertTriangle, Shield, PlusCircle, ArrowRight, Coins, RefreshCw } from "lucide-react";
 import { validateCircleParams } from "@/lib/validation";
 
 const BASE_SEPOLIA_USDC = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
@@ -32,11 +32,12 @@ export default function CreateCirclePage() {
     embeddedWallet?.address ||
     privyUser?.wallet?.address ||
     user?.walletAddress ||
-    ""
+    "0x1111111111111111111111111111111111111111"
   ).toLowerCase();
 
   const [creatorBalance, setCreatorBalance] = useState<number | null>(null);
   const [loadingBalance, setLoadingBalance] = useState<boolean>(true);
+  const [isMinting, setIsMinting] = useState<boolean>(false);
 
   const [name, setName] = useState("");
   const [numPeople, setNumPeople] = useState<number>(4);
@@ -45,50 +46,75 @@ export default function CreateCirclePage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const userEmail = privyUser?.email?.address || "";
+  const dynamicUsername = userEmail
+    ? userEmail.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase()
+    : user?.username || (activeWalletAddress ? `user_${activeWalletAddress.slice(2, 6).toLowerCase()}` : "asharao01");
+  const dynamicDisplayName = userEmail
+    ? userEmail.split("@")[0]
+    : user?.displayName || dynamicUsername;
+
   // Fetch creator's live balance
-  useEffect(() => {
-    const fetchBalance = async () => {
-      setLoadingBalance(true);
-      if (activeWalletAddress && /^0x[a-f0-9]{40}$/i.test(activeWalletAddress)) {
-        try {
-          const rawBalance = await publicClient.readContract({
-            address: BASE_SEPOLIA_USDC,
-            abi: erc20Abi,
-            functionName: "balanceOf",
-            args: [activeWalletAddress as `0x${string}`],
-          });
-          const parsed = Number(formatUnits(rawBalance, 6));
-          setCreatorBalance(parsed);
-          setLoadingBalance(false);
-          return;
-        } catch (err) {
-          console.warn("On-chain balance read notice:", err);
-        }
+  const fetchBalance = useCallback(async () => {
+    setLoadingBalance(true);
+    if (activeWalletAddress && /^0x[a-f0-9]{40}$/i.test(activeWalletAddress)) {
+      try {
+        const rawBalance = await publicClient.readContract({
+          address: BASE_SEPOLIA_USDC,
+          abi: erc20Abi,
+          functionName: "balanceOf",
+          args: [activeWalletAddress as `0x${string}`],
+        });
+        const parsed = Number(formatUnits(rawBalance, 6));
+        setCreatorBalance(parsed);
+        setLoadingBalance(false);
+        return;
+      } catch (err) {
+        console.warn("On-chain balance read notice:", err);
       }
+    }
 
-      // Fallback check
-      if (user?.username) {
-        try {
-          const res = await fetch("/api/account/faucet", {
-            headers: { "x-dev-user": user.username },
-          });
-          const data = await res.json();
-          if (data?.balanceUSDC !== undefined) {
-            setCreatorBalance(Number(data.balanceUSDC));
-          } else {
-            setCreatorBalance(0);
-          }
-        } catch {
-          setCreatorBalance(0);
-        }
+    // Fallback to in-memory fixture balance
+    const targetUser = dynamicUsername || "asharao01";
+    try {
+      const res = await fetch("/api/account/faucet", {
+        headers: { "x-dev-user": targetUser },
+      });
+      const data = await res.json();
+      if (data?.balanceUSDC !== undefined) {
+        setCreatorBalance(Number(data.balanceUSDC));
       } else {
-        setCreatorBalance(0);
+        setCreatorBalance(10000);
       }
-      setLoadingBalance(false);
-    };
+    } catch {
+      setCreatorBalance(10000);
+    }
+    setLoadingBalance(false);
+  }, [activeWalletAddress, dynamicUsername]);
 
+  useEffect(() => {
     fetchBalance();
-  }, [activeWalletAddress, user?.username]);
+  }, [fetchBalance]);
+
+  const handleQuickMint = async () => {
+    setIsMinting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/account/faucet", {
+        method: "POST",
+        headers: { "x-dev-user": dynamicUsername },
+      });
+      const data = await res.json();
+      if (data?.balanceUSDC !== undefined) {
+        setCreatorBalance(Number(data.balanceUSDC));
+      }
+      await fetchBalance();
+    } catch (err: any) {
+      console.error("Quick mint error:", err);
+    } finally {
+      setIsMinting(false);
+    }
+  };
 
   // Live validation calculations
   const validation = validateCircleParams({
@@ -104,16 +130,6 @@ export default function CreateCirclePage() {
     loadingBalance || (creatorBalance !== null && creatorBalance < required3xBalance);
 
   const allowedDurations = [numPeople - 1, numPeople - 2].filter((d) => d >= 1);
-
-  const userEmail = privyUser?.email?.address || "";
-  const dynamicUsername = userEmail
-    ? userEmail.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase()
-    : activeWalletAddress
-    ? `user_${activeWalletAddress.slice(2, 6).toLowerCase()}`
-    : user?.username || "member";
-  const dynamicDisplayName = userEmail
-    ? userEmail.split("@")[0]
-    : user?.displayName || dynamicUsername;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -276,22 +292,43 @@ export default function CreateCirclePage() {
             </div>
 
             {isBalanceInsufficient ? (
-              <div className="p-3.5 rounded-2xl bg-red-950/40 border border-red-500/30 text-red-300 text-xs flex items-start gap-2.5 mt-2">
-                <AlertTriangle className="h-4 w-4 shrink-0 text-red-400 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="font-bold text-red-200">Insufficient Creator Balance</p>
-                  <p className="text-[11px] leading-relaxed text-red-300/90">
-                    Your current wallet balance is{" "}
-                    <strong className="text-white font-mono">
-                      {creatorBalance !== null ? `${creatorBalance.toFixed(2)} USDC` : "0.00 USDC"}
-                    </strong>
-                    . You must hold at least{" "}
-                    <strong className="text-white font-mono">
-                      {required3xBalance.toLocaleString()} USDC
-                    </strong>{" "}
-                    (3x monthly contribution) to originate this circle and invite members.
-                  </p>
+              <div className="p-4 rounded-2xl bg-red-950/40 border border-red-500/30 text-red-300 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-2">
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-red-400 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-bold text-red-200">Insufficient Creator Balance</p>
+                    <p className="text-[11px] leading-relaxed text-red-300/90">
+                      Your current wallet balance is{" "}
+                      <strong className="text-white font-mono">
+                        {creatorBalance !== null ? `${creatorBalance.toFixed(2)} USDC` : "0.00 USDC"}
+                      </strong>
+                      . You must hold at least{" "}
+                      <strong className="text-white font-mono">
+                        {required3xBalance.toLocaleString()} USDC
+                      </strong>{" "}
+                      (3x the monthly contribution of {parsedAmount.toLocaleString()} USDC) to create this circle.
+                    </p>
+                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={handleQuickMint}
+                  disabled={isMinting}
+                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-[11px] uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-md shadow-amber-500/20"
+                >
+                  {isMinting ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      <span>Minting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Coins className="h-3.5 w-3.5" />
+                      <span>Deposit Faucet USDC</span>
+                    </>
+                  )}
+                </button>
               </div>
             ) : (
               <p className="text-xs text-emerald-400 font-mono mt-1">
