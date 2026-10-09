@@ -203,7 +203,7 @@ export default function CircleDetailPage() {
   const monthlyUSDC = fromBaseUnits(circle.monthlyAmount);
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-2 sm:px-4 flex flex-col text-neutral-100 gap-4 py-4 min-h-screen">
+    <div className="w-full max-w-5xl mx-auto px-2 sm:px-4 flex flex-col text-neutral-100 gap-4 py-4 pb-32">
       {/* Action Modals */}
       <EditCircleModal
         isOpen={isEditOpen}

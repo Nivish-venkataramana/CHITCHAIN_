@@ -25,11 +25,11 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="h-screen max-h-screen bg-black text-neutral-100 antialiased flex flex-col font-sans selection:bg-neutral-800 selection:text-white overflow-hidden">
+      <body className="min-h-screen bg-black text-neutral-100 antialiased flex flex-col font-sans selection:bg-neutral-800 selection:text-white overflow-x-hidden overflow-y-auto">
         <FloatingCoinsBackground />
         <Providers>
           <Navbar />
-          <main className="flex-1 flex flex-col px-4 sm:px-8 py-3 min-h-0 overflow-hidden">
+          <main className="flex-1 flex flex-col px-4 sm:px-8 py-3 w-full">
             {children}
           </main>
         </Providers>
