@@ -29,18 +29,19 @@ export function EditCircleModal({ isOpen, onClose, circle, onSuccess }: EditModa
 
   const embeddedWallet = wallets.find((w) => w.walletClientType === "privy") || wallets[0];
   const activeWalletAddress = (
+    user?.walletAddress ||
+    (typeof window !== "undefined" ? localStorage.getItem("chitchain_smart_wallet_address") : "") ||
+    (privyUser as any)?.smartWallet?.address ||
     embeddedWallet?.address ||
     privyUser?.wallet?.address ||
-    user?.walletAddress ||
     ""
   ).toLowerCase();
 
   const userEmail = privyUser?.email?.address || "";
   const dynamicUsername = userEmail
     ? userEmail.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase()
-    : activeWalletAddress
-    ? `user_${activeWalletAddress.slice(2, 6).toLowerCase()}`
-    : user?.username || "volunteer";
+    : user?.username ||
+      (activeWalletAddress ? `user_${activeWalletAddress.slice(2, 6).toLowerCase()}` : "volunteer");
 
   const [name, setName] = useState("");
   const [numPeople, setNumPeople] = useState(4);
@@ -268,18 +269,19 @@ export function DeleteCircleModal({ isOpen, onClose, circle, onSuccess }: Delete
 
   const embeddedWallet = wallets.find((w) => w.walletClientType === "privy") || wallets[0];
   const activeWalletAddress = (
+    user?.walletAddress ||
+    (typeof window !== "undefined" ? localStorage.getItem("chitchain_smart_wallet_address") : "") ||
+    (privyUser as any)?.smartWallet?.address ||
     embeddedWallet?.address ||
     privyUser?.wallet?.address ||
-    user?.walletAddress ||
     ""
   ).toLowerCase();
 
   const userEmail = privyUser?.email?.address || "";
   const dynamicUsername = userEmail
     ? userEmail.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase()
-    : activeWalletAddress
-    ? `user_${activeWalletAddress.slice(2, 6).toLowerCase()}`
-    : user?.username || "volunteer";
+    : user?.username ||
+      (activeWalletAddress ? `user_${activeWalletAddress.slice(2, 6).toLowerCase()}` : "volunteer");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

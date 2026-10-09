@@ -34,28 +34,34 @@ export default function ProfilePage() {
 
   const embeddedWallet = wallets.find((w) => w.walletClientType === "privy") || wallets[0];
   const activeWalletAddress = (
+    user?.walletAddress ||
+    (typeof window !== "undefined" ? localStorage.getItem("chitchain_smart_wallet_address") : "") ||
+    (privyUser as any)?.smartWallet?.address ||
     embeddedWallet?.address ||
     privyUser?.wallet?.address ||
-    user?.walletAddress ||
     ""
   ).toLowerCase();
 
   const userEmail = privyUser?.email?.address || "";
   const dynamicUsername = userEmail
     ? userEmail.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase()
-    : activeWalletAddress
-    ? `user_${activeWalletAddress.slice(2, 6).toLowerCase()}`
-    : user?.username || "member";
+    : user?.username ||
+      (activeWalletAddress ? `user_${activeWalletAddress.slice(2, 6).toLowerCase()}` : "member");
 
   const dynamicDisplayName = userEmail
     ? userEmail.split("@")[0]
     : user?.displayName || dynamicUsername;
 
+  const [mounted, setMounted] = useState(false);
   const [balance, setBalance] = useState<string | null>(null);
   const [loadingBalance, setLoadingBalance] = useState(true);
   const [copied, setCopied] = useState(false);
   const [faucetLoading, setFaucetLoading] = useState(false);
   const [faucetMessage, setFaucetMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const fetchLiveBalance = async () => {
     if (!activeWalletAddress || !/^0x[a-f0-9]{40}$/i.test(activeWalletAddress)) {
@@ -146,6 +152,38 @@ export default function ProfilePage() {
     setUser(null);
     router.push("/login");
   };
+
+  if (!mounted) {
+    return (
+      <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 space-y-6 text-neutral-100 flex flex-col justify-between min-h-[calc(100vh-6rem)]">
+        <div className="flex-1 flex flex-col justify-center">
+          <div className="rounded-3xl border border-white/10 bg-transparent p-6 sm:p-7 space-y-5 shadow-2xl animate-pulse">
+            <div className="grid sm:grid-cols-2 gap-6 pb-5 border-b border-white/10">
+              <div className="space-y-2">
+                <div className="h-3 w-20 bg-white/10 rounded" />
+                <div className="h-6 w-36 bg-white/10 rounded" />
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 w-20 bg-white/10 rounded" />
+                <div className="h-6 w-36 bg-white/10 rounded" />
+              </div>
+            </div>
+            <div className="space-y-2 pb-5 border-b border-white/10">
+              <div className="h-3 w-32 bg-white/10 rounded" />
+              <div className="h-10 w-full bg-white/5 rounded-xl border border-white/10" />
+            </div>
+            <div className="grid sm:grid-cols-2 gap-6 items-center pb-5 border-b border-white/10">
+              <div className="space-y-2">
+                <div className="h-3 w-28 bg-white/10 rounded" />
+                <div className="h-8 w-32 bg-white/10 rounded" />
+              </div>
+              <div className="h-10 w-36 bg-white/5 rounded-xl border border-white/10 sm:ml-auto" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 space-y-6 text-neutral-100 flex flex-col justify-between min-h-[calc(100vh-6rem)]">

@@ -22,43 +22,70 @@ export function useDevUser() {
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "cmv07umju004s0fjtwjr9l71v";
 
 import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { initDeterministicSmartAccount } from "@/lib/smart-account";
 
 function PrivyUserSync({ onSync }: { onSync?: () => void }) {
   const { user: privyUser, authenticated } = usePrivy();
   const { wallets } = useWallets();
+  const { setUser } = useDevUser();
 
   useEffect(() => {
     if (!authenticated || !privyUser) return;
 
-    const embeddedWallet = wallets.find((w) => w.walletClientType === "privy") || wallets[0];
-    const walletAddress = (
-      embeddedWallet?.address ||
-      privyUser?.wallet?.address ||
-      ""
-    ).toLowerCase();
+    let isMounted = true;
 
-    const email = privyUser?.email?.address || "";
-    const username = email
-      ? email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase()
-      : walletAddress
-      ? `user_${walletAddress.slice(2, 6).toLowerCase()}`
-      : "";
+    async function syncAccount() {
+      try {
+        const { address: scaAddress } = await initDeterministicSmartAccount({
+          wallets,
+          privyUser,
+        });
 
-    const displayName = email ? email.split("@")[0] : username;
+        if (!isMounted || !scaAddress) return;
 
-    if (username && walletAddress && /^0x[a-f0-9]{40}$/i.test(walletAddress)) {
-      fetch("/api/account/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username,
-          walletAddress,
-          displayName,
-        }),
-      })
-        .then(() => onSync?.())
-        .catch((err) => console.warn("Privy user sync notice:", err));
+        const email = privyUser?.email?.address || "";
+        const username = email
+          ? email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase()
+          : `user_${scaAddress.slice(2, 6).toLowerCase()}`;
+
+        const displayName = email ? email.split("@")[0] : username;
+        const privyUserId = privyUser?.id;
+
+        if (username && scaAddress && /^0x[a-f0-9]{40}$/i.test(scaAddress)) {
+          const res = await fetch("/api/account/sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              privyUserId,
+              username,
+              walletAddress: scaAddress,
+              displayName,
+            }),
+          });
+          if (res.ok) {
+            const syncedUser = await res.json();
+            if (isMounted) {
+              setUser(syncedUser);
+              if (typeof window !== "undefined") {
+                localStorage.setItem("chitchain_smart_wallet_address", scaAddress);
+                localStorage.setItem("chitchain_user_profile", JSON.stringify(syncedUser));
+              }
+            }
+          }
+          onSync?.();
+        }
+      } catch (err) {
+        console.warn("Deterministic smart account sync notice:", err);
+      }
     }
+
+    if (wallets.length > 0) {
+      syncAccount();
+    }
+
+    return () => {
+      isMounted = false;
+    };
   }, [authenticated, privyUser, wallets]);
 
   return null;
@@ -66,7 +93,7 @@ function PrivyUserSync({ onSync }: { onSync?: () => void }) {
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
-  const [user, setUser] = useState<UserProfile | null>(null);
+  const [user, setUserState] = useState<UserProfile | null>(null);
   const [users, setUsers] = useState<UserProfile[]>([]);
 
   const refreshUsers = () => {
@@ -81,15 +108,25 @@ export function Providers({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    try {
+      const cached = localStorage.getItem("chitchain_user_profile");
+      if (cached) setUserState(JSON.parse(cached));
+    } catch {}
     refreshUsers();
   }, []);
 
   const handleSetUser = (u: UserProfile | null) => {
-    setUser(u);
+    setUserState(u);
     if (u) {
       localStorage.setItem("chitchain_dev_user", u.username);
+      localStorage.setItem("chitchain_user_profile", JSON.stringify(u));
+      if (u.walletAddress) {
+        localStorage.setItem("chitchain_smart_wallet_address", u.walletAddress);
+      }
     } else {
       localStorage.removeItem("chitchain_dev_user");
+      localStorage.removeItem("chitchain_user_profile");
+      localStorage.removeItem("chitchain_smart_wallet_address");
     }
   };
 

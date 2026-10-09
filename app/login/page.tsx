@@ -24,39 +24,37 @@ export default function LoginPage() {
     onComplete: async (user, isNewUser) => {
       setIsLoading(true);
       try {
+        const privyUserId = user?.id;
         const privyWallet = user?.wallet?.address;
         const userEmail = user?.email?.address || email;
         const cleanAddress = privyWallet?.toLowerCase() || `0x${Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join("")}`;
         const username = userEmail ? userEmail.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase() : `user_${cleanAddress.slice(2, 6)}`;
+        const displayName = userEmail ? userEmail.split("@")[0] : username;
 
-        const checkRes = await fetch(`/api/users/by-wallet/${cleanAddress}`);
-        if (checkRes.ok) {
-          const existing = await checkRes.json();
-          if (existing?.username) {
-            setUser(existing);
-            router.push("/dashboard");
-            return;
-          }
-        }
-
-        const createRes = await fetch("/api/account/create", {
+        const syncRes = await fetch("/api/account/sync", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            username: username,
+            privyUserId,
+            username,
             walletAddress: cleanAddress,
-            displayName: username,
+            displayName,
           }),
         });
 
-        if (createRes.ok) {
-          const newUser = await createRes.json();
-          setUser(newUser);
+        if (syncRes.ok) {
+          const synced = await syncRes.json();
+          setUser(synced);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("chitchain_user_profile", JSON.stringify(synced));
+            localStorage.setItem("chitchain_smart_wallet_address", synced.walletAddress || cleanAddress);
+          }
         } else {
           setUser({
-            username: username,
+            privyUserId,
+            username,
             walletAddress: cleanAddress as `0x${string}`,
-            displayName: username,
+            displayName,
             createdAt: new Date().toISOString(),
           });
         }

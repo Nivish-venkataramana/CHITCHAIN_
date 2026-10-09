@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { username, walletAddress, displayName } = body;
+    const { privyUserId, username, walletAddress, displayName } = body;
 
     if (!username || !walletAddress) {
       return NextResponse.json(
@@ -16,6 +16,7 @@ export async function POST(req: NextRequest) {
     }
 
     const user = syncUserAccount({
+      privyUserId,
       username,
       walletAddress,
       displayName,

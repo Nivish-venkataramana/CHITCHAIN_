@@ -807,18 +807,34 @@ export async function markNotificationRead(id: string, walletAddress: string): P
   return false;
 }
 
-export async function getCirclesForUser(walletAddress: string): Promise<CircleRecord[]> {
-  const normWallet = walletAddress.toLowerCase();
+export async function getCirclesForUser(walletAddress: string, username?: string): Promise<CircleRecord[]> {
+  const normWallet = (walletAddress || "").toLowerCase().trim();
+  const normUser = (username || "").toLowerCase().trim().replace(/^@/, "");
+
+  const matchedWallets = new Set<string>();
+  if (normWallet) matchedWallets.add(normWallet);
+  if (normUser) {
+    const u = getUserByUsername(normUser);
+    if (u?.walletAddress) matchedWallets.add(u.walletAddress.toLowerCase());
+  }
+
   const userCircleIds = new Set<string>();
 
   memoryCircles.forEach((c) => {
-    if (c.volunteerWallet.toLowerCase() === normWallet) {
+    if (
+      matchedWallets.has(c.volunteerWallet.toLowerCase()) ||
+      (normUser && c.volunteerUsername?.toLowerCase() === normUser)
+    ) {
       userCircleIds.add(c.id);
     }
   });
 
   memoryInvites.forEach((i) => {
-    if (i.inviteeWallet.toLowerCase() === normWallet && i.status !== "REJECTED") {
+    if (
+      (matchedWallets.has(i.inviteeWallet.toLowerCase()) ||
+        (normUser && i.inviteeUsername.toLowerCase() === normUser)) &&
+      i.status !== "REJECTED"
+    ) {
       userCircleIds.add(i.circleId);
     }
   });

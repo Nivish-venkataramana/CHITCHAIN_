@@ -51,21 +51,26 @@ export default function DashboardPage() {
 
   const embeddedWallet = wallets.find((w) => w.walletClientType === "privy") || wallets[0];
   const activeWalletAddress = (
+    user?.walletAddress ||
+    (typeof window !== "undefined" ? localStorage.getItem("chitchain_smart_wallet_address") : "") ||
+    (privyUser as any)?.smartWallet?.address ||
     embeddedWallet?.address ||
     privyUser?.wallet?.address ||
-    user?.walletAddress ||
     ""
   ).toLowerCase();
 
   const userEmail = privyUser?.email?.address || "";
   const dynamicUsername = userEmail
     ? userEmail.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase()
-    : activeWalletAddress
-    ? `user_${activeWalletAddress.slice(2, 6).toLowerCase()}`
-    : user?.username || "member";
+    : user?.username ||
+      (activeWalletAddress ? `user_${activeWalletAddress.slice(2, 6).toLowerCase()}` : "member");
 
-  // Dashboard Active Tab: "view" | "create"
+  const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<"view" | "create">("view");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // User Live Balance state
   const [userBalance, setUserBalance] = useState<number | null>(null);
@@ -255,6 +260,18 @@ export default function DashboardPage() {
     userBalance === null || collateralRequired <= userBalance;
 
   const isCreateDisabled = !isFormFilled || !hasSufficientBalance || isSubmitting;
+
+  if (!mounted) {
+    return (
+      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 space-y-6 text-neutral-100 flex flex-col justify-between min-h-[calc(100vh-6rem)]">
+        <div className="flex-1 flex flex-col justify-center">
+          <div className="w-full max-w-xl mx-auto rounded-3xl border border-white/10 bg-transparent p-12 text-center text-xs text-neutral-500 animate-pulse">
+            Loading dashboard...
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 space-y-6 text-neutral-100 flex flex-col justify-between min-h-[calc(100vh-6rem)]">

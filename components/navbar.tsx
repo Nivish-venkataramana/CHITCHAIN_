@@ -40,23 +40,29 @@ export function Navbar() {
 
   const embeddedWallet = wallets.find((w) => w.walletClientType === "privy") || wallets[0];
   const activeWalletAddress = (
+    user?.walletAddress ||
+    (typeof window !== "undefined" ? localStorage.getItem("chitchain_smart_wallet_address") : "") ||
+    (privyUser as any)?.smartWallet?.address ||
     embeddedWallet?.address ||
     privyUser?.wallet?.address ||
-    user?.walletAddress ||
     ""
   ).toLowerCase();
 
   const userEmail = privyUser?.email?.address || "";
   const dynamicUsername = userEmail
     ? userEmail.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase()
-    : activeWalletAddress
-    ? `user_${activeWalletAddress.slice(2, 6).toLowerCase()}`
-    : user?.username || "member";
+    : user?.username ||
+      (activeWalletAddress ? `user_${activeWalletAddress.slice(2, 6).toLowerCase()}` : "member");
 
+  const [mounted, setMounted] = useState(false);
   const [balance, setBalance] = useState<string | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [respondingId, setRespondingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const fetchBalance = async () => {
     if (!activeWalletAddress || !/^0x[a-f0-9]{40}$/i.test(activeWalletAddress)) {
@@ -166,7 +172,7 @@ export function Navbar() {
     return null;
   }
 
-  const isUserAuthenticated = authenticated || Boolean(activeWalletAddress);
+  const isUserAuthenticated = authenticated || Boolean(user?.username) || Boolean(activeWalletAddress);
 
   return (
     <header className="sticky top-0 z-50 w-full bg-black/90 backdrop-blur-md">
@@ -180,8 +186,10 @@ export function Navbar() {
         </Link>
 
         {/* Extreme Right: Order: 1. Notification -> 2. User Profile -> 3. Balance -> 4. Logout */}
-        <div className="flex items-center gap-5 sm:gap-6">
-          {isUserAuthenticated ? (
+        <div className="flex items-center gap-5 sm:gap-6 min-h-[2.5rem]">
+          {!mounted ? (
+            <div className="h-6 w-32" />
+          ) : isUserAuthenticated ? (
             <>
               {/* 1. Notification Icon */}
               <div className="relative">

@@ -6,8 +6,10 @@ import { createSmartAccountClient } from "@biconomy/account";
 import { createWalletClient, custom } from "viem";
 import { baseSepolia } from "viem/chains";
 
+import { initDeterministicSmartAccount } from "@/lib/smart-account";
+
 export default function DeChitAuth() {
-  const { ready, authenticated, login, logout } = usePrivy();
+  const { ready, authenticated, user: privyUser, login, logout } = usePrivy();
   const { wallets } = useWallets();
   
   const [smartAccountAddress, setSmartAccountAddress] = useState<string | null>(null);
@@ -17,29 +19,12 @@ export default function DeChitAuth() {
     async function setupNexusSmartAccount() {
       setIsInitializing(true);
       try {
-        // 1. Isolate the Privy embedded wallet
-        const embeddedWallet = wallets.find((w) => w.walletClientType === "privy");
-        if (!embeddedWallet) return;
-
-        // 2. Extract provider and wrap with Viem for Base Sepolia
-        const provider = await embeddedWallet.getEthereumProvider();
-        const viemClient = createWalletClient({
-          chain: baseSepolia,
-          transport: custom(provider),
+        const { address: scaAddress } = await initDeterministicSmartAccount({
+          wallets,
+          privyUser,
         });
-
-        // 3. Initialize the Biconomy Nexus Smart Account
-        const nexusAccount = await createSmartAccountClient({
-          signer: viemClient,
-          bundlerUrl: `https://bundler.biconomy.io/api/v3/84532/n?key=${process.env.NEXT_PUBLIC_BICONOMY_API_KEY || "mee_Pd1pRe53oeH6TqsMkQEw3j"}`,
-          biconomyPaymasterApiKey: (process.env.NEXT_PUBLIC_BICONOMY_API_KEY || "mee_Pd1pRe53oeH6TqsMkQEw3j") as string,
-        });
-
-        // 4. Retrieve and set the final gasless Smart Account address
-        const scaAddress = await nexusAccount.getAccountAddress();
         setSmartAccountAddress(scaAddress);
         console.log("Nexus Smart Account successfully initialized at:", scaAddress);
-
       } catch (error) {
         console.error("Failed to initialize Nexus account:", error);
       } finally {
@@ -53,7 +38,7 @@ export default function DeChitAuth() {
     } else {
       setSmartAccountAddress(null);
     }
-  }, [authenticated, wallets]);
+  }, [authenticated, wallets, privyUser]);
 
   // Prevent UI rendering flashes before Privy loads
   if (!ready) {
