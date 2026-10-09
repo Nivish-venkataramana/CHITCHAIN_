@@ -98,27 +98,21 @@ export default function LoginPage() {
 
     try {
       if (sendCode) {
-        await Promise.race([
-          sendCode({ email: email.trim().toLowerCase() }),
-          new Promise((resolve) => setTimeout(resolve, 800)),
-        ]);
+        await sendCode({ email: email.trim().toLowerCase() });
         setStep("otp");
         setResendCooldown(30);
       } else {
-        // Fallback for offline demo mode
-        setStep("otp");
-        setResendCooldown(30);
+        throw new Error("Privy authentication provider not ready. Please refresh.");
       }
     } catch (err: any) {
-      console.warn("Notice sending OTP:", err);
-      setStep("otp");
-      setResendCooldown(30);
+      console.error("Error sending OTP:", err);
+      setError(err?.message || "Failed to dispatch verification code. Please check your email and try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Step 2: Verify 6-digit OTP
+  // Step 2: Verify 6-digit OTP (Strict real email OTP check)
   const handleVerifyOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (otpCode.length < 6) {
@@ -129,47 +123,27 @@ export default function LoginPage() {
     setError(null);
     setIsLoading(true);
 
-    const emailPrefix = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase() || "pranav";
-    const matchingUser = users.find((u) => u.username.toLowerCase().includes(emailPrefix) || emailPrefix.includes(u.username.toLowerCase())) || {
-      username: emailPrefix,
-      walletAddress: `0x${Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join("")}` as `0x${string}`,
-      displayName: email.split("@")[0] || emailPrefix,
-    };
-
-    // Fast-path resolution: ensure user is never kept waiting longer than 600ms
-    const completeLogin = () => {
-      setUser(matchingUser);
-      setIsLoading(false);
-      router.push("/home");
-    };
-
-    const fastTimer = setTimeout(completeLogin, 600);
-
     try {
       if (loginWithCode) {
-        await Promise.race([
-          loginWithCode({ code: otpCode.trim() }),
-          new Promise((resolve) => setTimeout(resolve, 500)),
-        ]);
+        // Strict verification: validates the exact OTP sent to this email address
+        await loginWithCode({ code: otpCode.trim() });
+      } else {
+        throw new Error("Authentication service unavailable. Please refresh.");
       }
-      clearTimeout(fastTimer);
-      completeLogin();
     } catch (err: any) {
-      console.warn("Privy OTP fast-path fallback:", err);
-      clearTimeout(fastTimer);
-      completeLogin();
+      console.error("Privy OTP verification error:", err);
+      const msg = typeof err === "string" ? err : err?.message || "Invalid verification code. Please enter the OTP sent to your email.";
+      setError(msg);
+      setIsLoading(false);
     }
   };
 
   // Auto-verify as soon as 6th digit is entered
   useEffect(() => {
     if (otpCode.length === 6 && !isLoading && step === "otp") {
-      const autoTimer = setTimeout(() => {
-        handleVerifyOtp();
-      }, 150);
-      return () => clearTimeout(autoTimer);
+      handleVerifyOtp();
     }
-  }, [otpCode, isLoading, step]);
+  }, [otpCode, step]);
 
   const handleResendOtp = async () => {
     if (resendCooldown > 0 || !email) return;
