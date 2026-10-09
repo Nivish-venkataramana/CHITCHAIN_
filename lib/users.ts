@@ -1,5 +1,6 @@
 import usersFixture from "@/handoffs/fixtures/users.json";
 import { UserProfile } from "@/handoffs/user-profile";
+import { prisma } from "./prisma";
 
 const isTestEnv = process.env.NODE_ENV === "test";
 
@@ -9,6 +10,30 @@ if (!g.__chitchain_users__) {
 }
 
 const users: UserProfile[] = g.__chitchain_users__;
+
+// Hydrate from PostgreSQL database on startup
+if (!isTestEnv) {
+  prisma.user.findMany()
+    .then((dbUsers) => {
+      dbUsers.forEach((u) => {
+        const exists = users.find((existing) => existing.username === u.username);
+        if (exists) {
+          exists.walletAddress = u.walletAddress as `0x${string}`;
+          exists.displayName = u.displayName;
+          if (u.privyUserId) exists.privyUserId = u.privyUserId;
+        } else {
+          users.push({
+            privyUserId: u.privyUserId || undefined,
+            username: u.username,
+            walletAddress: u.walletAddress as `0x${string}`,
+            displayName: u.displayName,
+            createdAt: u.createdAt.toISOString(),
+          });
+        }
+      });
+    })
+    .catch((err) => console.warn("Prisma user hydration notice:", err.message));
+}
 
 export function getFixtureUsers(): UserProfile[] {
   return users;
@@ -35,14 +60,31 @@ export function getUserByWallet(address: string): UserProfile | undefined {
   return users.find((u) => u.walletAddress.toLowerCase() === norm);
 }
 
+export function deriveDeterministicAddress(seed: string): `0x${string}` {
+  let hash = 0x811c9dc5;
+  const cleanSeed = (seed || "chitchain_user").toLowerCase();
+  for (let i = 0; i < cleanSeed.length; i++) {
+    hash ^= cleanSeed.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  let hex = "";
+  let currentSeed = Math.abs(hash);
+  for (let i = 0; i < 40; i++) {
+    currentSeed = (currentSeed * 9301 + 49297) % 233280;
+    hex += Math.floor((currentSeed / 233280) * 16).toString(16);
+  }
+  return `0x${hex}` as `0x${string}`;
+}
+
 export function syncUserAccount(params: {
   privyUserId?: string;
   username: string;
-  walletAddress: string;
+  walletAddress?: string;
   displayName?: string;
 }): UserProfile {
   const cleanUsername = params.username.toLowerCase().trim().replace(/^@/, "");
-  const cleanWallet = (params.walletAddress || "").toLowerCase().trim() as `0x${string}`;
+  const rawWallet = (params.walletAddress || "").toLowerCase().trim();
+  const isValidIncomingWallet = /^0x[a-f0-9]{40}$/i.test(rawWallet);
   const privyUserId = params.privyUserId?.trim();
 
   // 1. Search by privyUserId
@@ -56,34 +98,61 @@ export function syncUserAccount(params: {
     user = getUserByUsername(cleanUsername);
   }
 
-  // 3. Search by walletAddress
-  if (!user && /^0x[a-f0-9]{40}$/i.test(cleanWallet)) {
-    user = getUserByWallet(cleanWallet);
+  // 3. Search by walletAddress if incoming wallet is valid
+  if (!user && isValidIncomingWallet) {
+    user = getUserByWallet(rawWallet);
   }
 
   if (user) {
     if (privyUserId) user.privyUserId = privyUserId;
     if (cleanUsername) user.username = cleanUsername;
-    if (/^0x[a-f0-9]{40}$/i.test(cleanWallet)) {
-      user.walletAddress = cleanWallet;
+    // Only update wallet if incoming is a valid 40-hex wallet address
+    if (isValidIncomingWallet) {
+      user.walletAddress = rawWallet as `0x${string}`;
     }
     if (params.displayName) user.displayName = params.displayName;
+
+    const finalWallet = user.walletAddress;
 
     // Synchronize pending invites and notifications for this user
     if (g.__chitchain_invites__) {
       g.__chitchain_invites__.forEach((inv: any) => {
         if (inv.inviteeUsername?.toLowerCase() === cleanUsername) {
-          inv.inviteeWallet = cleanWallet;
+          inv.inviteeWallet = finalWallet;
         }
       });
     }
+
+    // Persist permanently in Neon PostgreSQL
+    if (!isTestEnv && /^0x[a-f0-9]{40}$/i.test(finalWallet)) {
+      prisma.user.upsert({
+        where: { username: cleanUsername },
+        update: {
+          walletAddress: finalWallet,
+          displayName: params.displayName || user.displayName || cleanUsername,
+          privyUserId: privyUserId || user.privyUserId || undefined,
+        },
+        create: {
+          username: cleanUsername,
+          walletAddress: finalWallet,
+          displayName: params.displayName || user.displayName || cleanUsername,
+          privyUserId: privyUserId || undefined,
+        },
+      }).catch((err) => console.warn("Prisma user sync notice:", err.message));
+    }
+
     return user;
   }
+
+  // New User
+  const finalWallet = (
+    isValidIncomingWallet ? rawWallet : deriveDeterministicAddress(cleanUsername || privyUserId || "chitchain")
+  ) as `0x${string}`;
 
   const newUser: UserProfile = {
     privyUserId,
     username: cleanUsername,
-    walletAddress: cleanWallet,
+    walletAddress: finalWallet,
     displayName: params.displayName || cleanUsername,
     createdAt: new Date().toISOString(),
   };
@@ -92,9 +161,27 @@ export function syncUserAccount(params: {
   if (g.__chitchain_invites__) {
     g.__chitchain_invites__.forEach((inv: any) => {
       if (inv.inviteeUsername?.toLowerCase() === cleanUsername) {
-        inv.inviteeWallet = cleanWallet;
+        inv.inviteeWallet = finalWallet;
       }
     });
+  }
+
+  // Persist permanently in Neon PostgreSQL
+  if (!isTestEnv && /^0x[a-f0-9]{40}$/i.test(finalWallet)) {
+    prisma.user.upsert({
+      where: { username: cleanUsername },
+      update: {
+        walletAddress: finalWallet,
+        displayName: params.displayName || cleanUsername,
+        privyUserId: privyUserId || undefined,
+      },
+      create: {
+        username: cleanUsername,
+        walletAddress: finalWallet,
+        displayName: params.displayName || cleanUsername,
+        privyUserId: privyUserId || undefined,
+      },
+    }).catch((err) => console.warn("Prisma user create notice:", err.message));
   }
 
   return newUser;
@@ -105,6 +192,23 @@ export function addUser(user: UserProfile) {
   const exists = users.some((u) => u.username.toLowerCase() === norm);
   if (!exists) {
     users.push(user);
+  }
+
+  if (!isTestEnv && /^0x[a-f0-9]{40}$/i.test(user.walletAddress)) {
+    prisma.user.upsert({
+      where: { username: norm },
+      update: {
+        walletAddress: user.walletAddress,
+        displayName: user.displayName,
+        privyUserId: user.privyUserId || undefined,
+      },
+      create: {
+        username: norm,
+        walletAddress: user.walletAddress,
+        displayName: user.displayName,
+        privyUserId: user.privyUserId || undefined,
+      },
+    }).catch((err) => console.warn("Prisma addUser notice:", err.message));
   }
 }
 
@@ -129,8 +233,13 @@ export function getSessionUser(reqOrHeaders?: Headers | Request): UserProfile {
       return user;
     }
 
-    // Register dynamic Privy/embedded wallet user
-    const fallbackWallet = (devWalletHeader || `0x${Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join("")}`).toLowerCase() as `0x${string}`;
+    // Register dynamic Privy/embedded wallet user with deterministic address fallback
+    const fallbackWallet = (
+      devWalletHeader && /^0x[a-f0-9]{40}$/i.test(devWalletHeader)
+        ? devWalletHeader
+        : deriveDeterministicAddress(devUserHeader)
+    ).toLowerCase() as `0x${string}`;
+
     const newUser: UserProfile = {
       username: devUserHeader.toLowerCase().trim(),
       walletAddress: fallbackWallet,

@@ -36,23 +36,47 @@ function PrivyUserSync({ onSync }: { onSync?: () => void }) {
 
     async function syncAccount() {
       try {
-        const { address: scaAddress } = await initDeterministicSmartAccount({
-          wallets,
-          privyUser,
-        });
-
-        if (!isMounted || !scaAddress) return;
-
         const email = privyUser?.email?.address || "";
+        const privyUserId = privyUser?.id;
         const username = email
           ? email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase()
-          : `user_${scaAddress.slice(2, 6).toLowerCase()}`;
-
+          : `user_${(privyUserId || "").slice(-6)}`;
         const displayName = email ? email.split("@")[0] : username;
-        const privyUserId = privyUser?.id;
 
-        if (username && scaAddress && /^0x[a-f0-9]{40}$/i.test(scaAddress)) {
-          const res = await fetch("/api/account/sync", {
+        // 1. Immediately fetch existing user from database
+        const syncRes = await fetch("/api/account/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            privyUserId,
+            username,
+            displayName,
+          }),
+        });
+
+        if (syncRes.ok) {
+          const dbUser = await syncRes.json();
+          if (isMounted && dbUser) {
+            setUser(dbUser);
+            if (typeof window !== "undefined") {
+              localStorage.setItem("chitchain_user_profile", JSON.stringify(dbUser));
+              if (dbUser.walletAddress) {
+                localStorage.setItem("chitchain_smart_wallet_address", dbUser.walletAddress);
+              }
+            }
+          }
+        }
+
+        // 2. If wallets are available, initialize deterministic smart account
+        if (wallets && wallets.length > 0) {
+          const { address: scaAddress } = await initDeterministicSmartAccount({
+            wallets,
+            privyUser,
+          });
+
+          if (!isMounted || !scaAddress || !/^0x[a-f0-9]{40}$/i.test(scaAddress)) return;
+
+          const updateRes = await fetch("/api/account/sync", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -62,9 +86,10 @@ function PrivyUserSync({ onSync }: { onSync?: () => void }) {
               displayName,
             }),
           });
-          if (res.ok) {
-            const syncedUser = await res.json();
-            if (isMounted) {
+
+          if (updateRes.ok) {
+            const syncedUser = await updateRes.json();
+            if (isMounted && syncedUser) {
               setUser(syncedUser);
               if (typeof window !== "undefined") {
                 localStorage.setItem("chitchain_smart_wallet_address", scaAddress);
@@ -72,16 +97,15 @@ function PrivyUserSync({ onSync }: { onSync?: () => void }) {
               }
             }
           }
-          onSync?.();
         }
+
+        onSync?.();
       } catch (err) {
         console.warn("Deterministic smart account sync notice:", err);
       }
     }
 
-    if (wallets.length > 0) {
-      syncAccount();
-    }
+    syncAccount();
 
     return () => {
       isMounted = false;

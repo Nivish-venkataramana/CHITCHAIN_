@@ -3,6 +3,7 @@ import { UserProfile } from "@/handoffs/user-profile";
 import { validateUsername, norm } from "./username-rule";
 import { getFinalizedCircle, getMemberBalance } from "./circles-store";
 import { addUser } from "./users";
+import { prisma } from "./prisma";
 
 export interface UserRecord extends UserProfile {
   id: string;
@@ -339,6 +340,28 @@ export async function grantAutopayMandate(params: {
     consent.revokedAt = null;
   }
 
+  // Persist permanently in Neon PostgreSQL
+  if (!isTestEnv) {
+    prisma.autopayConsent.upsert({
+      where: { circleId_memberAddress: { circleId: params.circleId, memberAddress: normW } },
+      update: {
+        status: "GIVEN",
+        sessionId: consent.sessionId,
+        txHash: consent.txHash,
+        grantedAt: consent.grantedAt,
+        revokedAt: null,
+      },
+      create: {
+        circleId: params.circleId,
+        memberAddress: normW,
+        status: "GIVEN",
+        sessionId: consent.sessionId,
+        txHash: consent.txHash,
+        grantedAt: consent.grantedAt,
+      },
+    }).catch((err) => console.warn("Prisma autopay consent notice:", err.message));
+  }
+
   return consent;
 }
 
@@ -357,6 +380,14 @@ export async function revokeAutopayMandate(params: {
 
   consent.status = "REVOKED";
   consent.revokedAt = new Date();
+
+  // Persist permanently in Neon PostgreSQL
+  if (!isTestEnv) {
+    prisma.autopayConsent.updateMany({
+      where: { circleId: params.circleId, memberAddress: normW },
+      data: { status: "REVOKED", revokedAt: consent.revokedAt },
+    }).catch((err) => console.warn("Prisma autopay revoke notice:", err.message));
+  }
 
   return consent;
 }

@@ -8,9 +8,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { privyUserId, username, walletAddress, displayName } = body;
 
-    if (!username || !walletAddress) {
+    if (!username) {
       return NextResponse.json(
-        { error: "username and walletAddress are required" },
+        { error: "username is required" },
         { status: 400 }
       );
     }
