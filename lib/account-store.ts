@@ -145,14 +145,15 @@ const balanceCache: Record<string, { usdc: bigint; eth: string; expiry: number }
 export async function mintFaucetTokens(walletAddress: string, amountUSDC = 25000): Promise<bigint> {
   const cleanWallet = walletAddress.toLowerCase().trim();
   const mintBaseUnits = BigInt(amountUSDC) * 1_000_000n;
-  const current = userBalances[cleanWallet] || 0n;
+  const current = await getUserBalance(cleanWallet);
   const updated = current + mintBaseUnits;
   userBalances[cleanWallet] = updated;
 
-  // Invalidate cache on mint
-  delete balanceCache[cleanWallet];
+  if (balanceCache[cleanWallet]) {
+    balanceCache[cleanWallet].usdc = updated;
+  }
 
-  return getUserBalance(walletAddress);
+  return updated;
 }
 
 export async function debitUserBalance(walletAddress: string, amountUSDC: number): Promise<{ success: boolean; newBalance: bigint }> {
@@ -161,7 +162,11 @@ export async function debitUserBalance(walletAddress: string, amountUSDC: number
   const current = await getUserBalance(cleanWallet);
   const updated = current >= debitBaseUnits ? current - debitBaseUnits : 0n;
   userBalances[cleanWallet] = updated;
-  delete balanceCache[cleanWallet];
+
+  if (balanceCache[cleanWallet]) {
+    balanceCache[cleanWallet].usdc = updated;
+  }
+
   return { success: true, newBalance: updated };
 }
 
@@ -183,11 +188,15 @@ export async function getUserBalance(walletAddress: string): Promise<bigint> {
   const cleanWallet = walletAddress.toLowerCase().trim() as `0x${string}`;
   const now = Date.now();
 
-  const cached = balanceCache[cleanWallet];
-  const localMinted = userBalances[cleanWallet] ?? 100000_000000n; // 100,000 USDC default test balance
+  // If balance was already initialized/debited in this session, return it directly
+  if (userBalances[cleanWallet] !== undefined) {
+    return userBalances[cleanWallet];
+  }
 
+  const cached = balanceCache[cleanWallet];
   if (cached && now < cached.expiry) {
-    return cached.usdc > 0n ? cached.usdc : localMinted;
+    userBalances[cleanWallet] = cached.usdc;
+    return cached.usdc;
   }
 
   let onChainUsdc = 0n;
@@ -200,21 +209,13 @@ export async function getUserBalance(walletAddress: string): Promise<bigint> {
         args: [cleanWallet],
       })) as bigint;
     }
-  } catch {
-    // Fallback on network timeout
-    if (cached) return cached.usdc > 0n ? cached.usdc : localMinted;
-  }
+  } catch {}
 
-  const finalBalance = onChainUsdc > 0n ? onChainUsdc : localMinted;
+  const initialBalance = onChainUsdc > 0n ? onChainUsdc : 20_000000n;
+  userBalances[cleanWallet] = initialBalance;
+  balanceCache[cleanWallet] = { usdc: initialBalance, eth: "0.0000", expiry: now + 30000 };
 
-  if (!balanceCache[cleanWallet]) {
-    balanceCache[cleanWallet] = { usdc: finalBalance, eth: "0.0000", expiry: now + 30000 };
-  } else {
-    balanceCache[cleanWallet].usdc = finalBalance;
-    balanceCache[cleanWallet].expiry = now + 30000;
-  }
-
-  return finalBalance;
+  return initialBalance;
 }
 
 export async function getLiveEthBalance(walletAddress: string): Promise<string> {
