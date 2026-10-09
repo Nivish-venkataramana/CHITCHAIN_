@@ -7,15 +7,35 @@ export function getFixtureUsers(): UserProfile[] {
   return users;
 }
 
-export function searchUsers(q: string): UserProfile[] {
-  if (!q) return [];
-  const query = q.toLowerCase();
-  return users.filter(
+export function addUserProfile(profile: UserProfile): void {
+  const normUser = profile.username.toLowerCase().trim();
+  const normWallet = profile.walletAddress.toLowerCase().trim();
+
+  // Remove any existing user with same username or wallet
+  users = users.filter(
     (u) =>
-      u.username.toLowerCase().includes(query) ||
-      u.displayName.toLowerCase().includes(query) ||
-      u.walletAddress.toLowerCase().includes(query)
-  ).slice(0, 10);
+      u.username.toLowerCase().trim() !== normUser &&
+      u.walletAddress.toLowerCase().trim() !== normWallet
+  );
+
+  users.push({
+    username: normUser,
+    walletAddress: normWallet as `0x${string}`,
+    displayName: profile.displayName.trim(),
+  });
+}
+
+export function searchUsers(q: string): UserProfile[] {
+  if (!q) return users.slice(0, 10);
+  const query = q.toLowerCase().trim();
+  return users
+    .filter(
+      (u) =>
+        u.username.toLowerCase().includes(query) ||
+        u.displayName.toLowerCase().includes(query) ||
+        u.walletAddress.toLowerCase().includes(query)
+    )
+    .slice(0, 10);
 }
 
 export function getUserByUsername(username: string): UserProfile | undefined {

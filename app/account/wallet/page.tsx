@@ -1,51 +1,64 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
+import { useAccount } from "@/hooks/useAccount";
 import { useDevUser } from "@/components/providers";
-import { Wallet, Coins, ArrowLeft, CheckCircle, AlertCircle, Sparkles, Shield, ArrowUpRight } from "lucide-react";
+import { defaultAddMoneyProvider } from "@/features/account/addMoney";
+import { Wallet, Coins, ArrowLeft, CheckCircle, AlertCircle, Shield } from "lucide-react";
 
 export default function AccountWalletPage() {
-  const { user } = useDevUser();
-  const [balance, setBalance] = useState<string>("0");
+  const {
+    authenticated,
+    displayAddress,
+    walletAddress,
+    profile,
+    balance,
+    refetchBalance,
+    embeddedWallet,
+    chainError,
+  } = useAccount();
+
+  const { user: devUser } = useDevUser();
   const [minting, setMinting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const fetchBalance = () => {
-    if (!user) return;
-    fetch("/api/account/faucet", {
-      headers: { "x-dev-user": user.username },
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.balanceUSDC) {
-          setBalance(data.balanceUSDC);
-        }
-      })
-      .catch((err) => console.error("Error loading balance:", err));
-  };
+  const activeUser = profile || (authenticated ? {
+    displayName: "Authenticated Member",
+    username: "pending_profile",
+    walletAddress: (walletAddress || "0x...") as `0x${string}`,
+  } : devUser);
 
-  useEffect(() => {
-    fetchBalance();
-  }, [user]);
+  const currentAddress = displayAddress || activeUser?.walletAddress;
 
   const handleMint = async () => {
-    if (!user) return;
     setMinting(true);
     setMessage(null);
+    setErrorMsg(null);
 
     try {
-      const res = await fetch("/api/account/faucet", {
-        method: "POST",
-        headers: { "x-dev-user": user.username },
-      });
-      const data = await res.json();
-      if (data.balanceUSDC) {
-        setBalance(data.balanceUSDC);
+      if (embeddedWallet) {
+        // Gasless paymaster mint via Biconomy / AddMoneyProvider
+        await defaultAddMoneyProvider.mintMockUSDC(embeddedWallet, 1000_000000n);
+        await refetchBalance();
         setMessage("Successfully minted 1,000 MockUSDC via gasless paymaster faucet.");
+      } else {
+        // Fallback for dev fixture mode
+        const target = activeUser?.username || "asharao01";
+        const res = await fetch("/api/account/faucet", {
+          method: "POST",
+          headers: { "x-dev-user": target },
+        });
+        const data = await res.json();
+        if (data.balanceUSDC) {
+          await refetchBalance();
+          setMessage("Successfully minted 1,000 MockUSDC via gasless paymaster faucet.");
+        }
       }
     } catch (err: any) {
-      setMessage("Failed to mint from faucet.");
+      console.error("Mint error:", err);
+      setErrorMsg(err.message || "Failed to mint from faucet.");
     } finally {
       setMinting(false);
     }
@@ -70,11 +83,18 @@ export default function AccountWalletPage() {
             <div>
               <h1 className="text-2xl font-bold text-white tracking-tight">Smart Vault Custody</h1>
               <p className="text-xs text-neutral-400 mt-0.5">
-                ERC4337 Account: <span className="text-white font-semibold">{user?.displayName}</span> (@{user?.username})
+                ERC4337 Account: <span className="text-white font-semibold">{activeUser?.displayName}</span> (@{activeUser?.username})
               </p>
             </div>
           </div>
         </div>
+
+        {chainError && (
+          <div className="p-4 rounded-2xl bg-amber-950/60 border border-amber-800/50 text-amber-300 text-xs flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0 text-amber-400" />
+            <span>{chainError}</span>
+          </div>
+        )}
 
         {/* High End Luxury Metal Card Visual inspired by Xapo Bank */}
         <div className="relative rounded-3xl bg-gradient-to-br from-neutral-900 via-neutral-950 to-red-950/40 p-8 border border-neutral-800 shadow-2xl space-y-6 overflow-hidden">
@@ -99,7 +119,7 @@ export default function AccountWalletPage() {
           <div className="pt-4 border-t border-neutral-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
             <div>
               <span className="text-[10px] uppercase tracking-wider text-neutral-500 block">Onchain Identity</span>
-              <span className="font-mono text-neutral-300 break-all text-[11px]">{user?.walletAddress}</span>
+              <span className="font-mono text-neutral-300 break-all text-[11px]">{currentAddress}</span>
             </div>
           </div>
         </div>
@@ -120,6 +140,13 @@ export default function AccountWalletPage() {
           <div className="p-4 rounded-2xl bg-emerald-950/60 border border-emerald-800/50 text-emerald-300 text-xs flex items-center gap-2">
             <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
             <span>{message}</span>
+          </div>
+        )}
+
+        {errorMsg && (
+          <div className="p-4 rounded-2xl bg-red-950/60 border border-red-800/50 text-red-300 text-xs flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+            <span>{errorMsg}</span>
           </div>
         )}
       </div>

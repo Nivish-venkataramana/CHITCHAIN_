@@ -3,18 +3,24 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, User, CheckCircle2, AlertCircle, Shield } from "lucide-react";
+import { getAccessToken } from "@privy-io/react-auth";
+import { useAccount } from "@/hooks/useAccount";
+import { useDevUser } from "@/components/providers";
+import { ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react";
 import { validateUsername } from "@/lib/username-rule";
 
 export default function CreateAccountProfilePage() {
   const router = useRouter();
+  const { authenticated, refetchProfile, login } = useAccount();
+  const { user: devUser, setUser: setDevUser } = useDevUser();
+
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Live validation
+  // Live validation (§7.5)
   const validation = validateUsername(displayName, username);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -29,33 +35,45 @@ export default function CreateAccountProfilePage() {
     setSuccess(null);
 
     try {
-      // Deterministic mock smart account address for demo
-      const randomHex = Array.from({ length: 40 }, () =>
-        Math.floor(Math.random() * 16).toString(16)
-      ).join("");
-      const generatedWallet: `0x${string}` = `0x${randomHex}`;
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
 
-      const res = await fetch("/api/account/create", {
+      if (authenticated) {
+        const token = await getAccessToken();
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+      } else if (devUser) {
+        headers["x-dev-user"] = devUser.username;
+      }
+
+      const res = await fetch("/api/users", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           displayName: displayName.trim(),
           username: username.toLowerCase().trim(),
-          walletAddress: generatedWallet,
         }),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Failed to create account");
+        throw new Error(data.error || "Failed to create account profile");
       }
+
+      // Update local state and TanStack profile cache
+      if (setDevUser) {
+        setDevUser(data);
+      }
+      await refetchProfile();
 
       setSuccess(`Account @${data.username} created and bound to smart account wallet!`);
       setTimeout(() => {
         router.push("/account/wallet");
       }, 1200);
     } catch (err: any) {
-      setError(err.message || "Failed to create account");
+      setError(err.message || "Failed to create account profile");
     } finally {
       setSubmitting(false);
     }

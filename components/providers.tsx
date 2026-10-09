@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { UserProfile } from "@/handoffs/user-profile";
+import { AccountPrivyProvider } from "@/features/account/providers";
 
 const UserContext = createContext<{
   user: UserProfile | null;
@@ -19,7 +20,17 @@ export function useDevUser() {
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            refetchOnWindowFocus: false,
+            staleTime: 5000,
+          },
+        },
+      })
+  );
   const [user, setUser] = useState<UserProfile | null>(null);
   const [users, setUsers] = useState<UserProfile[]>([]);
 
@@ -50,10 +61,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <UserContext.Provider value={{ user, setUser: handleSetUser, users }}>
-        {children}
-      </UserContext.Provider>
-    </QueryClientProvider>
+    <AccountPrivyProvider>
+      <QueryClientProvider client={queryClient}>
+        <UserContext.Provider value={{ user, setUser: handleSetUser, users }}>
+          {children}
+        </UserContext.Provider>
+      </QueryClientProvider>
+    </AccountPrivyProvider>
   );
 }

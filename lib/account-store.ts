@@ -1,6 +1,7 @@
 import usersFixture from "@/handoffs/fixtures/users.json";
 import { UserProfile } from "@/handoffs/user-profile";
 import { validateUsername, norm } from "./username-rule";
+import { addUserProfile } from "./users";
 import { getFinalizedCircle, getMemberBalance } from "./circles-store";
 
 export interface UserRecord extends UserProfile {
@@ -84,6 +85,11 @@ export async function createUserAccount(params: {
   };
 
   usersDb.push(newUser);
+  addUserProfile({
+    username: cleanUser,
+    walletAddress: params.walletAddress,
+    displayName: params.displayName.trim(),
+  });
   userBalances[cleanWallet] = 1000_000000n; // Grant initial 1,000 test USDC
 
   return newUser;
