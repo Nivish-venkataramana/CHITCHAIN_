@@ -54,9 +54,24 @@ export default function CreateCirclePage() {
     ? userEmail.split("@")[0]
     : user?.displayName || dynamicUsername;
 
-  // Fetch creator's live balance
+  // Fetch creator's live balance (matching navbar & smart account balance)
   const fetchBalance = useCallback(async () => {
     setLoadingBalance(true);
+    const targetUser = dynamicUsername || user?.username || "asharao01";
+    try {
+      const res = await fetch("/api/account/faucet", {
+        headers: { "x-dev-user": targetUser },
+      });
+      const data = await res.json();
+      if (data?.balanceUSDC !== undefined) {
+        setCreatorBalance(Number(data.balanceUSDC));
+        setLoadingBalance(false);
+        return;
+      }
+    } catch (err) {
+      console.warn("Account balance fetch notice:", err);
+    }
+
     if (activeWalletAddress && /^0x[a-f0-9]{40}$/i.test(activeWalletAddress)) {
       try {
         const rawBalance = await publicClient.readContract({
@@ -69,46 +84,40 @@ export default function CreateCirclePage() {
         setCreatorBalance(parsed);
         setLoadingBalance(false);
         return;
-      } catch (err) {
-        console.warn("On-chain balance read notice:", err);
-      }
+      } catch {}
     }
 
-    // Fallback to in-memory fixture balance
-    const targetUser = dynamicUsername || "asharao01";
-    try {
-      const res = await fetch("/api/account/faucet", {
-        headers: { "x-dev-user": targetUser },
-      });
-      const data = await res.json();
-      if (data?.balanceUSDC !== undefined) {
-        setCreatorBalance(Number(data.balanceUSDC));
-      } else {
-        setCreatorBalance(10000);
-      }
-    } catch {
-      setCreatorBalance(10000);
-    }
+    setCreatorBalance(0);
     setLoadingBalance(false);
-  }, [activeWalletAddress, dynamicUsername]);
+  }, [activeWalletAddress, dynamicUsername, user?.username]);
 
   useEffect(() => {
     fetchBalance();
+    const handleBalanceUpdate = () => {
+      fetchBalance();
+    };
+    window.addEventListener("balance_updated", handleBalanceUpdate);
+    return () => {
+      window.removeEventListener("balance_updated", handleBalanceUpdate);
+    };
   }, [fetchBalance]);
 
   const handleQuickMint = async () => {
     setIsMinting(true);
     setError(null);
     try {
+      const targetUser = dynamicUsername || user?.username || "asharao01";
       const res = await fetch("/api/account/faucet", {
         method: "POST",
-        headers: { "x-dev-user": dynamicUsername },
+        headers: { "Content-Type": "application/json", "x-dev-user": targetUser },
+        body: JSON.stringify({ amount: 1000 }),
       });
       const data = await res.json();
       if (data?.balanceUSDC !== undefined) {
         setCreatorBalance(Number(data.balanceUSDC));
       }
       await fetchBalance();
+      window.dispatchEvent(new Event("balance_updated"));
     } catch (err: any) {
       console.error("Quick mint error:", err);
     } finally {
