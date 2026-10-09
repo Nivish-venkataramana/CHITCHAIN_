@@ -73,6 +73,10 @@ export function Navbar() {
 
   const unreadCount = notifications.filter((n) => !n.readAt).length;
 
+  if (pathname === "/") {
+    return null;
+  }
+
   return (
     <header className="sticky top-0 z-50 w-full bg-black/80 backdrop-blur-xl border-b border-neutral-900/60">
       <div className="container mx-auto flex h-24 items-center justify-between px-6 max-w-7xl">
@@ -97,7 +101,7 @@ export function Navbar() {
 
         {/* Center: Luxury ChitChain Logo */}
         <div className="flex flex-col items-center justify-center">
-          <Link href="/" className="flex items-center gap-3 group">
+          <Link href="/home" className="flex items-center gap-3 group">
             <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-amber-600 via-orange-600 to-red-600 flex items-center justify-center shadow-lg shadow-orange-950/50 group-hover:scale-105 transition-transform duration-300">
               <span className="font-bold text-white text-base">₹</span>
             </div>
