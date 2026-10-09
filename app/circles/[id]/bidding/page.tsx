@@ -12,6 +12,12 @@ import {
   Sparkles,
   AlertCircle,
   CheckCircle2,
+  Users,
+  Coins,
+  ArrowRight,
+  RotateCcw,
+  Shield,
+  Eye,
 } from "lucide-react";
 import { fromBaseUnits } from "@/lib/validation";
 import { deriveDemoSalt } from "@/lib/bidding-store";
@@ -88,8 +94,9 @@ export default function BiddingModulePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to commit bid");
 
+      // Save locally for 1 Click Reveal
       localStorage.setItem(`chitchain_bid_${circleId}_${user.username}`, bidAmount);
-      setSuccessMsg("Secret bid committed.");
+      setSuccessMsg("Secret bid hashed and committed to Base Sepolia vault");
       loadBiddingState();
     } catch (err: any) {
       setError(err.message || "Failed to commit bid");
@@ -120,7 +127,7 @@ export default function BiddingModulePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to reveal bid");
 
-      setSuccessMsg("Bid revealed.");
+      setSuccessMsg("Bid revealed and verified onchain");
       loadBiddingState();
     } catch (err: any) {
       setError(err.message || "Failed to reveal bid");
@@ -137,7 +144,7 @@ export default function BiddingModulePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to settle auction");
 
-      setSuccessMsg("Auction settled. Winner paid and dividend carried.");
+      setSuccessMsg("Auction settled! Winner paid onchain and dividend carried.");
       loadBiddingState();
     } catch (err: any) {
       setError(err.message || "Failed to settle auction");
@@ -148,8 +155,8 @@ export default function BiddingModulePage() {
 
   if (loading) {
     return (
-      <div className="p-16 text-center text-sm text-neutral-500 glass-panel rounded-3xl">
-        Loading auction...
+      <div className="p-16 text-center text-sm text-neutral-500 bg-neutral-950 rounded-3xl border border-neutral-900">
+        Loading confidential bidding auction...
       </div>
     );
   }
@@ -158,35 +165,35 @@ export default function BiddingModulePage() {
   const floorUSDC = state ? fromBaseUnits(state.floorBid) : "2000";
 
   return (
-    <div className="max-w-3xl mx-auto py-8 space-y-8">
+    <div className="max-w-4xl mx-auto py-8 px-6 space-y-8 text-neutral-100">
       <Link
         href={`/circles/${circleId}`}
-        className="inline-flex items-center gap-2 text-xs text-neutral-400 hover:text-white transition-colors"
+        className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-400 hover:text-white transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to circle
+        <span>Return to Circle</span>
       </Link>
 
-      <div className="rounded-3xl glass-panel-glow p-8 space-y-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-2xl">
-              <Lock className="h-5 w-5" />
+      <div className="rounded-3xl border border-neutral-900 bg-neutral-950 p-8 shadow-2xl space-y-8 relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-900 pb-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3.5 bg-red-600/10 border border-red-600/20 text-red-400 rounded-2xl">
+              <Lock className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white tracking-tight">Secret Bidding</h1>
-              <p className="text-xs text-neutral-400">
-                Commit-Reveal Auction
+              <h1 className="text-2xl font-bold text-white tracking-tight">Confidential Sealed Auction</h1>
+              <p className="text-xs text-neutral-400 mt-0.5">
+                Commit and Reveal Scheme on Base Sepolia
               </p>
             </div>
           </div>
           <span
-            className={`px-3.5 py-1 rounded-full text-xs font-medium border ${
+            className={`px-4 py-1.5 rounded-full text-xs font-bold font-mono uppercase tracking-wider ${
               state?.phase === "Settled"
-                ? "bg-emerald-950/40 text-emerald-300 border-emerald-500/30"
+                ? "bg-emerald-950 text-emerald-300 border border-emerald-800/60"
                 : state?.phase === "Reveal"
-                ? "bg-amber-950/40 text-amber-300 border-amber-500/30"
-                : "bg-neutral-800 text-neutral-300 border-white/10"
+                ? "bg-amber-950 text-amber-300 border border-amber-800/60"
+                : "bg-red-950 text-red-300 border border-red-800/60"
             }`}
           >
             Phase: {state?.phase}
@@ -194,38 +201,43 @@ export default function BiddingModulePage() {
         </div>
 
         {error && (
-          <div className="p-4 rounded-2xl bg-red-950/40 border border-red-500/30 text-red-300 text-xs flex items-center gap-2">
+          <div className="p-4 rounded-2xl bg-red-950/60 border border-red-800/50 text-red-300 text-xs flex items-center gap-2.5">
             <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
             <span>{error}</span>
           </div>
         )}
 
         {successMsg && (
-          <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
+          <div className="p-4 rounded-2xl bg-emerald-950/60 border border-emerald-800/50 text-emerald-300 text-xs flex items-center gap-2.5">
             <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
             <span>{successMsg}</span>
           </div>
         )}
 
-        {/* Rules */}
-        <div className="grid grid-cols-2 gap-4 text-xs">
-          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5">
-            <span className="text-neutral-500 block text-[11px]">Floor Bid (50%):</span>
-            <span className="font-bold text-white text-base mt-1 block">{floorUSDC} USDC</span>
+        {/* Bidding Rules Info */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="p-6 rounded-2xl bg-neutral-900/80 border border-neutral-800 space-y-1">
+            <span className="text-[11px] uppercase tracking-wider text-neutral-400 block font-semibold">Minimum Floor Bid (50%)</span>
+            <span className="font-bold text-white text-2xl font-mono block mt-1">{floorUSDC} <span className="text-xs text-neutral-400 font-normal">USDC</span></span>
           </div>
-          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5">
-            <span className="text-neutral-500 block text-[11px]">Total Pool:</span>
-            <span className="font-bold text-white text-base mt-1 block">{poolUSDC} USDC</span>
+          <div className="p-6 rounded-2xl bg-neutral-900/80 border border-neutral-800 space-y-1">
+            <span className="text-[11px] uppercase tracking-wider text-neutral-400 block font-semibold">Total Round Pot in Vault</span>
+            <span className="font-bold text-white text-2xl font-mono block mt-1">{poolUSDC} <span className="text-xs text-neutral-400 font-normal">USDC</span></span>
           </div>
         </div>
 
-        {/* Stages */}
+        {/* Dynamic State Stages */}
         {state?.phase === "Commit" && (
-          <div className="rounded-2xl border border-white/10 p-6 bg-white/[0.02] space-y-4">
-            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-              <Lock className="h-4 w-4 text-emerald-400" />
-              Commit Secret Bid
-            </h3>
+          <div className="rounded-3xl border border-neutral-900 bg-neutral-900/40 p-8 space-y-6">
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Lock className="h-5 w-5 text-red-500" />
+                <span>Submit Your Confidential Bid</span>
+              </h3>
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                Specify the payout pot amount you would accept. Your bid remains cryptographically sealed until the reveal window opens.
+              </p>
+            </div>
 
             {!userBid ? (
               <div className="space-y-4">
@@ -235,31 +247,31 @@ export default function BiddingModulePage() {
                     value={bidAmount}
                     onChange={(e) => setBidAmount(e.target.value)}
                     placeholder="3800"
-                    className="w-full rounded-xl glass-input pl-4 pr-16 py-3 text-sm focus:outline-none"
+                    className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 pl-4 pr-16 py-4 text-base text-white focus:outline-none focus:border-red-500 font-mono"
                   />
-                  <span className="absolute right-4 top-3.5 text-xs font-semibold text-neutral-500">
+                  <span className="absolute right-4 top-4 text-xs font-bold text-neutral-500">
                     USDC
                   </span>
                 </div>
                 <button
                   onClick={handleCommit}
                   disabled={submitting}
-                  className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all cursor-pointer"
+                  className="w-full py-4 rounded-2xl bg-white hover:bg-neutral-200 text-black font-bold text-xs uppercase tracking-wider shadow-xl shadow-white/5 transition-all cursor-pointer"
                 >
-                  {submitting ? "Committing..." : "Commit Secret Bid"}
+                  {submitting ? "Hashing and Committing..." : "Hash and Commit Secret Bid"}
                 </button>
               </div>
             ) : (
-              <div className="p-5 bg-emerald-950/20 rounded-xl border border-emerald-500/20 space-y-2 text-xs">
-                <div className="flex items-center gap-2 text-emerald-300 font-semibold">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                  Your bid is committed.
+              <div className="p-6 bg-neutral-950 rounded-2xl border border-neutral-800 space-y-3 text-xs">
+                <div className="flex items-center gap-2 text-emerald-400 font-bold">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>Bid successfully committed for Cycle {state.cycle}</span>
                 </div>
                 <p className="text-[11px] font-mono text-neutral-500 break-all">
-                  Commitment: {userBid.commitment}
+                  Commitment Hash: {userBid.commitment}
                 </p>
-                <p className="text-neutral-400 text-[11px]">
-                  {state.bids.length} of 4 members committed.
+                <p className="text-xs text-neutral-400">
+                  {state.bids.length} of 4 members committed. Waiting for all members before reveal opens.
                 </p>
               </div>
             )}
@@ -267,82 +279,83 @@ export default function BiddingModulePage() {
         )}
 
         {state?.phase === "Reveal" && (
-          <div className="rounded-2xl border border-amber-500/30 p-6 bg-amber-950/10 space-y-4">
+          <div className="rounded-3xl border border-neutral-900 bg-neutral-900/40 p-8 space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                <Unlock className="h-4 w-4 text-amber-400" />
-                Reveal Phase
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Unlock className="h-5 w-5 text-amber-400" />
+                <span>1 Click Reveal Active</span>
               </h3>
-              <span className="text-xs text-neutral-400">
-                {state.bids.filter((b) => b.revealed).length} / {state.bids.length} Revealed
+              <span className="text-xs text-neutral-400 font-mono">
+                {state.bids.filter((b) => b.revealed).length} of {state.bids.length} Revealed
               </span>
             </div>
 
-            <p className="text-xs text-neutral-300 leading-relaxed">
-              Unrevealed bids are discarded during settlement.
+            <p className="text-xs text-amber-300/80 leading-relaxed bg-amber-950/30 p-4 rounded-2xl border border-amber-800/40">
+              Important: Bids must be revealed to be eligible for payout. Unrevealed bids are permanently discarded during settlement.
             </p>
 
             {!userBid?.revealed ? (
               <button
                 onClick={handle1ClickReveal}
                 disabled={submitting}
-                className="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold text-xs shadow transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-4 rounded-2xl bg-white hover:bg-neutral-200 text-black font-bold text-xs uppercase tracking-wider shadow-xl shadow-white/5 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <Sparkles className="h-4 w-4" />
-                {submitting ? "Revealing..." : "Reveal Secret Bid"}
+                <Sparkles className="h-4 w-4 text-red-600" />
+                <span>{submitting ? "Re deriving Salt..." : "1 Click Reveal (Deterministic Salt Recovery)"}</span>
               </button>
             ) : (
-              <div className="p-4 bg-emerald-950/20 rounded-xl border border-emerald-500/20 text-xs text-emerald-300 font-medium flex items-center gap-2">
+              <div className="p-4 bg-emerald-950/40 border border-emerald-800/40 rounded-2xl text-xs text-emerald-300 font-semibold flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                Revealed: {fromBaseUnits(userBid.amount!)} USDC
+                <span>Your bid of {fromBaseUnits(userBid.amount!)} USDC has been verified onchain</span>
               </div>
             )}
 
-            <div className="border-t border-white/10 pt-4">
+            <div className="border-t border-neutral-900 pt-4">
               <button
                 onClick={handleSettle}
                 disabled={submitting}
-                className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs shadow transition-colors"
+                className="w-full py-3.5 rounded-2xl bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-wider border border-neutral-800 transition-all cursor-pointer"
               >
-                Settle Auction →
+                Settle Auction Pot and Pick Winner
               </button>
             </div>
           </div>
         )}
 
         {state?.phase === "Settled" && state.winner && (
-          <div className="rounded-2xl border border-emerald-500/30 p-6 bg-emerald-950/20 space-y-4">
-            <h3 className="text-base font-semibold text-white flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-emerald-400" />
-              Auction Settled
+          <div className="rounded-3xl border border-neutral-900 bg-neutral-900/40 p-8 space-y-6">
+            <h3 className="text-xl font-bold text-white flex items-center gap-2.5">
+              <Trophy className="h-6 w-6 text-emerald-400" />
+              <span>Auction Settled: Winner Selected</span>
             </h3>
 
-            <div className="grid grid-cols-2 gap-4 bg-black/40 rounded-xl p-5 border border-white/5 text-xs">
-              <div>
-                <span className="text-neutral-500 block">Winner:</span>
-                <span className="font-semibold text-emerald-400 text-sm mt-0.5 block">
+            <div className="grid sm:grid-cols-2 gap-4 bg-neutral-950 rounded-2xl p-6 border border-neutral-800 text-xs">
+              <div className="space-y-1">
+                <span className="text-neutral-400 block uppercase tracking-wider text-[10px]">Winning Member</span>
+                <span className="font-bold text-emerald-400 text-lg block font-mono">
                   @{state.winner.username}
                 </span>
                 <span className="font-mono text-[10px] text-neutral-500">
-                  {state.winner.wallet.slice(0, 6)}...{state.winner.wallet.slice(-4)}
+                  {state.winner.wallet.slice(0, 8)}...{state.winner.wallet.slice(-6)}
                 </span>
               </div>
-              <div>
-                <span className="text-neutral-500 block">Winning Payout:</span>
-                <span className="font-semibold text-emerald-400 text-sm mt-0.5 block">
+              <div className="space-y-1">
+                <span className="text-neutral-400 block uppercase tracking-wider text-[10px]">Winning Payout Pot</span>
+                <span className="font-bold text-white text-lg block font-mono">
                   {fromBaseUnits(state.winner.amount)} USDC
                 </span>
-                <span className="text-[11px] text-neutral-400">
-                  + {fromBaseUnits(state.winner.dividend)} USDC Dividend Carried
+                <span className="text-[11px] text-red-400 font-medium font-mono">
+                  +{fromBaseUnits(state.winner.dividend)} USDC Carried to Month 2
                 </span>
               </div>
             </div>
 
             <Link
               href={`/circles/${circleId}/pool`}
-              className="inline-block text-xs font-semibold text-emerald-400 hover:text-emerald-300"
+              className="inline-flex items-center gap-2 text-xs font-bold text-white hover:text-red-400 uppercase tracking-wider"
             >
-              View Next Month Pool →
+              <span>View Month 2 Pool in Vault</span>
+              <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
         )}

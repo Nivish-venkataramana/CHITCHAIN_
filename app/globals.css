@@ -6,7 +6,7 @@
   :root {
     --background: 0 0% 0%;
     --foreground: 0 0% 98%;
-    --card: 0 0% 3%;
+    --card: 0 0% 4%;
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 4%;
     --popover-foreground: 0 0% 98%;
@@ -40,24 +40,26 @@
 
 /* Transparent Glass Panels */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.02);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  transform: translateZ(0);
 }
 
 .glass-panel-glow {
-  background: rgba(255, 255, 255, 0.025);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(16, 185, 129, 0.2);
-  box-shadow: 0 0 35px -8px rgba(16, 185, 129, 0.18);
+  box-shadow: 0 0 30px -8px rgba(16, 185, 129, 0.18);
+  transform: translateZ(0);
 }
 
 .glass-panel-glow:hover {
   border-color: rgba(16, 185, 129, 0.35);
-  box-shadow: 0 0 40px -5px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 0 35px -5px rgba(16, 185, 129, 0.25);
 }
 
 /* Underline Floating Label Inputs */
@@ -108,4 +110,71 @@
 
 .line-input:not(:focus):not(:placeholder-shown) ~ .line-label {
   color: rgba(255, 255, 255, 0.5);
+}
+
+/* 3D Smooth Moving & Floating Coin Animations */
+@keyframes giantCoinDrift {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  25% {
+    transform: translate3d(-15px, -20px, 0) rotate(2deg) scale(1.02);
+  }
+  50% {
+    transform: translate3d(-25px, 15px, 0) rotate(-1deg) scale(1.04);
+  }
+  75% {
+    transform: translate3d(10px, -15px, 0) rotate(-3deg) scale(1.01);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+}
+
+@keyframes coinFloatSlow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-28px) rotate(8deg);
+  }
+}
+
+@keyframes coinFloatMedium {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translateY(-20px) rotate(-12deg) scale(1.08);
+  }
+}
+
+@keyframes shimmerPass {
+  0% {
+    transform: translateX(-150%) rotate(45deg);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateX(200%) rotate(45deg);
+    opacity: 0;
+  }
+}
+
+.animate-giant-coin {
+  animation: giantCoinDrift 20s ease-in-out infinite;
+}
+
+.animate-coin-slow {
+  animation: coinFloatSlow 7s ease-in-out infinite;
+}
+
+.animate-coin-medium {
+  animation: coinFloatMedium 5.5s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  animation: shimmerPass 8s ease-in-out infinite;
 }

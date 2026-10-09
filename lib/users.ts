@@ -28,6 +28,14 @@ export function getUserByWallet(address: string): UserProfile | undefined {
   return users.find((u) => u.walletAddress.toLowerCase() === norm);
 }
 
+export function addUser(user: UserProfile) {
+  const norm = user.username.toLowerCase().trim();
+  const exists = users.some((u) => u.username.toLowerCase() === norm);
+  if (!exists) {
+    users.push(user);
+  }
+}
+
 export function getSessionUser(reqOrHeaders?: Headers | Request): UserProfile {
   let devUserHeader: string | null = null;
   if (reqOrHeaders instanceof Request) {

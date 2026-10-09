@@ -2,44 +2,53 @@
 
 import Link from "next/link";
 import { useDevUser } from "@/components/providers";
-import { KeyRound } from "lucide-react";
+import { KeyRound, Shield, Wallet, ArrowRight } from "lucide-react";
 
 export default function AccountLoginPage() {
   const { user } = useDevUser();
 
   return (
-    <div className="max-w-md mx-auto py-16 space-y-8 text-center">
-      <div className="h-16 w-16 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-3xl flex items-center justify-center mx-auto shadow-lg shadow-emerald-950/40">
+    <div className="max-w-md mx-auto py-16 px-6 space-y-8 text-center text-neutral-100">
+      <div className="h-16 w-16 bg-red-600/10 border border-red-600/20 text-red-400 rounded-3xl flex items-center justify-center mx-auto shadow-xl">
         <KeyRound className="h-8 w-8" />
       </div>
 
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold text-white tracking-tight">Smart Account Wallet</h1>
+        <span className="text-xs uppercase tracking-widest font-bold text-red-500">
+          Smart Account Access
+        </span>
+        <h1 className="text-3xl font-bold text-white tracking-tight">Custodial Authentication</h1>
         <p className="text-xs text-neutral-400">
-          Privy session authentication and Biconomy smart accounts on Base Sepolia.
+          Privy Auth and Biconomy Smart Account on Base Sepolia
         </p>
       </div>
 
-      <div className="glass-panel p-6 space-y-5 text-left text-xs">
-        <div className="p-4 bg-neutral-900/60 rounded-xl border border-white/5 space-y-2">
-          <p className="text-[11px] font-medium text-neutral-400">Active Profile</p>
-          <p className="font-bold text-emerald-400 text-sm">{user?.displayName}</p>
+      <div className="rounded-3xl border border-neutral-900 bg-neutral-950 p-8 shadow-2xl space-y-6 text-left text-xs">
+        <div className="p-4 bg-neutral-900/80 rounded-2xl border border-neutral-800 space-y-1.5">
+          <p className="font-semibold text-neutral-400 uppercase tracking-wider text-[10px]">Active Member Session</p>
+          <p className="font-bold text-white text-base">{user?.displayName}</p>
           <p className="font-mono text-neutral-400">@{user?.username}</p>
           <p className="font-mono text-[11px] text-neutral-500 break-all">{user?.walletAddress}</p>
         </div>
 
         <div className="space-y-3 pt-2">
           <Link
-            href="/account/wallet"
-            className="block w-full text-center py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-all shadow-lg shadow-emerald-900/30"
+            href="/login"
+            className="w-full text-center py-4 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs uppercase tracking-wider transition-all block shadow-lg shadow-amber-500/20"
           >
-            Open Wallet
+            Sign In with Privy Wallet
+          </Link>
+          <Link
+            href="/account/wallet"
+            className="w-full text-center py-3.5 rounded-2xl bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-wider transition-all block border border-neutral-800"
+          >
+            Access Smart Vault Wallet
           </Link>
           <Link
             href="/account/create"
-            className="block w-full text-center py-3 rounded-xl border border-white/10 hover:bg-white/5 text-neutral-300 font-semibold transition-colors"
+            className="w-full text-center py-3.5 rounded-2xl border border-neutral-800 hover:bg-neutral-900 text-neutral-300 hover:text-white font-bold text-xs uppercase tracking-wider transition-all block"
           >
-            Create New Profile
+            Create New Account Profile
           </Link>
         </div>
       </div>

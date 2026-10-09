@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Navbar } from "@/components/navbar";
+import { Footer } from "@/components/footer";
 
 export const metadata: Metadata = {
-  title: "ChitChain — Decentralized Chit Funds",
-  description: "Peer-to-peer chit funds on Base Sepolia powered by smart accounts and commit-reveal auctions.",
+  title: "ChitChain • Private Wealth Circles",
+  description: "Decentralized chit funds powered by smart accounts and confidential auctions.",
 };
 
 export default function RootLayout({
@@ -14,17 +15,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className="min-h-screen bg-black text-neutral-100 antialiased flex flex-col font-sans selection:bg-emerald-500/30 selection:text-emerald-200">
-        <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.12),rgba(255,255,255,0))]" />
+    <html lang="en" className="dark bg-black">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Syne:wght@600;700;800&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="min-h-screen bg-black text-neutral-100 antialiased flex flex-col font-sans selection:bg-orange-900 selection:text-white">
         <Providers>
           <Navbar />
-          <main className="flex-1 flex flex-col justify-center container mx-auto px-6 py-4 max-w-5xl relative z-10">
+          <main className="flex-1">
             {children}
           </main>
-          <footer className="py-4 text-center text-xs text-neutral-600 relative z-10">
-            <p>ChitChain • Base Sepolia</p>
-          </footer>
+          <Footer />
         </Providers>
       </body>
     </html>

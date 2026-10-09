@@ -2,11 +2,12 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PrivyProvider } from "@privy-io/react-auth";
 import { UserProfile } from "@/handoffs/user-profile";
 
 const UserContext = createContext<{
   user: UserProfile | null;
-  setUser: (u: UserProfile) => void;
+  setUser: (u: UserProfile | null) => void;
   users: UserProfile[];
 }>({
   user: null,
@@ -17,6 +18,8 @@ const UserContext = createContext<{
 export function useDevUser() {
   return useContext(UserContext);
 }
+
+const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "cmv07umju004s0fjtwjr9l71v";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
@@ -44,16 +47,33 @@ export function Providers({ children }: { children: React.ReactNode }) {
       .catch((err) => console.error("Error loading users:", err));
   }, []);
 
-  const handleSetUser = (u: UserProfile) => {
+  const handleSetUser = (u: UserProfile | null) => {
     setUser(u);
-    localStorage.setItem("chitchain_dev_user", u.username);
+    if (u) {
+      localStorage.setItem("chitchain_dev_user", u.username);
+    } else {
+      localStorage.removeItem("chitchain_dev_user");
+    }
   };
 
   return (
     <QueryClientProvider client={queryClient}>
-      <UserContext.Provider value={{ user, setUser: handleSetUser, users }}>
-        {children}
-      </UserContext.Provider>
+      <PrivyProvider
+        appId={PRIVY_APP_ID}
+        config={{
+          appearance: {
+            theme: "dark",
+            accentColor: "#10b981",
+          },
+          embeddedWallets: {
+            createOnLogin: "users-without-wallets",
+          },
+        }}
+      >
+        <UserContext.Provider value={{ user, setUser: handleSetUser, users }}>
+          {children}
+        </UserContext.Provider>
+      </PrivyProvider>
     </QueryClientProvider>
   );
 }
