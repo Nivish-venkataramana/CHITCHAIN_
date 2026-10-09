@@ -62,14 +62,14 @@ export default function HomePage() {
       <FloatingCoinsBackground />
 
       {/* Main Hero Section */}
-      <section className="relative z-10 max-w-7xl mx-auto px-6 pt-16 sm:pt-24 lg:pt-28 pb-16">
-        <div className="max-w-2xl lg:max-w-3xl space-y-8">
+      <section className="relative z-10 max-w-7xl mx-auto px-6 pt-8 sm:pt-12 lg:pt-14 pb-12">
+        <div className="max-w-2xl lg:max-w-3xl space-y-6">
           
           {/* Top Quick Trigger to return to 3D ChitVaults View */}
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-950/60 hover:bg-orange-900/80 border border-orange-500/40 text-orange-300 text-xs font-mono tracking-wider transition-all duration-300 shadow-lg shadow-orange-950/50 cursor-pointer group"
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-950/60 hover:bg-orange-900/80 border border-orange-500/40 text-orange-300 text-xs font-mono tracking-wider transition-all duration-300 shadow-lg shadow-orange-950/50 cursor-pointer group"
             >
               <Box className="w-3.5 h-3.5 text-orange-400 group-hover:rotate-45 transition-transform duration-300" />
               <span>Launch 3D ChitVaults View</span>
@@ -77,20 +77,20 @@ export default function HomePage() {
           </div>
 
           {/* Main Hero Headline */}
-          <h1 className="text-5xl sm:text-7xl lg:text-8xl font-extrabold tracking-tight text-white leading-[1.04]">
+          <h1 className="text-3xl sm:text-5xl lg:text-5xl font-extrabold tracking-tight text-white leading-[1.14]">
             Chit funds for India. 0% commission on pool.
           </h1>
 
           {/* Subtitle */}
-          <p className="text-base sm:text-lg lg:text-xl text-neutral-300 font-normal leading-relaxed max-w-2xl">
+          <p className="text-sm sm:text-base lg:text-lg text-neutral-300 font-normal leading-relaxed max-w-2xl">
             The decentralized chit fund protocol on Base Sepolia helps you pool monthly capital with trusted friends and family. Automate pooling via autopay, bid in confidential auctions, and grow wealth together.
           </p>
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap items-center gap-4 pt-4">
+          <div className="flex flex-wrap items-center gap-4 pt-2">
             <Link
               href="/circles/new"
-              className="px-8 py-4 rounded-full bg-gradient-to-r from-orange-600 via-amber-600 to-orange-700 hover:from-orange-500 hover:to-amber-500 text-white font-bold text-sm tracking-wide transition-all shadow-2xl shadow-orange-900/50 flex items-center gap-2.5 transform hover:scale-105 duration-300 cursor-pointer"
+              className="px-6 py-3.5 rounded-full bg-gradient-to-r from-orange-600 via-amber-600 to-orange-700 hover:from-orange-500 hover:to-amber-500 text-white font-bold text-sm tracking-wide transition-all shadow-xl shadow-orange-900/50 flex items-center gap-2 transform hover:scale-105 duration-300 cursor-pointer"
             >
               <span>Start a Chit Circle</span>
               <User className="h-4 w-4" />
@@ -98,7 +98,7 @@ export default function HomePage() {
 
             <Link
               href="/circles"
-              className="px-8 py-4 rounded-full bg-neutral-900/90 hover:bg-neutral-800 text-neutral-200 hover:text-white font-bold text-sm tracking-wide border border-neutral-800 transition-all flex items-center gap-2"
+              className="px-6 py-3.5 rounded-full bg-neutral-900/90 hover:bg-neutral-800 text-neutral-200 hover:text-white font-bold text-sm tracking-wide border border-neutral-800 transition-all flex items-center gap-2"
             >
               <span>Explore Active Chits ({circles.length})</span>
               <ArrowRight className="h-4 w-4" />
@@ -106,7 +106,7 @@ export default function HomePage() {
           </div>
 
           {/* Live Authenticated Member Pill */}
-          <div className="pt-2 flex items-center gap-2 text-xs text-neutral-400 font-mono">
+          <div className="pt-1 flex items-center gap-2 text-xs text-neutral-400 font-mono">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>Active member: <strong className="text-white">{user?.displayName || "Member"}</strong> (@{user?.username})</span>
           </div>
@@ -114,7 +114,7 @@ export default function HomePage() {
         </div>
 
         {/* Real-Time Live Volume Statistics Strip */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-20 pt-8 border-t border-neutral-900">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-12 pt-6 border-t border-neutral-900">
           <div className="p-6 rounded-2xl bg-neutral-950/80 border border-neutral-900 space-y-1.5 backdrop-blur-md">
             <div className="text-xs uppercase tracking-widest text-neutral-400 font-semibold">
               Total Pooled Volume
