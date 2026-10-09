@@ -133,6 +133,93 @@ export function AutoPayAuthorization({
     }
   };
 
+  const [isFastClockRunning, setIsFastClockRunning] = useState(false);
+  const [simulatedDay, setSimulatedDay] = useState(1);
+  const [simulatedMonth, setSimulatedMonth] = useState(1);
+  const [clockEvents, setClockEvents] = useState<string[]>([
+    "System Ready. Start the 1 sec = 1 day clock to observe automated Chainlink keeper triggers and Layer 2 SmartSession debits.",
+  ]);
+
+  // Fast-Forward Clock Effect: 1 second = 1 day, 30 seconds = 1 Month
+  useEffect(() => {
+    if (!isFastClockRunning) return;
+
+    const timer = setInterval(async () => {
+      setSimulatedDay((prevDay) => {
+        const nextDay = prevDay >= 30 ? 1 : prevDay + 1;
+        
+        if (nextDay === 1) {
+          // Month Rollover -> Auto-Pay Trigger Day!
+          setSimulatedMonth((prevMonth) => {
+            const nextMonth = prevMonth + 1;
+            if (nextMonth > durationMonths) {
+              setIsFastClockRunning(false);
+              setClockEvents((prev) => [
+                `🎉 [Cycle Complete] Grand Settlement Reached! Final pot + accumulated Aave V3 dividend pool distributed to final member.`,
+                ...prev.slice(0, 15),
+              ]);
+              return durationMonths;
+            }
+
+            // Execute automated keeper debit for the new month
+            triggerBatchKeeperDebit()
+              .then((res) => {
+                setClockEvents((prev) => [
+                  `⏰ [Month ${nextMonth}, Day 1] Chainlink Upkeep Triggered -> Auto-debited $${monthlyAmountUSDC.toLocaleString()} USDC from all accounts ($${res.totalPooledUSDC.toLocaleString()} USDC total) into Circle Vault!`,
+                  ...prev.slice(0, 15),
+                ]);
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new Event("chitchain_balance_updated"));
+                }
+              })
+              .catch((err) => {
+                setClockEvents((prev) => [
+                  `⚠️ [Month ${nextMonth}, Day 1] Keeper pull attempted: ${err.message}`,
+                  ...prev.slice(0, 15),
+                ]);
+              });
+
+            return nextMonth;
+          });
+        }
+
+        return nextDay;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isFastClockRunning, durationMonths, monthlyAmountUSDC, triggerBatchKeeperDebit]);
+
+  const toggleFastClock = () => {
+    if (!isFastClockRunning) {
+      // If starting at Day 1, trigger the Month 1 primer pull if not yet triggered
+      if (simulatedDay === 1 && simulatedMonth === 1) {
+        triggerBatchKeeperDebit()
+          .then((res) => {
+            setClockEvents((prev) => [
+              `🚀 [Month 1, Day 1] Yield Primer Started -> First month auto-pay debited $${res.totalPooledUSDC.toLocaleString()} USDC into Circle Vault (Aave V3).`,
+              ...prev.slice(0, 15),
+            ]);
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new Event("chitchain_balance_updated"));
+            }
+          })
+          .catch(() => {});
+      }
+    }
+    setIsFastClockRunning(!isFastClockRunning);
+  };
+
+  const resetFastClock = () => {
+    setIsFastClockRunning(false);
+    setSimulatedDay(1);
+    setSimulatedMonth(1);
+    setClockEvents((prev) => [
+      `🔄 Clock reset to Month 1, Day 1.`,
+      ...prev.slice(0, 15),
+    ]);
+  };
+
   return (
     <div className="w-full bg-[#0a0e17] border border-cyan-500/20 rounded-2xl p-6 sm:p-8 text-white shadow-2xl relative overflow-hidden backdrop-blur-xl">
       {/* Background ambient glow */}
@@ -211,6 +298,91 @@ export function AutoPayAuthorization({
             </button>
           )}
         </div>
+      </div>
+
+      {/* Fast-Forward 1 sec = 1 day Interactive Auto-Pay Clock Widget */}
+      <div className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-cyan-950/40 via-blue-950/40 to-purple-950/40 border border-cyan-500/40 shadow-xl">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-3 w-3">
+                {isFastClockRunning && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                )}
+                <span className={`relative inline-flex rounded-full h-3 w-3 ${isFastClockRunning ? "bg-cyan-500" : "bg-gray-500"}`}></span>
+              </span>
+              <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">
+                Fast-Forward Auto-Pay Clock (1 sec = 1 day)
+              </span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-950 text-cyan-300 border border-cyan-500/30">
+                30s = 1 Month
+              </span>
+            </div>
+            <div className="flex items-center gap-4 text-xs">
+              <span className="font-mono text-white text-sm font-bold">
+                Month <span className="text-cyan-400">{simulatedMonth}</span> of {durationMonths}
+              </span>
+              <span className="text-gray-500">•</span>
+              <span className="font-mono text-white text-sm font-bold">
+                Day <span className="text-cyan-400">{simulatedDay}</span> of 30
+              </span>
+              <span className="text-gray-500">•</span>
+              <span className="text-gray-400">
+                Next Auto-Debit in: <strong className="text-emerald-400 font-mono">{30 - simulatedDay === 0 ? 30 : 30 - simulatedDay}s (days)</strong>
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleFastClock}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-lg ${
+                isFastClockRunning
+                  ? "bg-amber-500 hover:bg-amber-400 text-black shadow-amber-500/20"
+                  : "bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-black shadow-cyan-500/20"
+              }`}
+            >
+              {isFastClockRunning ? (
+                <>
+                  <Clock className="w-3.5 h-3.5 animate-spin" />
+                  <span>Pause Clock</span>
+                </>
+              ) : (
+                <>
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>Start Live Clock (1s = 1d)</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={resetFastClock}
+              className="px-3 py-2 rounded-xl border border-gray-700 bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white text-xs font-semibold transition-colors cursor-pointer"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+
+        {/* Progress Bar towards Next Monthly Auto-Pay Pull */}
+        <div className="mt-3 w-full bg-gray-900/80 rounded-full h-2 overflow-hidden border border-gray-800">
+          <div
+            className="bg-gradient-to-r from-cyan-500 via-blue-500 to-emerald-400 h-2 rounded-full transition-all duration-1000"
+            style={{ width: `${(simulatedDay / 30) * 100}%` }}
+          />
+        </div>
+
+        {/* Live Event Ticker */}
+        {clockEvents.length > 0 && (
+          <div className="mt-3 p-2.5 rounded-xl bg-black/60 border border-gray-800 text-[11px] font-mono text-cyan-300/90 max-h-24 overflow-y-auto space-y-1">
+            {clockEvents.slice(0, 4).map((evt, idx) => (
+              <div key={idx} className="flex items-start gap-2">
+                <span className="text-cyan-400 shrink-0">▸</span>
+                <span>{evt}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {memberDebitSuccess && (
