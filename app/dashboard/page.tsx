@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDevUser } from "@/components/providers";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
-import { fromBaseUnits, toBaseUnits, validateCircleParams } from "@/lib/validation";
+import { fromBaseUnits, toBaseUnits, validateCircleParams, calculateTieredDuration } from "@/lib/validation";
 import {
   Plus,
   Layers,
@@ -155,8 +155,7 @@ export default function DashboardPage() {
     setNumPeople(clean);
     const n = parseInt(clean, 10);
     if (!isNaN(n) && n >= 2) {
-      // Auto-set duration to N-1
-      setDurationMonths(String(n - 1));
+      setDurationMonths(String(calculateTieredDuration(n)));
     } else {
       setDurationMonths("");
     }
@@ -181,9 +180,10 @@ export default function DashboardPage() {
       setCreateError("Duration must be at least 1 month.");
       return;
     }
-    const allowedDurations = [parsedNumPeople - 1, parsedNumPeople - 2].filter((d) => d >= 1);
+    const tiered = calculateTieredDuration(parsedNumPeople);
+    const allowedDurations = Array.from(new Set([tiered, parsedNumPeople - 1, parsedNumPeople - 2])).filter((d) => d >= 1);
     if (!allowedDurations.includes(parsedDuration)) {
-      setCreateError(`Duration must be either ${allowedDurations.join(" or ")} months (N-1 or N-2 for ${parsedNumPeople} members).`);
+      setCreateError(`Duration must be valid for this circle size (${tiered} months).`);
       return;
     }
     if (!monthlyAmount.trim() || isNaN(Number(monthlyAmount)) || Number(monthlyAmount) <= 0) {
@@ -348,35 +348,18 @@ export default function DashboardPage() {
 
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-neutral-300">
-                    Duration (Months)
+                    Duration Tenure (Months)
                   </label>
-                  {parseInt(numPeople, 10) >= 2 ? (
-                    <div className="grid grid-cols-2 gap-2">
-                      {[parseInt(numPeople, 10) - 1, parseInt(numPeople, 10) - 2]
-                        .filter((d) => d >= 1)
-                        .map((d) => {
-                          const isSelected = durationMonths === String(d);
-                          const tag = d === parseInt(numPeople, 10) - 1 ? "N - 1" : "N - 2";
-                          return (
-                            <button
-                              key={d}
-                              type="button"
-                              onClick={() => setDurationMonths(String(d))}
-                              className={`py-2 px-3 text-xs font-mono font-semibold rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
-                                isSelected
-                                  ? "border-white bg-white text-black shadow-md"
-                                  : "border-white/10 bg-white/[0.03] text-neutral-300 hover:border-white/30 hover:text-white"
-                              }`}
-                            >
-                              <span className="text-[10px] opacity-75">{tag}</span>
-                              <span className="font-bold">{d} mo</span>
-                            </button>
-                          );
-                        })}
+                  {parseInt(numPeople, 10) >= 2 && durationMonths ? (
+                    <div className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-white/20 bg-white/[0.06] text-white font-mono flex items-center justify-between">
+                      <span className="font-bold">{durationMonths} Months</span>
+                      <span className="text-[11px] text-neutral-400 font-normal">
+                        {durationMonths} monthly cycles
+                      </span>
                     </div>
                   ) : (
                     <div className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-white/10 bg-white/[0.02] text-neutral-500 font-mono flex items-center">
-                      <span>Enter capacity (N ≥ 2)</span>
+                      <span>Enter capacity (min 2) to calculate</span>
                     </div>
                   )}
                 </div>

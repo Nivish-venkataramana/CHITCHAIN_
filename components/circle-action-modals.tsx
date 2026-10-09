@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { X, AlertTriangle, Trash2, Edit3, CheckCircle2, ShieldAlert } from "lucide-react";
-import { fromBaseUnits } from "@/lib/validation";
+import { fromBaseUnits, calculateTieredDuration } from "@/lib/validation";
 import { useDevUser } from "@/components/providers";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 
@@ -61,7 +61,8 @@ export function EditCircleModal({ isOpen, onClose, circle, onSuccess }: EditModa
 
   if (!isOpen || !circle) return null;
 
-  const allowedDurations = [numPeople - 1, numPeople - 2].filter((d) => d >= 1);
+  const tiered = calculateTieredDuration(numPeople);
+  const allowedDurations = Array.from(new Set([tiered, numPeople - 1, numPeople - 2])).filter((d) => d >= 1);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,7 +182,7 @@ export function EditCircleModal({ isOpen, onClose, circle, onSuccess }: EditModa
               >
                 {allowedDurations.map((d) => (
                   <option key={d} value={d}>
-                    {d} Months ({d === numPeople - 1 ? "N-1 default" : "N-2 alternate"})
+                    {d} Months
                   </option>
                 ))}
               </select>

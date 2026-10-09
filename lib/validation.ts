@@ -44,10 +44,21 @@ export function fromBaseUnits(baseUnits: string): string {
 }
 
 /**
- * Validates circle creation parameters according to README.md §8.4:
- * A > 0n
- * N >= 2
- * D >= 1 && (D === N - 1 || D === N - 2)
+ * Calculates tenure duration based on total participant capacity:
+ * - For < 10 members: N - 1 months
+ * - For < 20 members: N - 2 months
+ * - For < 30 members: N - 3 months
+ * - Pattern continues (N - Math.floor(N / 10) - 1)
+ */
+export function calculateTieredDuration(numPeople: number): number {
+  const N = Math.floor(numPeople);
+  if (isNaN(N) || N < 2) return 1;
+  const diff = Math.floor(N / 10) + 1;
+  return Math.max(1, N - diff);
+}
+
+/**
+ * Validates circle creation parameters
  */
 export function validateCircleParams(input: CircleInput): ValidationResult {
   if (!input.name || input.name.trim().length === 0) {
@@ -64,11 +75,12 @@ export function validateCircleParams(input: CircleInput): ValidationResult {
     return { valid: false, error: "Duration must be at least 1 month." };
   }
 
-  const allowedDurations = [N - 1, N - 2].filter((d) => d >= 1);
+  const tiered = calculateTieredDuration(N);
+  const allowedDurations = Array.from(new Set([tiered, N - 1, N - 2])).filter((d) => d >= 1);
   if (!allowedDurations.includes(D)) {
     return {
       valid: false,
-      error: "Duration must be N-1 or N-2 months for this circle size.",
+      error: `Duration must be valid for this circle size (${tiered} months).`,
     };
   }
 

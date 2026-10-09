@@ -8,7 +8,7 @@ import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { createPublicClient, http, formatUnits, erc20Abi } from "viem";
 import { baseSepolia } from "viem/chains";
 import { ArrowLeft, AlertCircle, AlertTriangle, Shield, PlusCircle, ArrowRight, Coins, RefreshCw } from "lucide-react";
-import { validateCircleParams } from "@/lib/validation";
+import { validateCircleParams, calculateTieredDuration } from "@/lib/validation";
 
 const BASE_SEPOLIA_USDC = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
 
@@ -145,15 +145,12 @@ export default function CreateCirclePage() {
   // Auto-sync duration whenever parsedNumPeople changes
   useEffect(() => {
     if (parsedNumPeople >= 2) {
-      const allowed = [parsedNumPeople - 1, parsedNumPeople - 2].filter((d) => d >= 1);
-      const current = parseInt(durationMonths, 10);
-      if (!allowed.includes(current) && allowed.length > 0) {
-        setDurationMonths(String(allowed[0]));
-      }
+      const computed = calculateTieredDuration(parsedNumPeople);
+      setDurationMonths(String(computed));
     } else {
       setDurationMonths("");
     }
-  }, [parsedNumPeople, durationMonths]);
+  }, [parsedNumPeople]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -276,7 +273,7 @@ export default function CreateCirclePage() {
             <input
               type="number"
               min={2}
-              max={20}
+              max={50}
               required
               value={numPeople}
               onChange={(e) => {
@@ -284,7 +281,9 @@ export default function CreateCirclePage() {
                 setNumPeople(val);
                 const n = parseInt(val, 10);
                 if (!isNaN(n) && n >= 2) {
-                  setDurationMonths(String(n - 1));
+                  setDurationMonths(String(calculateTieredDuration(n)));
+                } else {
+                  setDurationMonths("");
                 }
               }}
               className="w-full rounded-2xl border border-neutral-800 bg-neutral-900/90 px-4 py-3.5 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors font-mono"
@@ -374,52 +373,34 @@ export default function CreateCirclePage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="block text-xs uppercase tracking-wider font-bold text-neutral-300">
-                Duration Tenure (Months)
+                Duration Tenure
               </label>
               <span className="text-xs text-amber-400 font-semibold font-mono">
-                {parsedNumPeople >= 2 ? `Allowed: N - 1 or N - 2` : "Requires N ≥ 2"}
+                {parsedNumPeople >= 2 && parsedDuration > 0
+                  ? `${parsedDuration} Monthly Cycles`
+                  : "Requires Min 2 Members"}
               </span>
             </div>
 
-            {parsedNumPeople >= 2 && allowedDurations.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {allowedDurations.map((d) => {
-                  const isSelected = durationMonths === String(d);
-                  const tag = d === parsedNumPeople - 1 ? "N - 1 (Standard)" : "N - 2 (Accelerated)";
-                  return (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => setDurationMonths(String(d))}
-                      className={`p-4 rounded-2xl border transition-all text-left flex flex-col justify-between gap-2 cursor-pointer ${
-                        isSelected
-                          ? "border-amber-500 bg-amber-500/10 ring-1 ring-amber-500/50 shadow-lg shadow-amber-500/10"
-                          : "border-neutral-800 bg-neutral-900/90 hover:border-neutral-700 text-neutral-400 hover:text-white"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className={`text-[11px] font-mono uppercase font-bold tracking-wider ${isSelected ? "text-amber-400" : "text-neutral-500"}`}>
-                          {tag}
-                        </span>
-                        {isSelected && (
-                          <span className="h-2 w-2 rounded-full bg-amber-400 shadow-sm shadow-amber-400" />
-                        )}
-                      </div>
-                      <div>
-                        <p className={`text-lg font-bold font-mono ${isSelected ? "text-white" : "text-neutral-200"}`}>
-                          {d} {d === 1 ? "Month" : "Months"}
-                        </p>
-                        <p className="text-[11px] text-neutral-400 mt-0.5">
-                          {d} auction cycles for {parsedNumPeople} participants
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
+            {parsedNumPeople >= 2 && parsedDuration > 0 ? (
+              <div className="p-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 ring-1 ring-amber-500/20 shadow-lg shadow-amber-500/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2.5">
+                    <p className="text-xl font-bold font-mono text-white">
+                      {parsedDuration} {parsedDuration === 1 ? "Month" : "Months"}
+                    </p>
+                    <span className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/30 text-[10px] uppercase tracking-wider font-bold text-amber-300 font-mono">
+                      Calculated Tenure
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-400">
+                    {parsedDuration} monthly auction cycles configured for {parsedNumPeople} total participants
+                  </p>
+                </div>
               </div>
             ) : (
               <div className="w-full rounded-2xl border border-neutral-800/80 bg-neutral-900/50 px-4 py-4 text-xs text-neutral-500 flex items-center gap-2">
-                <span>Enter a valid participant count ($N \ge 2$) above to view and select duration tenures.</span>
+                <span>Enter participant count (minimum 2) to calculate duration tenure.</span>
               </div>
             )}
           </div>
