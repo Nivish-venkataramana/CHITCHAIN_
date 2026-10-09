@@ -142,6 +142,19 @@ export default function CreateCirclePage() {
 
   const allowedDurations = [parsedNumPeople - 1, parsedNumPeople - 2].filter((d) => d >= 1);
 
+  // Auto-sync duration whenever parsedNumPeople changes
+  useEffect(() => {
+    if (parsedNumPeople >= 2) {
+      const allowed = [parsedNumPeople - 1, parsedNumPeople - 2].filter((d) => d >= 1);
+      const current = parseInt(durationMonths, 10);
+      if (!allowed.includes(current) && allowed.length > 0) {
+        setDurationMonths(String(allowed[0]));
+      }
+    } else {
+      setDurationMonths("");
+    }
+  }, [parsedNumPeople, durationMonths]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loadingBalance) {
@@ -361,21 +374,54 @@ export default function CreateCirclePage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="block text-xs uppercase tracking-wider font-bold text-neutral-300">
-                Duration (Months)
+                Duration Tenure (Months)
               </label>
-              <span className="text-xs text-amber-400 font-semibold">Must be N minus 1 or N minus 2</span>
+              <span className="text-xs text-amber-400 font-semibold font-mono">
+                {parsedNumPeople >= 2 ? `Allowed: N - 1 or N - 2` : "Requires N ≥ 2"}
+              </span>
             </div>
-            <select
-              value={durationMonths}
-              onChange={(e) => setDurationMonths(e.target.value)}
-              className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-sm text-white focus:outline-none focus:border-amber-500 cursor-pointer font-mono"
-            >
-              {allowedDurations.map((d) => (
-                <option key={d} value={d} className="bg-neutral-950 text-white">
-                  {d} Months ({d === parsedNumPeople - 1 ? "N minus 1" : "N minus 2"})
-                </option>
-              ))}
-            </select>
+
+            {parsedNumPeople >= 2 && allowedDurations.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {allowedDurations.map((d) => {
+                  const isSelected = durationMonths === String(d);
+                  const tag = d === parsedNumPeople - 1 ? "N - 1 (Standard)" : "N - 2 (Accelerated)";
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setDurationMonths(String(d))}
+                      className={`p-4 rounded-2xl border transition-all text-left flex flex-col justify-between gap-2 cursor-pointer ${
+                        isSelected
+                          ? "border-amber-500 bg-amber-500/10 ring-1 ring-amber-500/50 shadow-lg shadow-amber-500/10"
+                          : "border-neutral-800 bg-neutral-900/90 hover:border-neutral-700 text-neutral-400 hover:text-white"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className={`text-[11px] font-mono uppercase font-bold tracking-wider ${isSelected ? "text-amber-400" : "text-neutral-500"}`}>
+                          {tag}
+                        </span>
+                        {isSelected && (
+                          <span className="h-2 w-2 rounded-full bg-amber-400 shadow-sm shadow-amber-400" />
+                        )}
+                      </div>
+                      <div>
+                        <p className={`text-lg font-bold font-mono ${isSelected ? "text-white" : "text-neutral-200"}`}>
+                          {d} {d === 1 ? "Month" : "Months"}
+                        </p>
+                        <p className="text-[11px] text-neutral-400 mt-0.5">
+                          {d} auction cycles for {parsedNumPeople} participants
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="w-full rounded-2xl border border-neutral-800/80 bg-neutral-900/50 px-4 py-4 text-xs text-neutral-500 flex items-center gap-2">
+                <span>Enter a valid participant count ($N \ge 2$) above to view and select duration tenures.</span>
+              </div>
+            )}
           </div>
 
           {/* Rules Card */}
