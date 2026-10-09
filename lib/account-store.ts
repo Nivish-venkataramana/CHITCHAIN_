@@ -1,9 +1,9 @@
 import usersFixture from "@/handoffs/fixtures/users.json";
 import { UserProfile } from "@/handoffs/user-profile";
 import { validateUsername, norm } from "./username-rule";
-import { addUserProfile } from "./users";
 import { getFinalizedCircle, getMemberBalance } from "./circles-store";
 import { addUser } from "./users";
+import { prisma } from "./prisma";
 
 export interface UserRecord extends UserProfile {
   id: string;
@@ -142,32 +142,61 @@ const ERC20_ABI = [
 // In-Memory RPC Cache to avoid blocking network calls and lag
 const balanceCache: Record<string, { usdc: bigint; eth: string; expiry: number }> = {};
 
-export async function mintFaucetTokens(walletAddress: string, amountUSDC = 1000): Promise<bigint> {
+export async function mintFaucetTokens(walletAddress: string, amountUSDC = 25000): Promise<bigint> {
   const cleanWallet = walletAddress.toLowerCase().trim();
   const mintBaseUnits = BigInt(amountUSDC) * 1_000_000n;
-  const current = userBalances[cleanWallet] || 0n;
+  const current = await getUserBalance(cleanWallet);
   const updated = current + mintBaseUnits;
   userBalances[cleanWallet] = updated;
 
-  // Invalidate cache on mint
-  delete balanceCache[cleanWallet];
+  if (balanceCache[cleanWallet]) {
+    balanceCache[cleanWallet].usdc = updated;
+  }
 
-  return getUserBalance(walletAddress);
+  return updated;
+}
+
+export async function debitUserBalance(walletAddress: string, amountUSDC: number): Promise<{ success: boolean; newBalance: bigint }> {
+  const cleanWallet = walletAddress.toLowerCase().trim();
+  const debitBaseUnits = BigInt(amountUSDC) * 1_000_000n;
+  const current = await getUserBalance(cleanWallet);
+  const updated = current >= debitBaseUnits ? current - debitBaseUnits : 0n;
+  userBalances[cleanWallet] = updated;
+
+  if (balanceCache[cleanWallet]) {
+    balanceCache[cleanWallet].usdc = updated;
+  }
+
+  return { success: true, newBalance: updated };
+}
+
+const circlePoolBalances: Record<string, bigint> = {};
+
+export async function depositToCirclePool(circleId: string, amountUSDC: number): Promise<bigint> {
+  const depositBaseUnits = BigInt(amountUSDC) * 1_000_000n;
+  const current = circlePoolBalances[circleId] || 0n;
+  const updated = current + depositBaseUnits;
+  circlePoolBalances[circleId] = updated;
+  return updated;
+}
+
+export async function getCirclePoolBalance(circleId: string): Promise<bigint> {
+  return circlePoolBalances[circleId] || 0n;
 }
 
 export async function getUserBalance(walletAddress: string): Promise<bigint> {
   const cleanWallet = walletAddress.toLowerCase().trim() as `0x${string}`;
   const now = Date.now();
 
-  if (userBalances[cleanWallet] === undefined) {
-    userBalances[cleanWallet] = isTestEnv ? 10000_000000n : 0n;
+  // If balance was already initialized/debited in this session, return it directly
+  if (userBalances[cleanWallet] !== undefined) {
+    return userBalances[cleanWallet];
   }
 
   const cached = balanceCache[cleanWallet];
-  const localMinted = isTestEnv ? (userBalances[cleanWallet] ?? 0n) : 0n;
-
   if (cached && now < cached.expiry) {
-    return cached.usdc + localMinted;
+    userBalances[cleanWallet] = cached.usdc;
+    return cached.usdc;
   }
 
   let onChainUsdc = 0n;
@@ -180,19 +209,13 @@ export async function getUserBalance(walletAddress: string): Promise<bigint> {
         args: [cleanWallet],
       })) as bigint;
     }
-  } catch {
-    // Fallback on network timeout
-    if (cached) return cached.usdc + localMinted;
-  }
+  } catch {}
 
-  if (!balanceCache[cleanWallet]) {
-    balanceCache[cleanWallet] = { usdc: onChainUsdc, eth: "0.0000", expiry: now + 30000 };
-  } else {
-    balanceCache[cleanWallet].usdc = onChainUsdc;
-    balanceCache[cleanWallet].expiry = now + 30000;
-  }
+  const initialBalance = onChainUsdc > 0n ? onChainUsdc : 20_000000n;
+  userBalances[cleanWallet] = initialBalance;
+  balanceCache[cleanWallet] = { usdc: initialBalance, eth: "0.0000", expiry: now + 30000 };
 
-  return onChainUsdc + localMinted;
+  return initialBalance;
 }
 
 export async function getLiveEthBalance(walletAddress: string): Promise<string> {
@@ -344,6 +367,28 @@ export async function grantAutopayMandate(params: {
     consent.revokedAt = null;
   }
 
+  // Persist permanently in Neon PostgreSQL
+  if (!isTestEnv) {
+    prisma.autopayConsent.upsert({
+      where: { circleId_memberAddress: { circleId: params.circleId, memberAddress: normW } },
+      update: {
+        status: "GIVEN",
+        sessionId: consent.sessionId,
+        txHash: consent.txHash,
+        grantedAt: consent.grantedAt,
+        revokedAt: null,
+      },
+      create: {
+        circleId: params.circleId,
+        memberAddress: normW,
+        status: "GIVEN",
+        sessionId: consent.sessionId,
+        txHash: consent.txHash,
+        grantedAt: consent.grantedAt,
+      },
+    }).catch((err) => console.warn("Prisma autopay consent notice:", err.message));
+  }
+
   return consent;
 }
 
@@ -362,6 +407,14 @@ export async function revokeAutopayMandate(params: {
 
   consent.status = "REVOKED";
   consent.revokedAt = new Date();
+
+  // Persist permanently in Neon PostgreSQL
+  if (!isTestEnv) {
+    prisma.autopayConsent.updateMany({
+      where: { circleId: params.circleId, memberAddress: normW },
+      data: { status: "REVOKED", revokedAt: consent.revokedAt },
+    }).catch((err) => console.warn("Prisma autopay revoke notice:", err.message));
+  }
 
   return consent;
 }

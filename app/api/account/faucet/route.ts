@@ -7,28 +7,32 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    const user = getSessionUser(req);
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized session" }, { status: 401 });
-    }
-
-    let mintAmount = 10000;
+    let body: any = {};
     try {
-      const body = await req.json();
-      if (body?.amount && Number(body.amount) > 0) {
-        mintAmount = Number(body.amount);
+      body = await req.json();
+    } catch {}
+
+    let wallet = body.walletAddress || body.wallet;
+    if (!wallet) {
+      const user = getSessionUser(req);
+      if (user?.walletAddress) {
+        wallet = user.walletAddress;
       }
-    } catch {
-      // no body passed, use default 10,000
     }
 
-    const updatedBalance = await mintFaucetTokens(user.walletAddress, mintAmount);
+    if (!wallet) {
+      return NextResponse.json({ error: "Missing wallet address or unauthorized session" }, { status: 400 });
+    }
+
+    const amountUSDC = body.amount ? Number(body.amount) : 25000;
+    const updatedBalance = await mintFaucetTokens(wallet, amountUSDC);
 
     return NextResponse.json({
       success: true,
+      walletAddress: wallet,
       balanceBaseUnits: updatedBalance.toString(),
       balanceUSDC: fromBaseUnits(updatedBalance.toString()),
-      message: `Minted ${mintAmount.toLocaleString()} MockUSDC to smart account via gasless paymaster`,
+      message: `Minted ${amountUSDC.toLocaleString()} MockUSDC to smart account via gasless paymaster`,
     });
   } catch (err: any) {
     return NextResponse.json(
@@ -40,14 +44,23 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const user = getSessionUser(req);
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized session" }, { status: 401 });
+    const { searchParams } = new URL(req.url);
+    let wallet = searchParams.get("wallet") || searchParams.get("walletAddress");
+    if (!wallet) {
+      const user = getSessionUser(req);
+      if (user?.walletAddress) {
+        wallet = user.walletAddress;
+      }
     }
 
-    const balance = await getUserBalance(user.walletAddress);
+    if (!wallet) {
+      return NextResponse.json({ error: "Missing wallet address or unauthorized session" }, { status: 400 });
+    }
+
+    const balance = await getUserBalance(wallet);
 
     return NextResponse.json({
+      walletAddress: wallet,
       balanceBaseUnits: balance.toString(),
       balanceUSDC: fromBaseUnits(balance.toString()),
     });
