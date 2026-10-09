@@ -86,13 +86,22 @@ export default function PoolVaultPage() {
           </p>
         </div>
 
-        <Link
-          href={`/circles/${circleId}/bidding`}
-          className="px-4 py-2 rounded-xl bg-white text-black font-semibold text-xs flex items-center gap-1.5 hover:bg-neutral-200 transition-colors shadow-md shrink-0"
-        >
-          <span>Go to Secret Auction</span>
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href={`/circles/${circleId}/yield`}
+            className="px-4 py-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 font-semibold text-xs flex items-center gap-1.5 hover:bg-emerald-500/20 transition-colors shadow-sm shrink-0"
+          >
+            <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
+            <span>Aave Yield & Simulation</span>
+          </Link>
+          <Link
+            href={`/circles/${circleId}/bidding`}
+            className="px-4 py-2 rounded-xl bg-white text-black font-semibold text-xs flex items-center gap-1.5 hover:bg-neutral-200 transition-colors shadow-md shrink-0"
+          >
+            <span>Go to Secret Auction</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
       </div>
 
       {/* Symmetrical Stats Cards */}
