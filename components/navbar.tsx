@@ -7,7 +7,9 @@ import { useDevUser } from "@/components/providers";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { createPublicClient, http, formatUnits, erc20Abi } from "viem";
 import { baseSepolia } from "viem/chains";
+
 import { Bell, Shield, Check, X, Coins, LogOut, PlusCircle, User } from "lucide-react";
+
 
 const BASE_SEPOLIA_USDC = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
 
@@ -38,32 +40,43 @@ export function Navbar() {
   const { user: privyUser, authenticated, logout } = usePrivy();
   const { wallets } = useWallets();
 
-  // Dynamic Identity extraction
   const embeddedWallet = wallets.find((w) => w.walletClientType === "privy") || wallets[0];
   const linkedWallet = privyUser?.linkedAccounts?.find(
     (a: any) => a.type === "wallet" || a.walletClientType === "privy"
   ) as any;
   const activeWalletAddress = (
+    user?.walletAddress ||
+    (typeof window !== "undefined" ? localStorage.getItem("chitchain_smart_wallet_address") : "") ||
+    (privyUser as any)?.smartWallet?.address ||
     embeddedWallet?.address ||
     privyUser?.wallet?.address ||
+
     linkedWallet?.address ||
     user?.walletAddress ||
+
     ""
   ).toLowerCase();
 
   const userEmail = privyUser?.email?.address || "";
   const dynamicUsername = userEmail
     ? userEmail.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase()
+
     : user?.username || (activeWalletAddress ? `user_${activeWalletAddress.slice(2, 6).toLowerCase()}` : "asharao01");
 
   const dynamicDisplayName = userEmail
     ? userEmail.split("@")[0]
     : user?.displayName || dynamicUsername;
 
+
+  const [mounted, setMounted] = useState(false);
   const [balance, setBalance] = useState<string | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [respondingId, setRespondingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const fetchBalance = async () => {
     if (!activeWalletAddress || !/^0x[a-f0-9]{40}$/i.test(activeWalletAddress)) {
@@ -93,7 +106,6 @@ export function Navbar() {
       });
       setBalance(formatted);
     } catch {
-      // Fallback
       if (dynamicUsername) {
         fetch("/api/account/faucet", { headers: { "x-dev-user": dynamicUsername } })
           .then((r) => r.json())
@@ -141,11 +153,13 @@ export function Navbar() {
     const interval = setInterval(() => {
       fetchBalance();
       fetchNotifications();
+
     }, 15000);
     return () => {
       clearInterval(interval);
       window.removeEventListener("balance_updated", handleBalanceUpdate);
     };
+
   }, [activeWalletAddress, dynamicUsername, pathname]);
 
   const handleRespond = async (inviteId: string, accept: boolean, notifId: string) => {
@@ -181,7 +195,7 @@ export function Navbar() {
         await logout();
       }
     } catch (err) {
-      console.warn("Privy logout error:", err);
+      console.warn("Logout error:", err);
     }
     setUser(null);
     router.push("/login");
@@ -192,6 +206,7 @@ export function Navbar() {
   if (pathname === "/" || pathname === "/login") {
     return null;
   }
+
 
   const isUserAuthenticated = authenticated || Boolean(user) || Boolean(activeWalletAddress);
 
@@ -243,19 +258,26 @@ export function Navbar() {
               </Link>
 
               {/* Notifications Center */}
+
               <div className="relative">
                 <button
+                  type="button"
                   onClick={() => setNotificationsOpen(!notificationsOpen)}
+
                   className="p-2.5 text-neutral-400 hover:text-white hover:bg-neutral-900 rounded-full border border-neutral-800 transition-all cursor-pointer"
+
                   title="Notifications"
                 >
-                  <Bell className="h-4 w-4" />
+                  <Bell className="h-4.5 w-4.5" />
                   {unreadCount > 0 && (
+
                     <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-black animate-pulse" />
+
                   )}
                 </button>
 
                 {notificationsOpen && (
+
                   <div className="absolute right-0 mt-3 w-96 rounded-3xl bg-neutral-950 p-5 shadow-2xl border border-neutral-800 z-50 text-neutral-100">
                     <div className="flex items-center justify-between border-b border-neutral-800 pb-3 mb-3">
                       <div className="flex items-center gap-2">
@@ -266,55 +288,60 @@ export function Navbar() {
                           </span>
                         )}
                       </div>
+
                       <button
                         onClick={() => setNotificationsOpen(false)}
-                        className="text-xs text-neutral-500 hover:text-white cursor-pointer"
+                        className="text-[11px] text-neutral-500 hover:text-white"
                       >
                         Close
                       </button>
                     </div>
 
-                    <div className="space-y-3 max-h-80 overflow-y-auto text-xs">
+                    <div className="space-y-2.5 max-h-72 overflow-y-auto text-xs">
                       {notifications.length === 0 ? (
-                        <p className="text-center py-8 text-neutral-500">No active notifications</p>
+                        <p className="text-center py-6 text-neutral-500 text-xs">No notifications</p>
                       ) : (
                         notifications.map((notif) => (
                           <div
                             key={notif.id}
-                            className={`p-3.5 rounded-2xl border transition-all ${
+                            className={`p-3 rounded-xl border ${
                               notif.type === "JOIN_REQUEST" && notif.inviteId && !notif.readAt
+
                                 ? "bg-amber-950/30 border-amber-800/40"
                                 : "bg-neutral-900/80 border-neutral-800"
                             }`}
                           >
                             <div className="flex items-center justify-between mb-1.5">
                               <span className="font-bold text-[10px] uppercase tracking-wider text-amber-400">
+
                                 {notif.type.replace("_", " ")}
                               </span>
                               <span className="text-[10px] text-neutral-500 font-mono">
                                 {new Date(notif.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                               </span>
                             </div>
-                            <p className="text-neutral-200 leading-relaxed text-xs font-medium">
+                            <p className="text-neutral-300 text-xs leading-relaxed">
                               {notif.body}
                             </p>
 
                             {notif.type === "JOIN_REQUEST" && notif.inviteId && !notif.readAt && (
-                              <div className="mt-3 flex items-center gap-2 pt-2 border-t border-neutral-800">
+                              <div className="mt-2.5 flex items-center gap-2 pt-2 border-t border-neutral-800">
                                 <button
                                   disabled={respondingId === notif.inviteId}
                                   onClick={() => handleRespond(notif.inviteId!, true, notif.id)}
+
                                   className="flex-1 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs flex items-center justify-center gap-1 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
+
                                 >
-                                  <Check className="h-3.5 w-3.5" />
+                                  <Check className="h-3 w-3" />
                                   Accept
                                 </button>
                                 <button
                                   disabled={respondingId === notif.inviteId}
                                   onClick={() => handleRespond(notif.inviteId!, false, notif.id)}
-                                  className="px-3 py-1.5 rounded-xl border border-neutral-700 hover:bg-neutral-800 text-neutral-300 font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer"
+                                  className="px-3 py-1 rounded-lg border border-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-900 transition-colors text-xs flex items-center justify-center gap-1 cursor-pointer"
                                 >
-                                  <X className="h-3.5 w-3.5" />
+                                  <X className="h-3 w-3" />
                                   Decline
                                 </button>
                               </div>
@@ -327,11 +354,25 @@ export function Navbar() {
                 )}
               </div>
 
+
+              {/* Profile Link */}
+              <Link
+                href="/account"
+                className="flex items-center gap-2 px-3.5 py-2 rounded-full border border-neutral-800 bg-neutral-900/60 hover:border-neutral-700 text-xs font-mono text-neutral-300 hover:text-white transition-all cursor-pointer"
+                title="Profile"
+              >
+                <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 text-black font-bold flex items-center justify-center text-[10px]">
+                  {dynamicUsername.slice(0, 1).toUpperCase()}
+                </div>
+                <span>@{dynamicUsername}</span>
+              </Link>
+
               {/* Logout Button */}
               <button
+                type="button"
                 onClick={handleLogout}
-                className="p-2.5 text-neutral-400 hover:text-red-400 hover:bg-neutral-900 rounded-full border border-neutral-800 transition-all cursor-pointer"
-                title="Disconnect & Logout"
+                className="p-2 text-neutral-400 hover:text-red-400 hover:bg-neutral-900 rounded-full border border-neutral-800 transition-all cursor-pointer"
+                title="Sign Out"
               >
                 <LogOut className="h-4 w-4" />
               </button>
@@ -339,13 +380,13 @@ export function Navbar() {
           ) : (
             <Link
               href="/login"
+
               className="flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold text-xs uppercase tracking-wider transition-all shadow-md shadow-amber-500/20"
+
             >
-              <Shield className="h-3.5 w-3.5" />
-              <span>Login</span>
+              Sign In
             </Link>
           )}
-
         </div>
 
       </div>

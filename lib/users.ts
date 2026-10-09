@@ -67,38 +67,67 @@ export function getUserByWallet(address: string): UserProfile | undefined {
 }
 
 export function syncUserAccount(params: {
+  privyUserId?: string;
   username: string;
   walletAddress: string;
   displayName?: string;
 }): UserProfile {
   const cleanUsername = params.username.toLowerCase().trim().replace(/^@/, "");
   const cleanWallet = (params.walletAddress || "").toLowerCase().trim() as `0x${string}`;
+  const privyUserId = params.privyUserId?.trim();
 
-  let user = getUserByUsername(cleanUsername);
+  // 1. Search by privyUserId
+  let user: UserProfile | undefined;
+  if (privyUserId) {
+    user = users.find((u) => u.privyUserId === privyUserId);
+  }
+
+  // 2. Search by username
+  if (!user) {
+    user = getUserByUsername(cleanUsername);
+  }
+
+  // 3. Search by walletAddress
+  if (!user && /^0x[a-f0-9]{40}$/i.test(cleanWallet)) {
+    user = getUserByWallet(cleanWallet);
+  }
+
   if (user) {
+    if (privyUserId) user.privyUserId = privyUserId;
+    if (cleanUsername) user.username = cleanUsername;
     if (/^0x[a-f0-9]{40}$/i.test(cleanWallet)) {
       user.walletAddress = cleanWallet;
     }
     if (params.displayName) user.displayName = params.displayName;
+
+    // Synchronize pending invites and notifications for this user
+    if (g.__chitchain_invites__) {
+      g.__chitchain_invites__.forEach((inv: any) => {
+        if (inv.inviteeUsername?.toLowerCase() === cleanUsername) {
+          inv.inviteeWallet = cleanWallet;
+        }
+      });
+    }
     return user;
   }
 
-  if (/^0x[a-f0-9]{40}$/i.test(cleanWallet)) {
-    user = getUserByWallet(cleanWallet);
-    if (user) {
-      user.username = cleanUsername;
-      if (params.displayName) user.displayName = params.displayName;
-      return user;
-    }
-  }
-
   const newUser: UserProfile = {
+    privyUserId,
     username: cleanUsername,
     walletAddress: cleanWallet,
     displayName: params.displayName || cleanUsername,
     createdAt: new Date().toISOString(),
   };
   addUser(newUser);
+
+  if (g.__chitchain_invites__) {
+    g.__chitchain_invites__.forEach((inv: any) => {
+      if (inv.inviteeUsername?.toLowerCase() === cleanUsername) {
+        inv.inviteeWallet = cleanWallet;
+      }
+    });
+  }
+
   return newUser;
 }
 

@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized session" }, { status: 401 });
     }
 
-    const circles = await getCirclesForUser(user.walletAddress);
+    const circles = await getCirclesForUser(user.walletAddress, user.username);
     return NextResponse.json(circles);
   } catch (err: any) {
     console.error("Error fetching user circles:", err);

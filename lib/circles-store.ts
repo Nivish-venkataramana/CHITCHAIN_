@@ -195,21 +195,24 @@ import { getUserBalance } from "@/lib/account-store";
 
 export async function getMemberBalance(walletAddress?: string | null): Promise<bigint> {
   if (!walletAddress) {
-    return 10000_000000n;
+    return 0n;
   }
   const norm = String(walletAddress).toLowerCase().trim();
-  if (simulatedBalances[norm] !== undefined) {
+  if (isTestEnv && simulatedBalances[norm] !== undefined) {
     return BigInt(simulatedBalances[norm]);
   }
   try {
-    const acc = await getUserBalance(norm);
-    if (acc !== undefined) {
-      return acc;
+    const bal = await getUserBalance(norm);
+    if (typeof bal === 'bigint') {
+      return bal;
+    }
+    if (bal !== undefined && bal !== null) {
+      return BigInt(bal);
     }
   } catch (err) {
-    console.warn("getUserBalance lookup notice:", err);
+    console.warn("getUserBalance lookup error:", err);
   }
-  return 10000_000000n;
+  return 0n;
 }
 
 export async function createCircleRecord(data: {
@@ -428,7 +431,7 @@ export async function createInviteRecord(params: {
     const holdsUSDC = fromBaseUnits(currentBalance.toString());
     const needsUSDC = fromBaseUnits(requiredBalance.toString());
     throw new Error(
-      `[${candidate.username}] holds ${holdsUSDC} USDC; needs at least ${needsUSDC} USDC (3 x monthly amount). Invite not sent.`
+      `Invitation failed due to insufficient balance: [${candidate.username}] holds ${holdsUSDC} USDC; needs at least ${needsUSDC} USDC (3 x monthly amount). Invite not sent.`
     );
   }
 
@@ -662,7 +665,7 @@ export async function submitNoIssuesConfirmation(params: {
     circle.status = "FINALIZED";
     circle.finalizedAt = new Date();
 
-    // Send FINALIZED notification to all members
+    // Send FINALIZED & Autopay mandate notification to all members
     acceptedMembers.forEach((m) => {
       memoryNotifications.unshift({
         id: `notif-${Date.now()}-${m.inviteeUsername}`,
@@ -671,7 +674,7 @@ export async function submitNoIssuesConfirmation(params: {
         circleId: circle.id,
         circleName: circle.name,
         volunteerName: circle.volunteerUsername || "Volunteer",
-        body: `"${circle.name}" terms are FINALIZED by all members! Proceed to Autopay setup.`,
+        body: `"${circle.name}" has been activated! Please authorize your Autopay Mandate for monthly contributions starting 1st of next month.`,
         readAt: null,
         createdAt: new Date(),
       });
@@ -679,6 +682,70 @@ export async function submitNoIssuesConfirmation(params: {
   }
 
   return { circle, allConfirmed };
+}
+
+export async function activateCircleRecord(params: {
+  circleId: string;
+  volunteerWallet: string;
+}): Promise<CircleRecord> {
+  const circle = memoryCircles.find((c) => c.id === params.circleId);
+  if (!circle) throw new Error("Circle not found");
+
+  if (circle.volunteerWallet.toLowerCase() !== params.volunteerWallet.toLowerCase()) {
+    throw new Error("Only the volunteer can activate the circle");
+  }
+
+  if (circle.status === "FINALIZED") {
+    return circle;
+  }
+
+  const openIssues = memoryIssues.filter(
+    (i) => i.circleId === circle.id && i.status === "OPEN"
+  );
+  if (openIssues.length > 0) {
+    throw new Error("Cannot activate circle while open issues remain unresolved");
+  }
+
+  const acceptedMembers = memoryInvites.filter(
+    (i) => i.circleId === circle.id && i.status === "ACCEPTED"
+  );
+
+  // Volunteer confirms their own No issues automatically on activation
+  const normVol = params.volunteerWallet.toLowerCase();
+  if (!memoryConfirmations.some((c) => c.circleId === circle.id && c.memberWallet.toLowerCase() === normVol)) {
+    memoryConfirmations.push({
+      circleId: circle.id,
+      memberWallet: normVol,
+      confirmedAt: new Date(),
+    });
+  }
+
+  const currentConfirmations = memoryConfirmations.filter((c) => c.circleId === circle.id);
+  if (currentConfirmations.length < acceptedMembers.length) {
+    throw new Error(
+      `Cannot activate circle: Only ${currentConfirmations.length} of ${acceptedMembers.length} members have confirmed 'No issues'`
+    );
+  }
+
+  circle.status = "FINALIZED";
+  circle.finalizedAt = new Date();
+
+  // Send Autopay Mandate notification to every member
+  acceptedMembers.forEach((m) => {
+    memoryNotifications.unshift({
+      id: `notif-${Date.now()}-${m.inviteeUsername}-autopay`,
+      userWallet: m.inviteeWallet.toLowerCase(),
+      type: "FINALIZED",
+      circleId: circle.id,
+      circleName: circle.name,
+      volunteerName: circle.volunteerUsername || "Volunteer",
+      body: `"${circle.name}" has been activated! Please authorize your Autopay Mandate for monthly contributions starting 1st of next month.`,
+      readAt: null,
+      createdAt: new Date(),
+    });
+  });
+
+  return circle;
 }
 
 export async function getIssuesForCircle(circleId: string): Promise<{
@@ -740,18 +807,34 @@ export async function markNotificationRead(id: string, walletAddress: string): P
   return false;
 }
 
-export async function getCirclesForUser(walletAddress: string): Promise<CircleRecord[]> {
-  const normWallet = walletAddress.toLowerCase();
+export async function getCirclesForUser(walletAddress: string, username?: string): Promise<CircleRecord[]> {
+  const normWallet = (walletAddress || "").toLowerCase().trim();
+  const normUser = (username || "").toLowerCase().trim().replace(/^@/, "");
+
+  const matchedWallets = new Set<string>();
+  if (normWallet) matchedWallets.add(normWallet);
+  if (normUser) {
+    const u = getUserByUsername(normUser);
+    if (u?.walletAddress) matchedWallets.add(u.walletAddress.toLowerCase());
+  }
+
   const userCircleIds = new Set<string>();
 
   memoryCircles.forEach((c) => {
-    if (c.volunteerWallet.toLowerCase() === normWallet) {
+    if (
+      matchedWallets.has(c.volunteerWallet.toLowerCase()) ||
+      (normUser && c.volunteerUsername?.toLowerCase() === normUser)
+    ) {
       userCircleIds.add(c.id);
     }
   });
 
   memoryInvites.forEach((i) => {
-    if (i.inviteeWallet.toLowerCase() === normWallet && i.status !== "REJECTED") {
+    if (
+      (matchedWallets.has(i.inviteeWallet.toLowerCase()) ||
+        (normUser && i.inviteeUsername.toLowerCase() === normUser)) &&
+      i.status !== "REJECTED"
+    ) {
       userCircleIds.add(i.circleId);
     }
   });

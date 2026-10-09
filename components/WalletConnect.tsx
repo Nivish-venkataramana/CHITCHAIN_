@@ -6,6 +6,8 @@ import { useDevUser } from "@/components/providers";
 import { Wallet, LogOut, CheckCircle2, ShieldCheck, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
+import { initDeterministicSmartAccount } from "@/lib/smart-account";
+
 export function WalletConnect() {
   const { ready, authenticated, user: privyUser, logout } = usePrivy();
   const { wallets } = useWallets();
@@ -19,52 +21,39 @@ export function WalletConnect() {
     setConnecting(true);
     setStatusMessage(null);
 
-    // 1. Find the specific embedded wallet Privy created or first connected wallet
-    const privyWallet = wallets.find((w) => w.walletClientType === "privy") || wallets[0];
-
-    if (!privyWallet) {
-      console.error("No Privy embedded wallet found.");
-      setStatusMessage("No Privy embedded wallet found.");
-      setConnecting(false);
-      return;
-    }
-
     try {
-      // 2. Extract Ethereum provider for Biconomy Nexus SDK / smart account signing
-      const provider = await privyWallet.getEthereumProvider();
-      console.log("Successfully extracted provider:", provider);
+      const { address, provider } = await initDeterministicSmartAccount({
+        wallets,
+        privyUser,
+      });
 
-      const address = privyWallet.address;
       setStatusMessage(`Smart Account active: ${address.slice(0, 6)}...${address.slice(-4)}`);
 
-      // 3. Sync or create user profile on backend
-      const checkRes = await fetch(`/api/users/by-wallet/${address.toLowerCase()}`);
-      if (checkRes.ok) {
-        const existing = await checkRes.json();
-        if (existing?.username) {
-          setUser(existing);
-          return;
-        }
-      }
+      const email = privyUser?.email?.address || "";
+      const defaultUser = email
+        ? email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase()
+        : `user_${address.slice(2, 6).toLowerCase()}`;
+      const displayName = email ? email.split("@")[0] : defaultUser;
+      const privyUserId = privyUser?.id;
 
-      // Auto-register
-      const defaultUser = `user_${address.slice(2, 6).toLowerCase()}`;
-      const createRes = await fetch("/api/account/create", {
+      // Sync user profile on backend
+      const syncRes = await fetch("/api/account/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          privyUserId,
           username: defaultUser,
           walletAddress: address,
-          displayName: defaultUser,
+          displayName,
         }),
       });
 
-      if (createRes.ok) {
-        const newUser = await createRes.json();
-        setUser(newUser);
+      if (syncRes.ok) {
+        const syncedUser = await syncRes.json();
+        setUser(syncedUser);
       }
-    } catch (error) {
-      console.error("Failed to get provider:", error);
+    } catch (error: any) {
+      console.error("Failed to initialize smart account:", error);
       setStatusMessage("Failed to extract wallet provider.");
     } finally {
       setConnecting(false);

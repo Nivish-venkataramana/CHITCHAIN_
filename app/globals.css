@@ -12,19 +12,25 @@
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 4%;
     --popover-foreground: 0 0% 98%;
+
     --primary: 38 92% 50%;
+
     --primary-foreground: 0 0% 0%;
     --secondary: 0 0% 9%;
     --secondary-foreground: 0 0% 98%;
     --muted: 0 0% 12%;
     --muted-foreground: 0 0% 60%;
+
     --accent: 38 92% 50%;
+
     --accent-foreground: 0 0% 0%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 14%;
     --input: 0 0% 14%;
+
     --ring: 38 92% 50%;
+
     --radius: 1rem;
   }
 }
@@ -40,15 +46,12 @@
   }
 }
 
-/* Transparent Glass Panels */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.025);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
-  transform: translateZ(0);
+/* Completely disable and hide scrollbars globally for a sleek zero-scroll layout */
+* {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
+
 
 .glass-panel-glow {
   background: rgba(255, 255, 255, 0.03);
@@ -62,13 +65,16 @@
 .glass-panel-glow:hover {
   border-color: rgba(245, 158, 11, 0.4);
   box-shadow: 0 0 35px -5px rgba(245, 158, 11, 0.3);
+
 }
 
-/* Underline Floating Label Inputs */
-.line-input-group {
-  position: relative;
-  width: 100%;
+/* Remove spin arrows from number inputs */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
 }
+
 
 .line-input {
   width: 100%;
@@ -112,6 +118,7 @@
 
 .line-input:not(:focus):not(:placeholder-shown) ~ .line-label {
   color: rgba(255, 255, 255, 0.5);
+
 }
 
 /* 3D Smooth Moving & Floating Coin Animations */

@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Navbar } from "@/components/navbar";
+
 import { Footer } from "@/components/footer";
 import { DynamicParticlesBackground } from "@/components/dynamic-particles-background";
+
 
 export const metadata: Metadata = {
   title: "ChitChain • Private Wealth Circles",
@@ -25,14 +27,17 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
+
       <body className="min-h-screen bg-black text-neutral-100 antialiased flex flex-col font-sans selection:bg-orange-950 selection:text-white relative">
+
         <Providers>
           <DynamicParticlesBackground />
           <Navbar />
+
           <main className="flex-1 relative z-10">
+
             {children}
           </main>
-          <Footer />
         </Providers>
       </body>
     </html>
