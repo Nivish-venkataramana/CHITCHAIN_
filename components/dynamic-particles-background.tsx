@@ -136,8 +136,8 @@ export function DynamicParticlesBackground() {
     };
   }, [pathname]);
 
-  // If on 3D monolith intro page, it has its own 3D scene particles
-  if (pathname === "/") return null;
+  // If on 3D monolith intro page or home page, do not render particle background
+  if (pathname === "/" || pathname === "/home") return null;
 
   return (
     <canvas

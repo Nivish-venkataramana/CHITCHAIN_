@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useDevUser } from "@/components/providers";
-import { PlusCircle, Users, ArrowRight, ShieldCheck, Zap, Lock, TrendingUp, User, Box } from "lucide-react";
+import { PlusCircle, Users, ArrowRight, TrendingUp, User, Box } from "lucide-react";
 import { fromBaseUnits } from "@/lib/validation";
 
 const FloatingCoinsBackground = dynamic(
@@ -233,41 +233,6 @@ export default function HomePage() {
               </div>
             </div>
           </Link>
-        </div>
-      </section>
-
-      {/* Protocol Architecture Features Strip */}
-      <section className="relative z-10 max-w-7xl mx-auto px-6 pt-16">
-        <div className="grid sm:grid-cols-3 gap-6">
-          <div className="p-8 rounded-3xl bg-neutral-950/80 border border-neutral-900 space-y-4 backdrop-blur-md">
-            <div className="h-12 w-12 rounded-2xl bg-orange-600/10 border border-orange-500/20 text-orange-400 flex items-center justify-center">
-              <Zap className="h-6 w-6" />
-            </div>
-            <h3 className="text-lg font-bold text-white">Automated Autopay</h3>
-            <p className="text-xs text-neutral-400 leading-relaxed">
-              Preapproved smart session mandates execute timely monthly pooling directly to the circle vault with zero manual friction.
-            </p>
-          </div>
-
-          <div className="p-8 rounded-3xl bg-neutral-950/80 border border-neutral-900 space-y-4 backdrop-blur-md">
-            <div className="h-12 w-12 rounded-2xl bg-orange-600/10 border border-orange-500/20 text-orange-400 flex items-center justify-center">
-              <Lock className="h-6 w-6" />
-            </div>
-            <h3 className="text-lg font-bold text-white">Sealed Bidding Auctions</h3>
-            <p className="text-xs text-neutral-400 leading-relaxed">
-              Bids stay cryptographically confidential until the reveal window. The lowest valid bid takes the round pot, while surplus carries forward.
-            </p>
-          </div>
-
-          <div className="p-8 rounded-3xl bg-neutral-950/80 border border-neutral-900 space-y-4 backdrop-blur-md">
-            <div className="h-12 w-12 rounded-2xl bg-orange-600/10 border border-orange-500/20 text-orange-400 flex items-center justify-center">
-              <ShieldCheck className="h-6 w-6" />
-            </div>
-            <h3 className="text-lg font-bold text-white">Trustless Settlement</h3>
-            <p className="text-xs text-neutral-400 leading-relaxed">
-              Audited smart contract rules govern all pool accounting, winner payouts, and dividends with complete onchain transparency.
-            </p>
-          </div>
         </div>
       </section>
     </div>
