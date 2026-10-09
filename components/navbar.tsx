@@ -81,22 +81,11 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full bg-black/80 backdrop-blur-xl border-b border-neutral-900/60">
       <div className="container mx-auto flex h-24 items-center justify-between px-6 max-w-7xl">
         
-        {/* Top Left: Live Indian Rupee Ticker Pill matching Xapo Bank screenshot */}
-        <div className="hidden lg:flex items-center gap-4 bg-neutral-900/90 hover:bg-neutral-900 border border-neutral-800 rounded-full px-5 py-2.5 shadow-2xl transition-all">
-          <div className="flex flex-col">
-            <span className="text-[11px] font-bold text-white tracking-wide">
-              ChitChain INR
-            </span>
-            <span className="text-[10px] text-emerald-400 font-mono font-semibold flex items-center gap-0.5">
-              <span>↑ 5.20%</span>
-              <span className="text-neutral-500 ml-1">Dividend</span>
-            </span>
-          </div>
-          <div className="h-6 w-px bg-neutral-800" />
-          <div className="text-[10px] font-mono text-neutral-400 space-y-0.5">
-            <div>Monthly Pot <span className="text-white font-bold">₹1,00,000</span></div>
-            <div>Yield <span className="text-white font-bold">5.2% APY</span></div>
-          </div>
+        {/* Top Left: Onchain Network Status Badge */}
+        <div className="hidden lg:flex items-center gap-2.5 bg-neutral-900/80 border border-neutral-800 rounded-full px-4 py-2 shadow-lg backdrop-blur-md">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-xs font-mono text-neutral-300 font-semibold">Base Sepolia</span>
+          <span className="text-[11px] font-mono text-neutral-500 border-l border-neutral-800 pl-2">Chain 84532</span>
         </div>
 
         {/* Center: Luxury ChitChain Logo */}
