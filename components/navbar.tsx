@@ -212,16 +212,6 @@ export function Navbar() {
 
         {/* Right: Clean Luxury Action Controls */}
         <div className="flex items-center gap-3">
-          
-          {/* Start Chit Circle Action Button */}
-          <Link
-            href="/circles/new"
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-wider border border-neutral-800 transition-all shadow-md hover:border-amber-500/40"
-          >
-            <PlusCircle className="w-3.5 h-3.5 text-amber-400" />
-            <span>Start Chit Circle</span>
-          </Link>
-
           {isUserAuthenticated ? (
             <>
               {/* Live Wallet Balance Pill */}
