@@ -5,13 +5,6 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useDevUser } from "@/components/providers";
 import { PlusCircle, Users, ArrowRight, TrendingUp, User, ShieldCheck, Zap } from "lucide-react";
-import { fromBaseUnits } from "@/lib/validation";
-
-const FloatingCoinsBackground = dynamic(
-  () => import("@/components/floating-coins-background").then((mod) => mod.FloatingCoinsBackground),
-  { ssr: false }
-);
-
 interface CircleItem {
   id: string;
   name: string;
@@ -57,9 +50,6 @@ export default function HomePage() {
 
   return (
     <div className="relative min-h-screen bg-black text-white selection:bg-amber-500 selection:text-black overflow-hidden">
-      {/* 3D Floating Rupee Coins Background Animation */}
-      <FloatingCoinsBackground />
-
       {/* Hero Section */}
       <section className="relative z-10 max-w-6xl mx-auto px-6 pt-12 pb-8">
         <div className="space-y-6">

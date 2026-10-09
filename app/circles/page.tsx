@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useDevUser } from "@/components/providers";
-import { PlusCircle, ArrowRight, Clock, CheckCircle2, AlertCircle, Coins, Shield } from "lucide-react";
+import { PlusCircle, ArrowRight, Clock, CheckCircle2, AlertCircle, Coins, Shield, Edit3, Trash2 } from "lucide-react";
 import { fromBaseUnits } from "@/lib/validation";
 import { DemoVideoModal } from "@/components/demo-video-modal";
+import { EditCircleModal, DeleteCircleModal, CircleActionData } from "@/components/circle-action-modals";
 
 interface CircleItem {
   id: string;
@@ -23,7 +24,10 @@ export default function CirclesListPage() {
   const [circles, setCircles] = useState<CircleItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const [editModalCircle, setEditModalCircle] = useState<CircleActionData | null>(null);
+  const [deleteModalCircle, setDeleteModalCircle] = useState<{ id: string; name: string } | null>(null);
+
+  const fetchCircles = useCallback(() => {
     if (!user) return;
     setLoading(true);
     fetch("/api/circles/mine", {
@@ -39,9 +43,29 @@ export default function CirclesListPage() {
       .finally(() => setLoading(false));
   }, [user]);
 
+  useEffect(() => {
+    fetchCircles();
+  }, [fetchCircles]);
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-8 space-y-10 text-neutral-100">
       <DemoVideoModal />
+
+      {/* Action Modals */}
+      <EditCircleModal
+        isOpen={Boolean(editModalCircle)}
+        circle={editModalCircle}
+        onClose={() => setEditModalCircle(null)}
+        onSuccess={fetchCircles}
+      />
+
+      <DeleteCircleModal
+        isOpen={Boolean(deleteModalCircle)}
+        circle={deleteModalCircle}
+        onClose={() => setDeleteModalCircle(null)}
+        onSuccess={fetchCircles}
+      />
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-neutral-900">
         <div className="space-y-1">
           <div className="text-xs uppercase tracking-widest font-bold text-red-500">
@@ -84,7 +108,7 @@ export default function CirclesListPage() {
           {circles.map((circle) => {
             const isVolunteer =
               user?.username === circle.volunteerUsername ||
-              user?.walletAddress.toLowerCase() === circle.volunteerWallet.toLowerCase();
+              user?.walletAddress?.toLowerCase() === circle.volunteerWallet?.toLowerCase();
 
             return (
               <div
@@ -112,20 +136,23 @@ export default function CirclesListPage() {
                         )}
                       </p>
                     </div>
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase ${
-                        circle.status === "FINALIZED"
-                          ? "bg-emerald-950/80 text-emerald-300 border border-emerald-800/60"
-                          : circle.status === "ISSUE_STAGE"
-                          ? "bg-amber-950/80 text-amber-300 border border-amber-800/60"
-                          : "bg-blue-950/80 text-blue-300 border border-blue-800/60"
-                      }`}
-                    >
-                      {circle.status === "FINALIZED" && <CheckCircle2 className="h-3 w-3" />}
-                      {circle.status === "ISSUE_STAGE" && <AlertCircle className="h-3 w-3" />}
-                      {circle.status === "INVITING" && <Clock className="h-3 w-3" />}
-                      {circle.status}
-                    </span>
+
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase ${
+                          circle.status === "FINALIZED"
+                            ? "bg-emerald-950/80 text-emerald-300 border border-emerald-800/60"
+                            : circle.status === "ISSUE_STAGE"
+                            ? "bg-amber-950/80 text-amber-300 border border-amber-800/60"
+                            : "bg-blue-950/80 text-blue-300 border border-blue-800/60"
+                        }`}
+                      >
+                        {circle.status === "FINALIZED" && <CheckCircle2 className="h-3 w-3" />}
+                        {circle.status === "ISSUE_STAGE" && <AlertCircle className="h-3 w-3" />}
+                        {circle.status === "INVITING" && <Clock className="h-3 w-3" />}
+                        {circle.status}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Stats overview */}
@@ -147,14 +174,38 @@ export default function CirclesListPage() {
                   </div>
                 </div>
 
-                {/* Actions Links */}
-                <div className="flex items-center justify-between border-t border-neutral-900 pt-5 text-xs">
-                  <span className="text-neutral-400">
-                    Role:{" "}
-                    <span className="text-white font-bold">
-                      {circle.status === "FINALIZED" ? "Member" : isVolunteer ? "Volunteer" : "Member"}
+                {/* Actions Links & Volunteer Controls */}
+                <div className="flex flex-wrap items-center justify-between border-t border-neutral-900 pt-5 text-xs gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-neutral-400">
+                      Role:{" "}
+                      <span className="text-white font-bold">
+                        {circle.status === "FINALIZED" ? "Member" : isVolunteer ? "Volunteer" : "Member"}
+                      </span>
                     </span>
-                  </span>
+
+                    {/* Volunteer edit and delete buttons */}
+                    {isVolunteer && circle.status !== "FINALIZED" && (
+                      <div className="flex items-center gap-1.5 ml-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditModalCircle(circle)}
+                          className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white border border-neutral-800 transition-colors"
+                          title="Edit Circle"
+                        >
+                          <Edit3 className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteModalCircle({ id: circle.id, name: circle.name })}
+                          className="p-1.5 rounded-lg bg-neutral-900 hover:bg-red-950/60 text-neutral-400 hover:text-red-400 border border-neutral-800 hover:border-red-900/50 transition-colors"
+                          title="Delete Circle"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
                   <div className="flex items-center gap-2.5">
                     {circle.status === "ISSUE_STAGE" && (

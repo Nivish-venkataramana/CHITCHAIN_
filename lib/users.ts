@@ -3,7 +3,12 @@ import { UserProfile } from "@/handoffs/user-profile";
 
 const isTestEnv = process.env.NODE_ENV === "test";
 
-let users: UserProfile[] = isTestEnv ? [...(usersFixture as UserProfile[])] : [];
+const g = globalThis as any;
+if (!g.__chitchain_users__) {
+  g.__chitchain_users__ = isTestEnv ? [...(usersFixture as UserProfile[])] : [];
+}
+
+const users: UserProfile[] = g.__chitchain_users__;
 
 export function getFixtureUsers(): UserProfile[] {
   return users;
@@ -28,6 +33,42 @@ export function getUserByUsername(username: string): UserProfile | undefined {
 export function getUserByWallet(address: string): UserProfile | undefined {
   const norm = address.toLowerCase().trim();
   return users.find((u) => u.walletAddress.toLowerCase() === norm);
+}
+
+export function syncUserAccount(params: {
+  username: string;
+  walletAddress: string;
+  displayName?: string;
+}): UserProfile {
+  const cleanUsername = params.username.toLowerCase().trim().replace(/^@/, "");
+  const cleanWallet = (params.walletAddress || "").toLowerCase().trim() as `0x${string}`;
+
+  let user = getUserByUsername(cleanUsername);
+  if (user) {
+    if (/^0x[a-f0-9]{40}$/i.test(cleanWallet)) {
+      user.walletAddress = cleanWallet;
+    }
+    if (params.displayName) user.displayName = params.displayName;
+    return user;
+  }
+
+  if (/^0x[a-f0-9]{40}$/i.test(cleanWallet)) {
+    user = getUserByWallet(cleanWallet);
+    if (user) {
+      user.username = cleanUsername;
+      if (params.displayName) user.displayName = params.displayName;
+      return user;
+    }
+  }
+
+  const newUser: UserProfile = {
+    username: cleanUsername,
+    walletAddress: cleanWallet,
+    displayName: params.displayName || cleanUsername,
+    createdAt: new Date().toISOString(),
+  };
+  addUser(newUser);
+  return newUser;
 }
 
 export function addUser(user: UserProfile) {

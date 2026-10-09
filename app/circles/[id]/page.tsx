@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useDevUser } from "@/components/providers";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import {
@@ -20,8 +20,11 @@ import {
   Shield,
   ArrowRight,
   Coins,
+  Edit3,
+  Trash2,
 } from "lucide-react";
 import { fromBaseUnits } from "@/lib/validation";
+import { EditCircleModal, DeleteCircleModal } from "@/components/circle-action-modals";
 
 interface CircleDetails {
   id: string;
@@ -44,6 +47,7 @@ interface CircleDetails {
 
 export default function CircleDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const circleId = params.id as string;
   const { user, users } = useDevUser();
   const { user: privyUser } = usePrivy();
@@ -72,6 +76,8 @@ export default function CircleDetailPage() {
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
   const [invitingUsername, setInvitingUsername] = useState<string | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   const fetchCircle = () => {
     fetch(`/api/circles/${circleId}`)
@@ -87,13 +93,30 @@ export default function CircleDetailPage() {
 
   useEffect(() => {
     fetchCircle();
-    fetch("/api/users/search?q=")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setDirectoryUsers(data);
-      })
-      .catch((err) => console.error("Error loading users directory:", err));
   }, [circleId]);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      fetch("/api/users/search?q=")
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data)) setDirectoryUsers(data);
+        })
+        .catch(() => {});
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      fetch(`/api/users/search?q=${encodeURIComponent(searchQuery)}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data)) setDirectoryUsers(data);
+        })
+        .catch(() => {});
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const isVolunteer =
     Boolean(circle) &&
@@ -177,6 +200,21 @@ export default function CircleDetailPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8 space-y-8 text-neutral-100">
+      {/* Action Modals */}
+      <EditCircleModal
+        isOpen={isEditOpen}
+        circle={circle}
+        onClose={() => setIsEditOpen(false)}
+        onSuccess={() => fetchCircle()}
+      />
+
+      <DeleteCircleModal
+        isOpen={isDeleteOpen}
+        circle={circle}
+        onClose={() => setIsDeleteOpen(false)}
+        onSuccess={() => router.push("/circles")}
+      />
+
       <Link
         href="/circles"
         className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-400 hover:text-white transition-colors"
@@ -229,6 +267,29 @@ export default function CircleDetailPage() {
 
         {/* Hand off action navigation */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Volunteer Edit & Delete Controls */}
+          {isVolunteer && circle.status !== "FINALIZED" && (
+            <>
+              <button
+                type="button"
+                onClick={() => setIsEditOpen(true)}
+                className="px-4 py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold border border-neutral-800 transition-colors flex items-center gap-1.5"
+              >
+                <Edit3 className="h-3.5 w-3.5 text-neutral-300" />
+                <span>Edit Circle</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsDeleteOpen(true)}
+                className="px-4 py-2.5 rounded-xl bg-neutral-900 hover:bg-red-950/60 text-red-400 border border-neutral-800 hover:border-red-900/50 transition-colors flex items-center gap-1.5"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>Delete</span>
+              </button>
+            </>
+          )}
+
           <Link
             href={`/circles/${circle.id}/issues`}
             className="px-4 py-2.5 rounded-xl bg-amber-950/50 hover:bg-amber-900/50 text-amber-300 text-xs font-bold border border-amber-800/50 transition-colors flex items-center gap-1.5"

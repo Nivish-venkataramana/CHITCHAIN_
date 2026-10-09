@@ -21,30 +21,67 @@ export function useDevUser() {
 
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "cmv07umju004s0fjtwjr9l71v";
 
+import { usePrivy, useWallets } from "@privy-io/react-auth";
+
+function PrivyUserSync({ onSync }: { onSync?: () => void }) {
+  const { user: privyUser, authenticated } = usePrivy();
+  const { wallets } = useWallets();
+
+  useEffect(() => {
+    if (!authenticated || !privyUser) return;
+
+    const embeddedWallet = wallets.find((w) => w.walletClientType === "privy") || wallets[0];
+    const walletAddress = (
+      embeddedWallet?.address ||
+      privyUser?.wallet?.address ||
+      ""
+    ).toLowerCase();
+
+    const email = privyUser?.email?.address || "";
+    const username = email
+      ? email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase()
+      : walletAddress
+      ? `user_${walletAddress.slice(2, 6).toLowerCase()}`
+      : "";
+
+    const displayName = email ? email.split("@")[0] : username;
+
+    if (username && walletAddress && /^0x[a-f0-9]{40}$/i.test(walletAddress)) {
+      fetch("/api/account/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username,
+          walletAddress,
+          displayName,
+        }),
+      })
+        .then(() => onSync?.())
+        .catch((err) => console.warn("Privy user sync notice:", err));
+    }
+  }, [authenticated, privyUser, wallets]);
+
+  return null;
+}
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
   const [user, setUser] = useState<UserProfile | null>(null);
   const [users, setUsers] = useState<UserProfile[]>([]);
 
-  useEffect(() => {
-    // Load initial session
+  const refreshUsers = () => {
     fetch("/api/users/search?q=")
       .then((r) => r.json())
       .then((allUsers: UserProfile[]) => {
-        setUsers(allUsers);
-        const storedUser = localStorage.getItem("chitchain_dev_user");
-        if (storedUser) {
-          const found = allUsers.find((u) => u.username === storedUser);
-          if (found) {
-            setUser(found);
-            return;
-          }
-        }
-        if (allUsers.length > 0) {
-          setUser(allUsers[0]);
+        if (Array.isArray(allUsers)) {
+          setUsers(allUsers);
         }
       })
       .catch((err) => console.error("Error loading users:", err));
+  };
+
+  useEffect(() => {
+    refreshUsers();
   }, []);
 
   const handleSetUser = (u: UserProfile | null) => {
@@ -70,6 +107,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           },
         }}
       >
+        <PrivyUserSync onSync={refreshUsers} />
         <UserContext.Provider value={{ user, setUser: handleSetUser, users }}>
           {children}
         </UserContext.Provider>

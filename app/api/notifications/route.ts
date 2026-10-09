@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized session" }, { status: 401 });
     }
 
-    const notifs = await getNotificationsForUser(user.walletAddress);
+    const notifs = await getNotificationsForUser(user.walletAddress, user.username);
     return NextResponse.json(notifs);
   } catch (err: any) {
     return NextResponse.json(

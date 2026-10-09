@@ -35,8 +35,8 @@ const transferEventAbi = parseAbiItem(
 const publicClient = createPublicClient({
   chain: baseSepolia,
   transport: http(process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org", {
-    timeout: 8000,
-    retryCount: 2,
+    timeout: 3500,
+    retryCount: 1,
   }),
 });
 

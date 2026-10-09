@@ -25,39 +25,50 @@ export interface AutopayConsentRecord {
 
 const isTestEnv = process.env.NODE_ENV === "test";
 
-// Global user store (empty by default in production/runtime)
-let usersDb: UserRecord[] = isTestEnv
-  ? (usersFixture as UserProfile[]).map((u, i) => ({
-      ...u,
-      id: `user-${i + 1}`,
-      createdAt: new Date(),
-    }))
-  : [];
+const g = globalThis as any;
 
-// Global autopay consents store
-let autopayConsents: AutopayConsentRecord[] = [];
+if (!g.__chitchain_users_db__) {
+  g.__chitchain_users_db__ = isTestEnv
+    ? (usersFixture as UserProfile[]).map((u, i) => ({
+        ...u,
+        id: `user-${i + 1}`,
+        createdAt: new Date(),
+      }))
+    : [];
+}
 
-// Vault addresses mapping
-let circleVaults: Record<string, { vaultAddress: string; isStarted: boolean }> = isTestEnv
-  ? {
-      "sample-circle-4m-3mo": {
-        vaultAddress: "0x8888888888888888888888888888888888888888",
-        isStarted: false,
-      },
-    }
-  : {};
+if (!g.__chitchain_autopay__) {
+  g.__chitchain_autopay__ = [];
+}
 
-// Simulated faucet balance tracking
-let userBalances: Record<string, bigint> = isTestEnv
-  ? {
-      "0x1111111111111111111111111111111111111111": 10000_000000n,
-      "0x2222222222222222222222222222222222222222": 5000_000000n,
-      "0x3333333333333333333333333333333333333333": 4000_000000n,
-      "0x4444444444444444444444444444444444444444": 3500_000000n,
-      "0x5555555555555555555555555555555555555555": 3000_000000n,
-      "0x6666666666666666666666666666666666666666": 400_000000n,
-    }
-  : {};
+if (!g.__chitchain_vaults__) {
+  g.__chitchain_vaults__ = isTestEnv
+    ? {
+        "sample-circle-4m-3mo": {
+          vaultAddress: "0x8888888888888888888888888888888888888888",
+          isStarted: false,
+        },
+      }
+    : {};
+}
+
+if (!g.__chitchain_balances__) {
+  g.__chitchain_balances__ = isTestEnv
+    ? {
+        "0x1111111111111111111111111111111111111111": 10000_000000n,
+        "0x2222222222222222222222222222222222222222": 5000_000000n,
+        "0x3333333333333333333333333333333333333333": 4000_000000n,
+        "0x4444444444444444444444444444444444444444": 3500_000000n,
+        "0x5555555555555555555555555555555555555555": 3000_000000n,
+        "0x6666666666666666666666666666666666666666": 400_000000n,
+      }
+    : {};
+}
+
+const usersDb: UserRecord[] = g.__chitchain_users_db__;
+const autopayConsents: AutopayConsentRecord[] = g.__chitchain_autopay__;
+const circleVaults: Record<string, { vaultAddress: string; isStarted: boolean }> = g.__chitchain_vaults__;
+const userBalances: Record<string, bigint> = g.__chitchain_balances__;
 
 export async function createUserAccount(params: {
   displayName?: string;
@@ -274,7 +285,7 @@ export async function createCircleVaultAddress(circleId: string, volunteerWallet
   }
 
   if (finalized.volunteer.toLowerCase() !== volunteerWallet.toLowerCase()) {
-    throw new Error("Only the volunteer organizer can deploy the circle vault.");
+    throw new Error("Only the volunteer can deploy the circle vault.");
   }
 
   const simulatedVault = `0x${Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join("")}`;
@@ -360,7 +371,7 @@ export async function startCircleVault(circleId: string, volunteerWallet: string
   }
 
   if (finalized.volunteer.toLowerCase() !== volunteerWallet.toLowerCase()) {
-    throw new Error("Only the volunteer organizer can start the vault.");
+    throw new Error("Only the volunteer can start the vault.");
   }
 
   const status = await getAutopayStatusForCircle(circleId);

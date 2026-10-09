@@ -15,8 +15,8 @@ const BASE_SEPOLIA_USDC = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
 const publicClient = createPublicClient({
   chain: baseSepolia,
   transport: http(process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org", {
-    timeout: 8000,
-    retryCount: 2,
+    timeout: 3500,
+    retryCount: 1,
   }),
 });
 
