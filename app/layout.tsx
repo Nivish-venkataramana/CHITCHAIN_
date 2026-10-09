@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
+
+import { FloatingCoinsBackground } from "@/components/floating-coins-background";
 
 export const metadata: Metadata = {
   title: "ChitChain • Private Wealth Circles",
@@ -24,13 +25,13 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-screen bg-black text-neutral-100 antialiased flex flex-col font-sans selection:bg-orange-900 selection:text-white">
+      <body className="h-screen max-h-screen bg-black text-neutral-100 antialiased flex flex-col font-sans selection:bg-neutral-800 selection:text-white overflow-hidden">
+        <FloatingCoinsBackground />
         <Providers>
           <Navbar />
-          <main className="flex-1">
+          <main className="flex-1 flex flex-col px-4 sm:px-8 py-3 min-h-0 overflow-hidden">
             {children}
           </main>
-          <Footer />
         </Providers>
       </body>
     </html>

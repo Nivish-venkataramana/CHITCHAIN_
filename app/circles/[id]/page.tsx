@@ -8,17 +8,15 @@ import { usePrivy, useWallets } from "@privy-io/react-auth";
 import {
   ArrowLeft,
   Users,
-  ShieldCheck,
   UserPlus,
-  CheckCircle,
-  XCircle,
+  CheckCircle2,
   Clock,
+  XCircle,
   AlertTriangle,
   Search,
   AlertCircle,
-  CheckCircle2,
-  Shield,
-  ArrowRight,
+  ShieldCheck,
+  Layers,
   Coins,
   Edit3,
   Trash2,
@@ -53,7 +51,6 @@ export default function CircleDetailPage() {
   const { user: privyUser } = usePrivy();
   const { wallets } = useWallets();
 
-  // Dynamic user identity extraction
   const embeddedWallet = wallets.find((w) => w.walletClientType === "privy") || wallets[0];
   const activeWalletAddress = (
     embeddedWallet?.address ||
@@ -148,7 +145,7 @@ export default function CircleDetailPage() {
         throw new Error(data.error || "Failed to send invite");
       }
 
-      setInviteSuccess(`Invite sent successfully to @${cleanTarget}`);
+      setInviteSuccess(`Invite sent to @${cleanTarget}`);
       fetchCircle();
       setSearchQuery("");
     } catch (err: any) {
@@ -178,19 +175,23 @@ export default function CircleDetailPage() {
 
   if (loading) {
     return (
-      <div className="p-16 text-center text-sm text-neutral-500 bg-neutral-950 rounded-3xl border border-neutral-900">
-        Loading circle details...
+      <div className="flex-1 flex items-center justify-center">
+        <div className="p-8 text-center text-xs font-mono text-neutral-400 rounded-3xl border border-white/10 bg-transparent">
+          Loading circle details...
+        </div>
       </div>
     );
   }
 
   if (!circle) {
     return (
-      <div className="p-16 text-center bg-neutral-950 rounded-3xl border border-neutral-900 space-y-4">
-        <p className="text-neutral-400 text-sm">Circle not found.</p>
-        <Link href="/circles" className="text-xs font-bold text-red-400">
-          Return to circles
-        </Link>
+      <div className="flex-1 flex items-center justify-center">
+        <div className="p-8 text-center rounded-3xl border border-white/10 bg-transparent space-y-3">
+          <p className="text-neutral-300 text-sm">Circle not found.</p>
+          <Link href="/dashboard" className="text-xs font-semibold text-white hover:underline">
+            Return to Dashboard
+          </Link>
+        </div>
       </div>
     );
   }
@@ -199,7 +200,7 @@ export default function CircleDetailPage() {
   const monthlyUSDC = fromBaseUnits(circle.monthlyAmount);
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8 space-y-8 text-neutral-100">
+    <div className="w-full max-w-5xl mx-auto px-2 sm:px-4 flex flex-col justify-between h-[calc(100vh-5.5rem)] max-h-[calc(100vh-5.5rem)] text-neutral-100 gap-3">
       {/* Action Modals */}
       <EditCircleModal
         isOpen={isEditOpen}
@@ -212,77 +213,73 @@ export default function CircleDetailPage() {
         isOpen={isDeleteOpen}
         circle={circle}
         onClose={() => setIsDeleteOpen(false)}
-        onSuccess={() => router.push("/circles")}
+        onSuccess={() => router.push("/dashboard")}
       />
 
-      <Link
-        href="/circles"
-        className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-400 hover:text-white transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        <span>Return to Circles</span>
-      </Link>
+      {/* Top Bar: Return Link */}
+      <div className="flex items-center justify-between shrink-0">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-400 hover:text-white transition-colors"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          <span>Return to Dashboard</span>
+        </Link>
+      </div>
 
-      {/* Header Banner */}
-      <div className="rounded-3xl border border-neutral-900 bg-neutral-950 p-8 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
-        <div className="space-y-2 relative z-10">
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold text-white tracking-tight">{circle.name}</h1>
-            <span
-              className={`px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase ${
-                circle.status === "FINALIZED"
-                  ? "bg-emerald-950/80 text-emerald-300 border border-emerald-800/60"
-                  : circle.status === "ISSUE_STAGE"
-                  ? "bg-amber-950/80 text-amber-300 border border-amber-800/60"
-                  : "bg-blue-950/80 text-blue-300 border border-blue-800/60"
-              }`}
-            >
+      {/* Header Banner - Transparent with light white tint */}
+      <div className="rounded-2xl border border-white/10 bg-transparent p-3.5 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0 shadow-lg">
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">{circle.name}</h1>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider border border-white/20 text-neutral-200">
               {circle.status}
             </span>
           </div>
-          <p className="text-xs text-neutral-400">
+          <p className="text-[11px] text-neutral-400">
             {circle.status !== "FINALIZED" ? (
               isVolunteer ? (
                 <>
-                  Initiated by: <strong className="text-white">You (Volunteer)</strong> • Identifier:{" "}
+                  Initiated by: <span className="text-white font-medium">You (Volunteer)</span> • ID:{" "}
                   <span className="font-mono text-neutral-300">{circle.id}</span>
                 </>
               ) : (
                 <>
                   Volunteer:{" "}
-                  <strong className="text-white">
-                    {circle.volunteerUsername ? `@${circle.volunteerUsername}` : circle.volunteerWallet}
-                  </strong>{" "}
-                  • Identifier: <span className="font-mono text-neutral-300">{circle.id}</span>
+                  <span className="text-white font-medium">
+                    @{circle.volunteerUsername || "volunteer"}
+                  </span>{" "}
+                  • ID: <span className="font-mono text-neutral-300">{circle.id}</span>
                 </>
               )
             ) : (
               <>
-                <span className="text-emerald-400 font-semibold">Decentralized Protocol</span> • Identifier:{" "}
+                <span className="text-emerald-400 font-medium">Decentralized Protocol</span> • ID:{" "}
                 <span className="font-mono text-neutral-300">{circle.id}</span>
               </>
             )}
           </p>
         </div>
 
-        {/* Hand off action navigation */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Volunteer Edit & Delete Controls */}
+        {/* Action Controls with Sleek Stroke Icons */}
+        <div className="flex flex-wrap items-center gap-2">
           {isVolunteer && circle.status !== "FINALIZED" && (
             <>
               <button
                 type="button"
                 onClick={() => setIsEditOpen(true)}
-                className="px-4 py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold border border-neutral-800 transition-colors flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Edit Circle"
               >
                 <Edit3 className="h-3.5 w-3.5 text-neutral-300" />
-                <span>Edit Circle</span>
+                <span>Edit</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setIsDeleteOpen(true)}
-                className="px-4 py-2.5 rounded-xl bg-neutral-900 hover:bg-red-950/60 text-red-400 border border-neutral-800 hover:border-red-900/50 transition-colors flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-red-950/40 text-neutral-300 hover:text-red-400 hover:border-red-900/50 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Delete Circle"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 <span>Delete</span>
@@ -290,75 +287,88 @@ export default function CircleDetailPage() {
             </>
           )}
 
-          <Link
-            href={`/circles/${circle.id}/issues`}
-            className="px-4 py-2.5 rounded-xl bg-amber-950/50 hover:bg-amber-900/50 text-amber-300 text-xs font-bold border border-amber-800/50 transition-colors flex items-center gap-1.5"
-          >
-            <AlertTriangle className="h-3.5 w-3.5" />
-            <span>Issue Stage</span>
-          </Link>
+          {(circle.status === "ISSUE_STAGE" || circle.status === "FINALIZED" || acceptedInvites.length >= circle.numPeople) ? (
+            <Link
+              href={`/circles/${circle.id}/issues`}
+              className="px-3 py-1.5 rounded-xl border border-white/20 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+            >
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-300" />
+              <span>Raise Issues</span>
+            </Link>
+          ) : (
+            <div className="px-3 py-1.5 rounded-xl border border-white/10 bg-white/[0.02] text-neutral-400 text-xs font-mono flex items-center gap-1.5 cursor-not-allowed">
+              <Clock className="h-3.5 w-3.5 text-neutral-500" />
+              <span>Waiting for Members ({acceptedInvites.length}/{circle.numPeople})</span>
+            </div>
+          )}
 
-          <Link
-            href={`/circles/${circle.id}/autopay`}
-            className="px-4 py-2.5 rounded-xl bg-emerald-950/50 hover:bg-emerald-900/50 text-emerald-300 text-xs font-bold border border-emerald-800/50 transition-colors flex items-center gap-1.5"
-          >
-            <ShieldCheck className="h-3.5 w-3.5" />
-            <span>Autopay</span>
-          </Link>
+          {circle.status === "FINALIZED" && (
+            <>
+              <Link
+                href={`/circles/${circle.id}/autopay`}
+                className="px-3 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] text-neutral-200 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              >
+                <ShieldCheck className="h-3.5 w-3.5 text-neutral-300" />
+                <span>Autopay</span>
+              </Link>
 
-          <Link
-            href={`/circles/${circle.id}/pool`}
-            className="px-4 py-2.5 rounded-xl bg-blue-950/50 hover:bg-blue-900/50 text-blue-300 text-xs font-bold border border-blue-800/50 transition-colors"
-          >
-            <span>Pool Vault</span>
-          </Link>
+              <Link
+                href={`/circles/${circle.id}/pool`}
+                className="px-3 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] text-neutral-200 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              >
+                <Layers className="h-3.5 w-3.5 text-neutral-300" />
+                <span>Pool Vault</span>
+              </Link>
 
-          <Link
-            href={`/circles/${circle.id}/bidding`}
-            className="px-4 py-2.5 rounded-xl bg-purple-950/50 hover:bg-purple-900/50 text-purple-300 text-xs font-bold border border-purple-800/50 transition-colors"
-          >
-            <span>Secret Auction</span>
-          </Link>
+              <Link
+                href={`/circles/${circle.id}/bidding`}
+                className="px-3 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] text-neutral-200 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              >
+                <Coins className="h-3.5 w-3.5 text-neutral-300" />
+                <span>Secret Auction</span>
+              </Link>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Circle Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="rounded-2xl border border-neutral-900 bg-neutral-950 p-5 space-y-1">
-          <span className="text-[11px] uppercase tracking-wider text-neutral-400 block font-semibold">Total Capacity</span>
-          <p className="text-2xl font-bold text-white font-mono mt-1">{circle.numPeople} Members</p>
+      {/* Symmetrical 4-Column Stats Row */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 shrink-0">
+        <div className="rounded-2xl border border-white/10 bg-transparent p-2.5 sm:p-3 text-center space-y-0.5 shadow-sm">
+          <span className="text-[10px] uppercase tracking-wider text-neutral-400 block font-semibold">Capacity</span>
+          <p className="text-base sm:text-lg font-bold text-white font-mono">{circle.numPeople} Members</p>
         </div>
-        <div className="rounded-2xl border border-neutral-900 bg-neutral-950 p-5 space-y-1">
-          <span className="text-[11px] uppercase tracking-wider text-neutral-400 block font-semibold">Monthly Amount</span>
-          <p className="text-2xl font-bold text-white font-mono mt-1">{monthlyUSDC} <span className="text-xs font-normal text-neutral-400">USDC</span></p>
+        <div className="rounded-2xl border border-white/10 bg-transparent p-2.5 sm:p-3 text-center space-y-0.5 shadow-sm">
+          <span className="text-[10px] uppercase tracking-wider text-neutral-400 block font-semibold">Monthly Amount</span>
+          <p className="text-base sm:text-lg font-bold text-white font-mono">{monthlyUSDC} <span className="text-xs font-normal text-neutral-400">USDC</span></p>
         </div>
-        <div className="rounded-2xl border border-neutral-900 bg-neutral-950 p-5 space-y-1">
-          <span className="text-[11px] uppercase tracking-wider text-neutral-400 block font-semibold">Tenure</span>
-          <p className="text-2xl font-bold text-white font-mono mt-1">{circle.durationMonths} Months</p>
+        <div className="rounded-2xl border border-white/10 bg-transparent p-2.5 sm:p-3 text-center space-y-0.5 shadow-sm">
+          <span className="text-[10px] uppercase tracking-wider text-neutral-400 block font-semibold">Tenure</span>
+          <p className="text-base sm:text-lg font-bold text-white font-mono">{circle.durationMonths} Months</p>
         </div>
-        <div className="rounded-2xl border border-neutral-900 bg-neutral-950 p-5 space-y-1">
-          <span className="text-[11px] uppercase tracking-wider text-neutral-400 block font-semibold">Invite Gate 3x</span>
-          <p className="text-2xl font-bold text-emerald-400 font-mono mt-1">
+        <div className="rounded-2xl border border-white/10 bg-transparent p-2.5 sm:p-3 text-center space-y-0.5 shadow-sm">
+          <span className="text-[10px] uppercase tracking-wider text-neutral-400 block font-semibold">3x Verification</span>
+          <p className="text-base sm:text-lg font-bold text-white font-mono">
             {(Number(monthlyUSDC) * 3).toLocaleString()} <span className="text-xs font-normal text-neutral-400">USDC</span>
           </p>
         </div>
       </div>
 
-      {/* Invite Status Board & Search */}
-      <div className="grid md:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Status Board */}
-        <div className="md:col-span-2 rounded-3xl border border-neutral-900 bg-neutral-950 p-8 shadow-2xl space-y-6">
-          <div className="flex items-center justify-between border-b border-neutral-900 pb-4">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2.5">
-              <Users className="h-5 w-5 text-red-500" />
+      {/* Symmetrical 2-Column Section: Participant Board & Add Members */}
+      <div className="grid md:grid-cols-2 gap-3.5 flex-1 min-h-0">
+        {/* Left Column: Participant Board */}
+        <div className="rounded-2xl border border-white/10 bg-transparent p-4 flex flex-col h-full min-h-0 shadow-xl space-y-3">
+          <div className="flex items-center justify-between border-b border-white/10 pb-2.5 shrink-0">
+            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+              <Users className="h-4 w-4 text-neutral-300" />
               <span>Participant Board ({acceptedInvites.length} of {circle.numPeople})</span>
             </h2>
-            <span className="text-xs font-mono text-neutral-400">
+            <span className="text-[11px] font-mono text-neutral-400">
               {Math.max(0, circle.numPeople - acceptedInvites.length)} seats remaining
             </span>
           </div>
 
-          <div className="divide-y divide-neutral-900 border border-neutral-900 rounded-2xl overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-2 pr-1">
             {circle.invites.map((inv) => {
               const u = users.find((usr) => usr.username === inv.inviteeUsername);
               const isVol = inv.inviteeWallet.toLowerCase() === circle.volunteerWallet.toLowerCase();
@@ -371,44 +381,44 @@ export default function CircleDetailPage() {
               return (
                 <div
                   key={inv.id}
-                  className="p-5 flex items-center justify-between bg-neutral-950 hover:bg-neutral-900/60 transition-colors"
+                  className="p-2.5 rounded-xl border border-white/10 bg-white/[0.02] flex items-center justify-between hover:border-white/20 transition-colors"
                 >
-                  <div className="space-y-1">
+                  <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-white">
+                      <span className="font-semibold text-xs text-white">
                         {isCurrentUser ? (u?.displayName ? `${u.displayName} (You)` : "You") : u?.displayName || inv.inviteeUsername}
                       </span>
-                      <span className="text-xs text-neutral-400 font-mono">@{inv.inviteeUsername}</span>
+                      <span className="text-[11px] text-neutral-400 font-mono">@{inv.inviteeUsername}</span>
                       {isCurrentUser && (
-                        <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-neutral-800 text-neutral-200 border border-neutral-700">
+                        <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded border border-white/20 text-neutral-300">
                           You
                         </span>
                       )}
                       {!isCurrentUser && isVol && circle.status !== "FINALIZED" && (
-                        <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-blue-950/80 text-blue-300 border border-blue-800/50">
+                        <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded border border-white/20 text-neutral-300">
                           Volunteer
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] font-mono text-neutral-500">
-                      {inv.inviteeWallet.slice(0, 8)}...{inv.inviteeWallet.slice(-6)} • Balance verified:{" "}
+                    <p className="text-[10px] font-mono text-neutral-400">
+                      {inv.inviteeWallet.slice(0, 6)}...{inv.inviteeWallet.slice(-4)} • Verified:{" "}
                       {fromBaseUnits(inv.balanceAtCheck)} USDC
                     </p>
                   </div>
 
                   <div>
                     <span
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider border ${
                         inv.status === "ACCEPTED"
-                          ? "bg-emerald-950 text-emerald-300 border border-emerald-800/60"
+                          ? "border-emerald-500/40 text-emerald-400 bg-emerald-950/20"
                           : inv.status === "PENDING"
-                          ? "bg-amber-950 text-amber-300 border border-amber-800/60"
-                          : "bg-red-950 text-red-300 border border-red-800/60"
+                          ? "border-amber-500/40 text-amber-400 bg-amber-950/20"
+                          : "border-red-500/40 text-red-400 bg-red-950/20"
                       }`}
                     >
-                      {inv.status === "ACCEPTED" && <CheckCircle className="h-3.5 w-3.5" />}
-                      {inv.status === "PENDING" && <Clock className="h-3.5 w-3.5" />}
-                      {inv.status === "REJECTED" && <XCircle className="h-3.5 w-3.5" />}
+                      {inv.status === "ACCEPTED" && <CheckCircle2 className="h-3 w-3" />}
+                      {inv.status === "PENDING" && <Clock className="h-3 w-3" />}
+                      {inv.status === "REJECTED" && <XCircle className="h-3 w-3" />}
                       {inv.status}
                     </span>
                   </div>
@@ -418,14 +428,14 @@ export default function CircleDetailPage() {
           </div>
         </div>
 
-        {/* Right Col: Invite Candidate Search */}
-        <div className="rounded-3xl border border-neutral-900 bg-neutral-950 p-8 shadow-2xl space-y-6">
-          <div className="border-b border-neutral-900 pb-4">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <UserPlus className="h-5 w-5 text-red-500" />
+        {/* Right Column: Add Members */}
+        <div className="rounded-2xl border border-white/10 bg-transparent p-4 flex flex-col h-full min-h-0 shadow-xl space-y-3">
+          <div className="border-b border-white/10 pb-2.5 shrink-0">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <UserPlus className="h-4 w-4 text-neutral-300" />
               <span>Add Members</span>
             </h3>
-            <p className="text-xs text-neutral-400 mt-1">Search by unique username or wallet address</p>
+            <p className="text-[11px] text-neutral-400 mt-0.5">Search by username or wallet address</p>
           </div>
 
           <form
@@ -435,13 +445,13 @@ export default function CircleDetailPage() {
               if (filteredUsers.length > 0) {
                 handleInviteUser(filteredUsers[0].username);
               } else if (cleanQuery) {
-                setInviteError(`Account @${cleanQuery} does not exist in the database.`);
+                setInviteError(`Account @${cleanQuery} not found.`);
               }
             }}
-            className="space-y-3"
+            className="shrink-0"
           >
             <div className="relative flex items-center">
-              <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-neutral-500" />
+              <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-neutral-400" />
               <input
                 type="text"
                 value={searchQuery}
@@ -450,26 +460,26 @@ export default function CircleDetailPage() {
                   if (inviteError) setInviteError(null);
                 }}
                 placeholder="Type member username..."
-                className="w-full pl-10 pr-4 py-3 text-xs rounded-xl border border-neutral-800 bg-neutral-900 text-white focus:outline-none focus:border-red-500 font-mono"
+                className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-white/10 bg-white/[0.03] text-white focus:outline-none focus:border-white/30 font-mono transition-colors"
               />
             </div>
           </form>
 
           {inviteError && (
-            <div className="p-3.5 rounded-xl bg-red-950/60 border border-red-800/50 text-red-300 text-xs flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-red-400" />
+            <div className="p-2 rounded-xl border border-red-900/60 bg-red-950/40 text-red-300 text-xs flex items-center gap-2 shrink-0">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-400" />
               <span>{inviteError}</span>
             </div>
           )}
 
           {inviteSuccess && (
-            <div className="p-3.5 rounded-xl bg-emerald-950/60 border border-emerald-800/50 text-emerald-300 text-xs flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+            <div className="p-2 rounded-xl border border-emerald-900/60 bg-emerald-950/40 text-emerald-300 text-xs flex items-center gap-2 shrink-0">
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
               <span>{inviteSuccess}</span>
             </div>
           )}
 
-          <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+          <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-2 pr-1">
             {filteredUsers.map((u) => {
               const alreadyInvited = circle.invites.some(
                 (i) => i.inviteeUsername?.toLowerCase() === u.username?.toLowerCase() && i.status !== "REJECTED"
@@ -479,22 +489,22 @@ export default function CircleDetailPage() {
               return (
                 <div
                   key={u.username}
-                  className="p-3 rounded-xl border border-neutral-800 flex items-center justify-between text-xs bg-neutral-900/60"
+                  className="p-2.5 rounded-xl border border-white/10 bg-white/[0.02] flex items-center justify-between text-xs hover:border-white/20 transition-colors"
                 >
                   <div>
-                    <p className="font-bold text-white">{u.displayName}</p>
-                    <p className="text-neutral-400 font-mono text-[11px]">@{u.username}</p>
+                    <p className="font-semibold text-white text-xs">{u.displayName}</p>
+                    <p className="text-neutral-400 font-mono text-[10px]">@{u.username}</p>
                   </div>
                   <button
                     type="button"
                     disabled={alreadyInvited || isInvitingThis || !isVolunteer}
                     onClick={() => handleInviteUser(u.username)}
-                    className={`px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all ${
+                    className={`px-3 py-1 rounded-lg font-semibold text-xs transition-colors cursor-pointer ${
                       alreadyInvited
-                        ? "bg-neutral-800 text-neutral-500 cursor-not-allowed"
+                        ? "border border-white/10 bg-white/[0.03] text-neutral-400 cursor-not-allowed"
                         : !isVolunteer
-                        ? "bg-neutral-800 text-neutral-500 cursor-not-allowed"
-                        : "bg-white hover:bg-neutral-200 text-black cursor-pointer shadow-sm"
+                        ? "border border-white/10 bg-white/[0.03] text-neutral-400 cursor-not-allowed"
+                        : "bg-white text-black hover:bg-neutral-200 shadow-sm"
                     }`}
                   >
                     {isInvitingThis ? "Verifying..." : alreadyInvited ? "Added" : "Add"}
@@ -504,17 +514,15 @@ export default function CircleDetailPage() {
             })}
 
             {cleanQuery && filteredUsers.length === 0 && (
-              <div className="p-5 rounded-2xl border border-neutral-900 bg-neutral-900/40 text-center text-xs space-y-1">
-                <p className="text-white font-medium">No registered member found</p>
-                <p className="text-[11px] text-neutral-500">
-                  No account in the database matches <strong className="text-neutral-300">@{cleanQuery}</strong>.
-                </p>
+              <div className="p-4 rounded-xl border border-white/10 bg-transparent text-center text-xs space-y-0.5">
+                <p className="text-neutral-300 font-medium">No registered member found</p>
+                <p className="text-[10px] text-neutral-500">@{cleanQuery} does not exist.</p>
               </div>
             )}
 
             {!cleanQuery && filteredUsers.length === 0 && (
-              <p className="text-neutral-500 text-xs text-center py-4">
-                Type a registered username to invite them.
+              <p className="text-neutral-500 text-xs text-center py-3 font-mono">
+                No other members found.
               </p>
             )}
           </div>

@@ -10,19 +10,19 @@
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 4%;
     --popover-foreground: 0 0% 98%;
-    --primary: 158 64% 52%;
+    --primary: 0 0% 98%;
     --primary-foreground: 0 0% 0%;
     --secondary: 0 0% 9%;
     --secondary-foreground: 0 0% 98%;
     --muted: 0 0% 12%;
     --muted-foreground: 0 0% 60%;
-    --accent: 158 64% 52%;
+    --accent: 0 0% 98%;
     --accent-foreground: 0 0% 0%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 14%;
     --input: 0 0% 14%;
-    --ring: 158 64% 52%;
+    --ring: 0 0% 98%;
     --radius: 1rem;
   }
 }
@@ -38,76 +38,32 @@
   }
 }
 
-/* Transparent Glass Panels */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.025);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
-  transform: translateZ(0);
+/* Completely disable and hide scrollbars globally for a sleek zero-scroll layout */
+* {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 
-.glass-panel-glow {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(16, 185, 129, 0.2);
-  box-shadow: 0 0 30px -8px rgba(16, 185, 129, 0.18);
-  transform: translateZ(0);
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0px !important;
+  height: 0px !important;
 }
 
-.glass-panel-glow:hover {
-  border-color: rgba(16, 185, 129, 0.35);
-  box-shadow: 0 0 35px -5px rgba(16, 185, 129, 0.25);
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+}
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }
 
-/* Underline Floating Label Inputs */
-.line-input-group {
-  position: relative;
-  width: 100%;
+/* Remove spin arrows from number inputs */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
 }
-
-.line-input {
-  width: 100%;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 1.25rem 0 0.5rem 0;
-  font-size: 0.9375rem;
-  color: #ffffff;
-  outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.line-input:focus {
-  border-bottom: 1px solid #10b981;
-  box-shadow: 0 1px 0 0 #10b981, 0 8px 16px -4px rgba(16, 185, 129, 0.2);
-}
-
-.line-label {
-  position: absolute;
-  left: 0;
-  top: 1.25rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.4);
-  pointer-events: none;
-  transform-origin: left top;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  letter-spacing: 0.025em;
-  text-transform: uppercase;
-}
-
-.line-input:focus ~ .line-label,
-.line-input:not(:placeholder-shown) ~ .line-label,
-.line-input-active ~ .line-label {
-  top: 0;
-  transform: scale(0.8);
-  color: #10b981;
-  font-weight: 600;
-}
-
-.line-input:not(:focus):not(:placeholder-shown) ~ .line-label {
-  color: rgba(255, 255, 255, 0.5);
+input[type="number"] {
+  -moz-appearance: textfield !important;
 }

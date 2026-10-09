@@ -52,7 +52,7 @@ if (!g.__chitchain_vaults__) {
     : {};
 }
 
-if (!g.__chitchain_balances__) {
+if (!g.__chitchain_balances__ || !isTestEnv) {
   g.__chitchain_balances__ = isTestEnv
     ? {
         "0x1111111111111111111111111111111111111111": 10000_000000n,
@@ -108,7 +108,9 @@ export async function createUserAccount(params: {
 
   usersDb.push(newUser);
   addUser(newUser);
-  userBalances[cleanWallet] = 1000_000000n; // Grant initial 1,000 test USDC
+  if (isTestEnv) {
+    userBalances[cleanWallet] = 1000_000000n; // Only in unit test env
+  }
 
   return newUser;
 }
@@ -157,7 +159,7 @@ export async function getUserBalance(walletAddress: string): Promise<bigint> {
   const now = Date.now();
 
   const cached = balanceCache[cleanWallet];
-  const localMinted = userBalances[cleanWallet] ?? 0n;
+  const localMinted = isTestEnv ? (userBalances[cleanWallet] ?? 0n) : 0n;
 
   if (cached && now < cached.expiry) {
     return cached.usdc + localMinted;

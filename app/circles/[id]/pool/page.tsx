@@ -5,15 +5,12 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   ArrowLeft,
-  Play,
   Coins,
   Calendar,
   CheckCircle2,
   Clock,
-  Sparkles,
   ArrowRight,
   TrendingUp,
-  Shield,
 } from "lucide-react";
 import { fromBaseUnits } from "@/lib/validation";
 
@@ -59,119 +56,120 @@ export default function PoolVaultPage() {
     }
   };
 
-  const poolUSDC = state ? fromBaseUnits(state.poolAmount) : "4000";
+  const poolUSDC = state ? fromBaseUnits(state.poolAmount) : "0";
   const carriedUSDC = state ? fromBaseUnits(state.carriedDividend) : "0";
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-6 space-y-8 text-neutral-100">
-      <Link
-        href={`/circles/${circleId}`}
-        className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-400 hover:text-white transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        <span>Return to Circle</span>
-      </Link>
+    <div className="w-full max-w-5xl mx-auto px-2 sm:px-4 flex flex-col justify-between h-[calc(100vh-5.5rem)] max-h-[calc(100vh-5.5rem)] text-neutral-100 gap-3">
+      {/* Top Bar */}
+      <div className="flex items-center justify-between shrink-0">
+        <Link
+          href={`/circles/${circleId}`}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-400 hover:text-white transition-colors"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          <span>Return to Circle</span>
+        </Link>
+      </div>
 
-      <div className="rounded-3xl border border-neutral-900 bg-neutral-950 p-8 shadow-2xl space-y-8 relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-900 pb-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3.5 bg-red-600/10 border border-red-600/20 text-red-400 rounded-2xl">
-              <Coins className="h-6 w-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white tracking-tight">Pool Vault and Ledger</h1>
-              <p className="text-xs text-neutral-400 mt-0.5">
-                Onchain Vault Accounting on Base Sepolia
-              </p>
-            </div>
+      {/* Header Banner */}
+      <div className="rounded-2xl border border-white/10 bg-transparent p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 shadow-lg">
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Pool Vault & Ledger</h1>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider border border-white/20 text-neutral-200">
+              Cycle {state?.cycle || 1} • Phase: {state?.phase || "Collect"}
+            </span>
           </div>
-          <span className="px-4 py-1.5 rounded-full text-xs font-bold bg-neutral-900 text-neutral-200 border border-neutral-800 font-mono">
-            Cycle {state?.cycle || 1} of 3 • Phase: {state?.phase || "Collect"}
+          <p className="text-[11px] text-neutral-400">
+            Onchain Decentralized Accounting on Base Sepolia
+          </p>
+        </div>
+
+        <Link
+          href={`/circles/${circleId}/bidding`}
+          className="px-4 py-2 rounded-xl bg-white text-black font-semibold text-xs flex items-center gap-1.5 hover:bg-neutral-200 transition-colors shadow-md shrink-0"
+        >
+          <span>Go to Secret Auction</span>
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+
+      {/* Symmetrical Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 shrink-0">
+        <div className="p-3.5 rounded-2xl border border-white/10 bg-transparent text-center space-y-0.5 shadow-sm">
+          <span className="text-[10px] uppercase tracking-wider text-neutral-400 block font-semibold">Total Vault Pot</span>
+          <span className="text-xl font-bold text-white font-mono block">
+            {Number(poolUSDC).toLocaleString()} <span className="text-xs text-neutral-400 font-normal">USDC</span>
           </span>
         </div>
 
-        {/* Pool Stats in Xapo Bank Style */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-6 rounded-2xl bg-neutral-900/80 border border-neutral-800 space-y-1">
-            <span className="text-[11px] uppercase tracking-wider text-neutral-400 block font-semibold">Total Vault Pot</span>
-            <span className="text-3xl font-extrabold text-white font-mono block mt-1">
-              {Number(poolUSDC).toLocaleString()} <span className="text-xs text-neutral-400 font-normal">USDC</span>
-            </span>
+        <div className="p-3.5 rounded-2xl border border-white/10 bg-transparent text-center space-y-0.5 shadow-sm">
+          <span className="text-[10px] uppercase tracking-wider text-neutral-400 block font-semibold">Carried Dividend</span>
+          <span className="text-xl font-bold text-white font-mono block">
+            {Number(carriedUSDC).toLocaleString()} <span className="text-xs text-neutral-400 font-normal">USDC</span>
+          </span>
+        </div>
+
+        <div className="p-3.5 rounded-2xl border border-white/10 bg-transparent text-center space-y-0.5 shadow-sm">
+          <span className="text-[10px] uppercase tracking-wider text-neutral-400 block font-semibold">Scheduled State</span>
+          <span className="text-xl font-bold text-white font-mono block">
+            {state?.isHolding ? "Active Hold" : "Progressing"}
+          </span>
+        </div>
+      </div>
+
+      {/* Main Ledger Status & Cycle Progression */}
+      <div className="rounded-2xl border border-white/10 bg-transparent p-4 flex flex-col justify-between flex-1 min-h-0 shadow-xl space-y-3">
+        <div className="space-y-3">
+          <div className="border-b border-white/10 pb-2.5">
+            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-neutral-300" />
+              <span>Auction Stage & Settlement Roadmap</span>
+            </h2>
+            <p className="text-[11px] text-neutral-400 mt-0.5">Automated 30-day recurring smart contract schedule</p>
           </div>
 
-          <div className="p-6 rounded-2xl bg-neutral-900/80 border border-neutral-800 space-y-1">
-            <span className="text-[11px] uppercase tracking-wider text-neutral-400 block font-semibold">Carried Dividend</span>
-            <span className="text-3xl font-extrabold text-red-400 font-mono block mt-1">
-              +{Number(carriedUSDC).toLocaleString()} <span className="text-xs text-neutral-400 font-normal">USDC</span>
-            </span>
-          </div>
+          <div className="grid sm:grid-cols-3 gap-3">
+            <div className={`p-3 rounded-xl border ${state?.phase === "Collect" ? "border-white/30 bg-white/[0.04]" : "border-white/10 bg-white/[0.01]"} space-y-1`}>
+              <div className="flex items-center justify-between text-xs font-semibold text-white">
+                <span>Phase 1: Contribution</span>
+                <Clock className="h-3.5 w-3.5 text-neutral-400" />
+              </div>
+              <p className="text-[10px] text-neutral-400 font-mono">Deductions executed via EIP-712 session key mandates.</p>
+            </div>
 
-          <div className="p-6 rounded-2xl bg-neutral-900/80 border border-neutral-800 space-y-1">
-            <span className="text-[11px] uppercase tracking-wider text-neutral-400 block font-semibold">Collection Mandate</span>
-            <span className="text-3xl font-extrabold text-emerald-400 font-mono block mt-1">
-              Active <span className="text-xs text-neutral-400 font-normal">Auto</span>
-            </span>
+            <div className={`p-3 rounded-xl border ${state?.phase === "Auction" ? "border-white/30 bg-white/[0.04]" : "border-white/10 bg-white/[0.01]"} space-y-1`}>
+              <div className="flex items-center justify-between text-xs font-semibold text-white">
+                <span>Phase 2: Sealed Auction</span>
+                <Coins className="h-3.5 w-3.5 text-neutral-400" />
+              </div>
+              <p className="text-[10px] text-neutral-400 font-mono">2-stage commit-reveal bidding for lowest discount winner.</p>
+            </div>
+
+            <div className={`p-3 rounded-xl border ${state?.phase === "Settled" ? "border-white/30 bg-white/[0.04]" : "border-white/10 bg-white/[0.01]"} space-y-1`}>
+              <div className="flex items-center justify-between text-xs font-semibold text-white">
+                <span>Phase 3: Settlement</span>
+                <CheckCircle2 className="h-3.5 w-3.5 text-neutral-400" />
+              </div>
+              <p className="text-[10px] text-neutral-400 font-mono">Payout transferred and dividend carried to next round.</p>
+            </div>
           </div>
         </div>
 
-        {/* Monthly Calendar Overview */}
-        <div className="rounded-2xl bg-neutral-900/40 border border-neutral-800/80 p-6 space-y-4">
-          <div className="flex items-center gap-2 text-white font-bold text-sm">
-            <Calendar className="h-4 w-4 text-red-500" />
-            <span>Monthly Cycle Cadence</span>
-          </div>
+        {/* Action Controls */}
+        <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+          <span className="text-xs text-neutral-400 font-mono">
+            Status: <strong className="text-white">{state?.waitingFor || "Ready"}</strong>
+          </span>
 
-          <div className="grid sm:grid-cols-3 gap-4 text-xs">
-            <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-800 space-y-1">
-              <span className="text-neutral-500 font-mono text-[10px] uppercase">Phase 1</span>
-              <p className="font-bold text-white">Month Start (1st)</p>
-              <p className="text-neutral-400 text-[11px]">Autopay collects fixed contribution to vault.</p>
-            </div>
-            <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-800 space-y-1">
-              <span className="text-neutral-500 font-mono text-[10px] uppercase">Phase 2</span>
-              <p className="font-bold text-white">Month Duration</p>
-              <p className="text-neutral-400 text-[11px]">Members commit sealed confidential bids.</p>
-            </div>
-            <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-800 space-y-1">
-              <span className="text-neutral-500 font-mono text-[10px] uppercase">Phase 3</span>
-              <p className="font-bold text-white">Month End (Last Day)</p>
-              <p className="text-neutral-400 text-[11px]">1 Click Reveal and winner payout settlement.</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Demo Scheduler Advance Controller */}
-        <div className="p-6 rounded-2xl bg-neutral-900/90 border border-neutral-800 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-bold text-white text-sm">Automated Scheduler Engine</h3>
-              <p className="text-xs text-neutral-400 mt-0.5">
-                Current status: {state?.isHolding ? "HOLDING for demonstration confirmation" : "Active cycle progression"}
-              </p>
-            </div>
-            <span className="px-3 py-1 rounded-full bg-red-950 text-red-300 text-[10px] font-bold tracking-wider uppercase border border-red-800/60">
-              Demo Mode
-            </span>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center gap-4 pt-2">
-            <button
-              onClick={handleContinue}
-              disabled={advancing}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-white hover:bg-neutral-200 text-black font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-white/5 cursor-pointer"
-            >
-              <Play className="h-3.5 w-3.5 fill-current" />
-              <span>{advancing ? "Advancing State..." : "Continue Next Phase Step"}</span>
-            </button>
-
-            <Link
-              href={`/circles/${circleId}/bidding`}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-wider border border-neutral-800 transition-all flex items-center justify-center gap-2"
-            >
-              <span>Go to Secret Auction</span>
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
+          <button
+            onClick={handleContinue}
+            disabled={advancing}
+            className="px-4 py-2 rounded-xl bg-white text-black font-semibold text-xs hover:bg-neutral-200 transition-colors shadow-sm cursor-pointer"
+          >
+            <span>{advancing ? "Advancing..." : "Advance Cycle State"}</span>
+          </button>
         </div>
       </div>
     </div>

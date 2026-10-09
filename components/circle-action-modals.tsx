@@ -106,6 +106,15 @@ export function EditCircleModal({ isOpen, onClose, circle, onSuccess }: EditModa
   const monthlyNumeric = parseFloat(monthlyAmount) || 0;
   const collateralRequired = monthlyNumeric * 3;
 
+  const handleNumPeopleChange = (val: string) => {
+    const clean = val.replace(/\D/g, "");
+    setNumPeople(clean);
+    const n = parseInt(clean, 10);
+    if (!isNaN(n) && n >= 2) {
+      setDurationMonths(String(n - 1));
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
       <div className="relative w-full max-w-lg rounded-3xl border border-neutral-800 bg-neutral-950 p-8 shadow-2xl text-neutral-100 animate-in fade-in zoom-in-95 duration-150">
@@ -148,43 +157,55 @@ export function EditCircleModal({ isOpen, onClose, circle, onSuccess }: EditModa
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 items-start">
             <div className="space-y-1.5">
               <label className="block text-xs uppercase tracking-wider font-bold text-neutral-300">
                 Capacity (Members)
               </label>
-              <select
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={numPeople}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  setNumPeople(val);
-                  setDurationMonths(val - 1);
-                }}
-                className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3 text-xs text-white focus:outline-none focus:border-red-500 cursor-pointer"
-              >
-                {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
-                  <option key={n} value={n}>
-                    {n} Members
-                  </option>
-                ))}
-              </select>
+                onChange={(e) => handleNumPeopleChange(e.target.value)}
+                required
+                className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3 text-xs text-white focus:outline-none focus:border-red-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
             </div>
 
             <div className="space-y-1.5">
               <label className="block text-xs uppercase tracking-wider font-bold text-neutral-300">
                 Duration (Months)
               </label>
-              <select
-                value={durationMonths}
-                onChange={(e) => setDurationMonths(Number(e.target.value))}
-                className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3 text-xs text-white focus:outline-none focus:border-red-500 cursor-pointer"
-              >
-                {allowedDurations.map((d) => (
-                  <option key={d} value={d}>
-                    {d} Months ({d === numPeople - 1 ? "N-1 default" : "N-2 alternate"})
-                  </option>
-                ))}
-              </select>
+              {Number(numPeople) >= 2 ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {[Number(numPeople) - 1, Number(numPeople) - 2]
+                    .filter((d) => d >= 1)
+                    .map((d) => {
+                      const isSelected = Number(durationMonths) === d;
+                      const tag = d === Number(numPeople) - 1 ? "N - 1" : "N - 2";
+                      return (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setDurationMonths(d)}
+                          className={`py-2 px-3 text-xs font-mono font-bold rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                            isSelected
+                              ? "border-white bg-white text-black shadow-md"
+                              : "border-neutral-800 bg-neutral-900 text-neutral-300 hover:border-neutral-700 hover:text-white"
+                          }`}
+                        >
+                          <span className="text-[10px] opacity-75">{tag}</span>
+                          <span className="font-bold">{d} mo</span>
+                        </button>
+                      );
+                    })}
+                </div>
+              ) : (
+                <div className="w-full px-4 py-3 text-xs rounded-2xl border border-neutral-800 bg-neutral-900 text-neutral-500 font-mono flex items-center">
+                  <span>Enter capacity (N ≥ 2)</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -193,13 +214,13 @@ export function EditCircleModal({ isOpen, onClose, circle, onSuccess }: EditModa
               Monthly Contribution (USDC)
             </label>
             <input
-              type="number"
-              step="any"
-              min="1"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={monthlyAmount}
-              onChange={(e) => setMonthlyAmount(e.target.value)}
+              onChange={(e) => setMonthlyAmount(e.target.value.replace(/\D/g, ""))}
               required
-              className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3 text-xs text-white focus:outline-none focus:border-red-500 font-mono"
+              className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3 text-xs text-white focus:outline-none focus:border-red-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
           </div>
 

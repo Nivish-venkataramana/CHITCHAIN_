@@ -4,12 +4,12 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useDevUser } from "@/components/providers";
 import { usePrivy, useLoginWithEmail, useWallets } from "@privy-io/react-auth";
-import { Shield, Mail, KeyRound, ArrowRight, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Mail, KeyRound, ArrowRight, AlertCircle } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
   const { setUser, users } = useDevUser();
-  const { authenticated, ready, user: privyUser, getAccessToken } = usePrivy();
+  const { authenticated, ready } = usePrivy();
   const { wallets } = useWallets();
 
   const [step, setStep] = useState<"email" | "otp">("email");
@@ -19,7 +19,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  // Privy headless email authentication hook
+  // Privy headless email authentication
   const { sendCode, loginWithCode } = useLoginWithEmail({
     onComplete: async (user, isNewUser) => {
       setIsLoading(true);
@@ -29,18 +29,16 @@ export default function LoginPage() {
         const cleanAddress = privyWallet?.toLowerCase() || `0x${Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join("")}`;
         const username = userEmail ? userEmail.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase() : `user_${cleanAddress.slice(2, 6)}`;
 
-        // Check if user already exists in DB
         const checkRes = await fetch(`/api/users/by-wallet/${cleanAddress}`);
         if (checkRes.ok) {
           const existing = await checkRes.json();
           if (existing?.username) {
             setUser(existing);
-            router.push("/account");
+            router.push("/dashboard");
             return;
           }
         }
 
-        // Register new user profile with unlocked embedded wallet
         const createRes = await fetch("/api/account/create", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -55,7 +53,6 @@ export default function LoginPage() {
           const newUser = await createRes.json();
           setUser(newUser);
         } else {
-          // Fallback session
           setUser({
             username: username,
             walletAddress: cleanAddress as `0x${string}`,
@@ -63,29 +60,27 @@ export default function LoginPage() {
             createdAt: new Date().toISOString(),
           });
         }
-        router.push("/account");
+        router.push("/dashboard");
       } catch (err: any) {
         console.error("Post-auth error:", err);
-        router.push("/account");
+        router.push("/dashboard");
       } finally {
         setIsLoading(false);
       }
     },
     onError: (err) => {
-      console.error("Privy email login error:", err);
-      setError(err?.message || "Failed to process authentication. Please check the code and try again.");
+      console.error("Login error:", err);
+      setError(err?.message || "Authentication failed. Please verify the code and try again.");
       setIsLoading(false);
     },
   });
 
-  // Cooldown timer for OTP resend
   useEffect(() => {
     if (resendCooldown <= 0) return;
     const timer = setInterval(() => setResendCooldown((prev) => prev - 1), 1000);
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
-  // Step 1: Send OTP to Email
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !email.includes("@")) {
@@ -102,23 +97,21 @@ export default function LoginPage() {
         setStep("otp");
         setResendCooldown(60);
       } else {
-        // Fallback for offline demo mode
         setStep("otp");
         setResendCooldown(60);
       }
     } catch (err: any) {
       console.error("Error sending OTP:", err);
-      setError(err?.message || "Failed to dispatch OTP. Please verify your email.");
+      setError(err?.message || "Failed to dispatch verification code.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Step 2: Verify 6-digit OTP
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otpCode.length < 6) {
-      setError("Please enter the complete 6-digit verification code.");
+      setError("Enter the 6-digit verification code.");
       return;
     }
 
@@ -132,185 +125,118 @@ export default function LoginPage() {
           email: email.trim().toLowerCase(),
         });
       } else {
-        // Fallback demo resolution
         const namePart = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase();
         const found = users.find((u) => u.username.toLowerCase().includes(namePart)) || users[0];
-        if (found) {
-          setUser(found);
-        }
-        router.push("/account");
+        if (found) setUser(found);
+        router.push("/dashboard");
       }
     } catch (err: any) {
       console.error("Error validating OTP:", err);
-      setError(err?.message || "Invalid verification code. Please try again.");
-      setIsLoading(false);
-    }
-  };
-
-  const handleResendOtp = async () => {
-    if (resendCooldown > 0 || !email) return;
-    setError(null);
-    setIsLoading(true);
-    try {
-      if (sendCode) {
-        await sendCode({ email: email.trim().toLowerCase() });
-        setResendCooldown(60);
-      }
-    } catch (err: any) {
-      setError(err?.message || "Failed to resend OTP.");
-    } finally {
+      setError(err?.message || "Invalid verification code.");
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 h-screen max-h-screen w-full overflow-hidden bg-black text-white flex flex-col justify-center items-center px-4 selection:bg-amber-500 selection:text-black">
-      <div className="w-full max-w-md">
+    <div className="w-full max-w-md mx-auto px-4 my-auto text-neutral-100">
+      <div className="rounded-3xl border border-neutral-800 bg-neutral-950 p-6 sm:p-8 space-y-5 shadow-2xl">
         
-        {/* Main Authentication Card */}
-        <div className="rounded-3xl glass-panel-glow p-7 sm:p-9 space-y-6 border border-neutral-800 bg-neutral-950/95 shadow-2xl">
-          
-          {/* Header Brand */}
-          <div className="text-center space-y-2">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-600 flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(245,158,11,0.4)]">
-              <span className="font-extrabold text-black text-lg">₹</span>
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-white uppercase">ChitChain Bharat</h1>
-            <p className="text-xs text-neutral-400 font-mono">
-              {step === "email" ? "Enter email to unlock embedded smart wallet" : `OTP sent to ${email}`}
-            </p>
+        {/* Header */}
+        <div className="text-center space-y-1 border-b border-neutral-800/80 pb-4">
+          <h1 className="text-xl font-bold font-mono tracking-[0.2em] text-white uppercase">
+            CHITCHAIN
+          </h1>
+          <p className="text-xs text-neutral-400">
+            {step === "email" ? "Sign in to access wealth circles" : `Verification code sent to ${email}`}
+          </p>
+        </div>
+
+        {error && (
+          <div className="p-3 rounded-xl border border-red-900/60 bg-red-950/40 text-red-300 text-xs flex items-center gap-2.5">
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+            <span>{error}</span>
           </div>
+        )}
 
-          {/* Error Message */}
-          {error && (
-            <div className="p-3.5 rounded-2xl bg-red-950/30 border border-red-500/30 text-red-300 text-xs flex items-center gap-2.5 animate-in fade-in duration-200">
-              <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* STEP 1: ONLY ONE INPUT BOX FOR EMAIL & SEND OTP BUTTON */}
-          {step === "email" && (
-            <form onSubmit={handleSendOtp} className="space-y-6">
-              <div className="line-input-group">
+        {/* Step 1: Email Form */}
+        {step === "email" ? (
+          <form onSubmit={handleSendOtp} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-neutral-300">
+                Email Address
+              </label>
+              <div className="relative flex items-center">
+                <Mail className="absolute left-3.5 h-4 w-4 text-neutral-500" />
                 <input
-                  id="email"
                   type="email"
-                  placeholder=" "
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   autoFocus
-                  autoComplete="email"
-                  className="line-input text-sm font-mono"
+                  className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-neutral-800 bg-neutral-900/60 text-white focus:outline-none focus:border-neutral-500 font-mono transition-colors"
                 />
-                <label htmlFor="email" className="line-label text-xs">
-                  Email Address
-                </label>
               </div>
+            </div>
 
-              <button
-                type="submit"
-                disabled={isLoading || !email}
-                className={`w-full py-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
-                  email && !isLoading
-                    ? "bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500 hover:from-amber-300 hover:to-orange-400 text-black shadow-[0_0_25px_rgba(245,158,11,0.4)] cursor-pointer transform hover:scale-[1.02]"
-                    : "bg-neutral-900 text-neutral-600 border border-neutral-800 cursor-not-allowed"
-                }`}
-              >
-                {isLoading ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    <span>Dispatching OTP...</span>
-                  </>
-                ) : (
-                  <>
-                    <Mail className="h-4 w-4" />
-                    <span>Send OTP</span>
-                  </>
-                )}
-              </button>
-            </form>
-          )}
-
-          {/* STEP 2: 6-DIGIT OTP VERIFICATION INPUT */}
-          {step === "otp" && (
-            <form onSubmit={handleVerifyOtp} className="space-y-6">
-              <div className="line-input-group">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 rounded-xl bg-white text-black font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 hover:bg-neutral-200 transition-colors disabled:opacity-50 cursor-pointer shadow-md"
+            >
+              <span>{isLoading ? "Sending Code..." : "Continue with Email"}</span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </form>
+        ) : (
+          /* Step 2: OTP Form */
+          <form onSubmit={handleVerifyOtp} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-neutral-300">
+                6-Digit Verification Code
+              </label>
+              <div className="relative flex items-center">
+                <KeyRound className="absolute left-3.5 h-4 w-4 text-neutral-500" />
                 <input
-                  id="otpCode"
                   type="text"
                   maxLength={6}
-                  placeholder=" "
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
                   required
                   autoFocus
-                  className="line-input text-center text-xl tracking-[0.4em] font-mono font-bold text-amber-400"
+                  className="w-full pl-10 pr-4 py-2.5 text-base tracking-widest rounded-xl border border-neutral-800 bg-neutral-900/60 text-white focus:outline-none focus:border-neutral-500 font-mono transition-colors"
                 />
-                <label htmlFor="otpCode" className="line-label text-xs">
-                  Enter 6-Digit Verification Code
-                </label>
               </div>
+            </div>
 
+            <button
+              type="submit"
+              disabled={isLoading || otpCode.length < 6}
+              className="w-full py-3 rounded-xl bg-white text-black font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 hover:bg-neutral-200 transition-colors disabled:opacity-50 cursor-pointer shadow-md"
+            >
+              <span>{isLoading ? "Verifying..." : "Verify & Sign In"}</span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
+
+            <div className="flex items-center justify-between text-xs text-neutral-400 pt-2 border-t border-neutral-800/60">
               <button
-                type="submit"
-                disabled={isLoading || otpCode.length < 6}
-                className={`w-full py-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
-                  otpCode.length >= 6 && !isLoading
-                    ? "bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-500 hover:from-emerald-300 hover:to-teal-400 text-black shadow-[0_0_25px_rgba(16,185,129,0.4)] cursor-pointer transform hover:scale-[1.02]"
-                    : "bg-neutral-900 text-neutral-600 border border-neutral-800 cursor-not-allowed"
-                }`}
+                type="button"
+                onClick={() => setStep("email")}
+                className="hover:text-white transition-colors cursor-pointer"
               >
-                {isLoading ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    <span>Unlocking Wallet...</span>
-                  </>
-                ) : (
-                  <>
-                    <Shield className="h-4 w-4" />
-                    <span>Verify OTP & Connect</span>
-                  </>
-                )}
+                Change email
               </button>
+              <button
+                type="button"
+                disabled={resendCooldown > 0 || isLoading}
+                onClick={handleSendOtp}
+                className="hover:text-white transition-colors disabled:opacity-40 cursor-pointer"
+              >
+                {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : "Resend code"}
+              </button>
+            </div>
+          </form>
+        )}
 
-              <div className="flex items-center justify-between text-xs font-mono pt-1 text-neutral-400">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStep("email");
-                    setOtpCode("");
-                    setError(null);
-                  }}
-                  className="hover:text-white transition-colors cursor-pointer"
-                >
-                  Change Email
-                </button>
-
-                <button
-                  type="button"
-                  disabled={resendCooldown > 0 || isLoading}
-                  onClick={handleResendOtp}
-                  className={`${
-                    resendCooldown > 0
-                      ? "text-neutral-600 cursor-not-allowed"
-                      : "text-amber-400 hover:text-amber-300 cursor-pointer"
-                  }`}
-                >
-                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend Code"}
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* Security Guarantee Footer */}
-          <div className="pt-2 text-center border-t border-neutral-900 text-[10px] uppercase font-mono tracking-wider text-neutral-500 flex items-center justify-center gap-1.5">
-            <Shield className="h-3 w-3 text-emerald-400" />
-            <span>Secured by Privy Embedded Wallets on Base Sepolia</span>
-          </div>
-
-        </div>
       </div>
     </div>
   );
