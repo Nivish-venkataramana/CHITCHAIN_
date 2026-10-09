@@ -66,6 +66,21 @@ export function AutoPayAuthorization({
 
   const [activeTab, setActiveTab] = useState<"overview" | "members" | "layers" | "bookend" | "simulator">("overview");
 
+  const totalReserveBuffer = monthlyAmountUSDC * 3;
+  const isCurrentUserAuthorized = !!sessionData && sessionData.status === "ACTIVE";
+
+  // Check which members have granted their own mandates
+  const activeMandateCount = members.reduce((acc, m) => {
+    const isOwner = m.walletAddress.toLowerCase() === smartWalletAddress.toLowerCase() && isCurrentUserAuthorized;
+    const isConsentGiven = allMemberConsents.some(
+      (c) => c.memberAddress.toLowerCase() === m.walletAddress.toLowerCase() && c.status === "GIVEN"
+    );
+    return acc + (isOwner || isConsentGiven ? 1 : 0);
+  }, 0);
+
+  const totalMembersCount = members.length > 0 ? members.length : 1;
+  const allMandatesComplete = members.length > 0 && activeMandateCount >= members.length;
+
   const [poolingMemberWallet, setPoolingMemberWallet] = useState<string | null>(null);
   const [memberDebitSuccess, setMemberDebitSuccess] = useState<string | null>(null);
 
