@@ -74,42 +74,6 @@ export function FloatingCoinsBackground() {
         </div>
       </div>
 
-      {/* Floating Dynamic 3D Orbiting Coin 1 (Upper Right) */}
-      <div className="floating_coin_orbit absolute top-[16%] right-[22%] hidden sm:block will-change-transform">
-        <div 
-          className="w-32 h-32 sm:w-40 sm:h-40 rounded-full shadow-2xl opacity-85 animate-coin-slow"
-          style={{
-            backgroundImage: "url('/images/luxury-rupee-coin.jpg')",
-            backgroundSize: "cover",
-            filter: "drop-shadow(0 25px 40px rgba(0,0,0,0.9)) brightness(1.15)",
-          }}
-        />
-      </div>
-
-      {/* Floating Dynamic 3D Coin 2 (Middle Right) */}
-      <div className="floating_coin_orbit absolute top-[50%] right-[7%] hidden md:block will-change-transform">
-        <div 
-          className="w-24 h-24 sm:w-32 sm:h-32 rounded-full shadow-2xl opacity-75 animate-coin-medium"
-          style={{
-            backgroundImage: "url('/images/floating-coin.jpg')",
-            backgroundSize: "cover",
-            filter: "drop-shadow(0 20px 35px rgba(220,70,30,0.25)) brightness(1.1)",
-          }}
-        />
-      </div>
-
-      {/* Floating Dynamic Micro Coin 3 (Bottom Center Right) */}
-      <div className="floating_coin_orbit absolute bottom-[18%] right-[26%] hidden lg:block will-change-transform">
-        <div 
-          className="w-18 h-18 sm:w-22 sm:h-22 rounded-full shadow-xl opacity-60 animate-coin-slow"
-          style={{
-            backgroundImage: "url('/images/luxury-rupee-coin.jpg')",
-            backgroundSize: "cover",
-            filter: "drop-shadow(0 15px 25px rgba(0,0,0,0.95))",
-          }}
-        />
-      </div>
-
       {/* Ambient Radial Lighting Glows */}
       <div className="absolute top-[15%] right-[8%] w-[600px] h-[600px] bg-gradient-to-br from-amber-500/15 via-orange-600/15 to-transparent blur-[140px] rounded-full pointer-events-none" />
       <div className="absolute bottom-[10%] left-[5%] w-[500px] h-[500px] bg-gradient-to-tr from-orange-950/25 to-transparent blur-[160px] rounded-full pointer-events-none" />
