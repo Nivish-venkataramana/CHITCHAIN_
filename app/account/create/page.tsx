@@ -61,6 +61,28 @@ export default function CreateAccountProfilePage() {
     setSuccess(null);
 
     try {
+      const cleanUser = username.trim().toLowerCase();
+      const cleanName = displayName.trim() || cleanUser;
+      const cleanKey = publicKey.trim() ? (publicKey.trim().toLowerCase() as `0x${string}`) : undefined;
+
+      // 1. Check if wallet already registered in database
+      if (cleanKey) {
+        try {
+          const checkRes = await fetch(`/api/users/by-wallet/${cleanKey}`);
+          if (checkRes.ok) {
+            const existingUser = await checkRes.json();
+            if (existingUser?.username) {
+              if (setDevUser) setDevUser(existingUser);
+              setSuccess(`Welcome back @${existingUser.username}! Entering dashboard...`);
+              setTimeout(() => router.push("/home"), 800);
+              return;
+            }
+          }
+        } catch {
+          // Continue to create
+        }
+      }
+
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
@@ -74,10 +96,22 @@ export default function CreateAccountProfilePage() {
         headers["x-dev-user"] = devUser.username;
       }
 
-      const cleanUser = username.trim().toLowerCase();
-      const cleanName = displayName.trim() || cleanUser;
-      const cleanKey = publicKey.trim() ? (publicKey.trim().toLowerCase() as `0x${string}`) : undefined;
+      // 2. Call /api/account/create
+      try {
+        await fetch("/api/account/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: cleanUser,
+            walletAddress: cleanKey || "0x1111111111111111111111111111111111111111",
+            displayName: cleanName,
+          }),
+        });
+      } catch {
+        // Fallback
+      }
 
+      // 3. Call /api/users
       const res = await fetch("/api/users", {
         method: "POST",
         headers,
@@ -100,8 +134,8 @@ export default function CreateAccountProfilePage() {
 
       setSuccess(`Account @${data.username} created and bound to smart account wallet!`);
       setTimeout(() => {
-        router.push("/account/wallet");
-      }, 1200);
+        router.push("/home");
+      }, 1000);
     } catch (err: any) {
       setError(err.message || "Failed to create account profile");
     } finally {
@@ -112,11 +146,11 @@ export default function CreateAccountProfilePage() {
   return (
     <div className="max-w-md mx-auto py-12 px-6 space-y-8 text-neutral-100">
       <Link
-        href="/account/wallet"
+        href="/home"
         className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-400 hover:text-white transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
-        <span>Return to Wallet</span>
+        <span>Return to Dashboard</span>
       </Link>
 
       <div className="rounded-3xl border border-neutral-900 bg-neutral-950 p-8 shadow-2xl space-y-6 relative overflow-hidden">
@@ -124,7 +158,7 @@ export default function CreateAccountProfilePage() {
           <span className="text-xs uppercase tracking-widest font-bold text-amber-500">
             Identity Origination
           </span>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Create Member Profile</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Create & Connect Profile</h1>
           <p className="text-xs text-neutral-400 leading-relaxed">
             Unique username containing your real name bound to your onchain smart account.
           </p>
@@ -151,8 +185,15 @@ export default function CreateAccountProfilePage() {
           className="w-full py-3.5 rounded-2xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-white font-semibold text-xs tracking-wider uppercase transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
           <Wallet className="h-4 w-4 text-amber-400" />
-          <span>{authenticated ? "Privy Wallet Connected" : "Connect Privy Wallet"}</span>
+          <span>{authenticated ? "Privy Wallet Connected" : "Connect Privy Embedded Wallet"}</span>
         </button>
+
+        <div className="relative flex items-center justify-center my-2">
+          <div className="border-t border-neutral-800 w-full" />
+          <span className="bg-neutral-950 px-3 text-[10px] uppercase text-neutral-500 tracking-widest absolute">
+            or enter profile manually
+          </span>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-5 text-xs">
           <div className="space-y-1.5">
@@ -225,7 +266,7 @@ export default function CreateAccountProfilePage() {
                 : "bg-neutral-900 text-neutral-600 border border-neutral-800 cursor-not-allowed"
             }`}
           >
-            {submitting ? "Binding Identity..." : "Bind Profile to Smart Account"}
+            {submitting ? "Binding Identity..." : "Bind Profile & Enter Dashboard"}
           </button>
         </form>
       </div>
