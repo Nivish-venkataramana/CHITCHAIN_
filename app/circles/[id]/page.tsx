@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useDevUser } from "@/components/providers";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
 import {
   ArrowLeft,
   Users,
@@ -19,8 +20,11 @@ import {
   Shield,
   ArrowRight,
   Coins,
+  Edit3,
+  Trash2,
 } from "lucide-react";
 import { fromBaseUnits } from "@/lib/validation";
+import { EditCircleModal, DeleteCircleModal } from "@/components/circle-action-modals";
 
 interface CircleDetails {
   id: string;
@@ -43,15 +47,37 @@ interface CircleDetails {
 
 export default function CircleDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const circleId = params.id as string;
   const { user, users } = useDevUser();
+  const { user: privyUser } = usePrivy();
+  const { wallets } = useWallets();
+
+  // Dynamic user identity extraction
+  const embeddedWallet = wallets.find((w) => w.walletClientType === "privy") || wallets[0];
+  const activeWalletAddress = (
+    embeddedWallet?.address ||
+    privyUser?.wallet?.address ||
+    user?.walletAddress ||
+    ""
+  ).toLowerCase();
+
+  const userEmail = privyUser?.email?.address || "";
+  const dynamicUsername = userEmail
+    ? userEmail.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase()
+    : activeWalletAddress
+    ? `user_${activeWalletAddress.slice(2, 6).toLowerCase()}`
+    : user?.username || "member";
 
   const [circle, setCircle] = useState<CircleDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [directoryUsers, setDirectoryUsers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
   const [invitingUsername, setInvitingUsername] = useState<string | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   const fetchCircle = () => {
     fetch(`/api/circles/${circleId}`)
@@ -69,24 +95,52 @@ export default function CircleDetailPage() {
     fetchCircle();
   }, [circleId]);
 
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      fetch("/api/users/search?q=")
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data)) setDirectoryUsers(data);
+        })
+        .catch(() => {});
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      fetch(`/api/users/search?q=${encodeURIComponent(searchQuery)}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data)) setDirectoryUsers(data);
+        })
+        .catch(() => {});
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const isVolunteer =
-    user?.username === circle?.volunteerUsername ||
-    user?.walletAddress.toLowerCase() === circle?.volunteerWallet.toLowerCase();
+    Boolean(circle) &&
+    (circle?.volunteerUsername?.toLowerCase() === dynamicUsername.toLowerCase() ||
+      circle?.volunteerUsername?.toLowerCase() === user?.username?.toLowerCase() ||
+      circle?.volunteerWallet?.toLowerCase() === activeWalletAddress ||
+      circle?.volunteerWallet?.toLowerCase() === user?.walletAddress?.toLowerCase());
 
   const handleInviteUser = async (targetUsername: string) => {
-    if (!user) return;
+    const cleanTarget = targetUsername.trim().replace(/^@/, "");
+    if (!cleanTarget) return;
     setInviteError(null);
     setInviteSuccess(null);
-    setInvitingUsername(targetUsername);
+    setInvitingUsername(cleanTarget);
 
     try {
       const res = await fetch(`/api/circles/${circleId}/invites`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-dev-user": user.username,
+          "x-dev-user": dynamicUsername,
+          "x-dev-wallet": activeWalletAddress,
         },
-        body: JSON.stringify({ username: targetUsername }),
+        body: JSON.stringify({ username: cleanTarget }),
       });
 
       const data = await res.json();
@@ -94,7 +148,7 @@ export default function CircleDetailPage() {
         throw new Error(data.error || "Failed to send invite");
       }
 
-      setInviteSuccess(`Invite sent successfully to @${targetUsername}`);
+      setInviteSuccess(`Invite sent successfully to @${cleanTarget}`);
       fetchCircle();
       setSearchQuery("");
     } catch (err: any) {
@@ -104,11 +158,23 @@ export default function CircleDetailPage() {
     }
   };
 
-  const filteredUsers = users.filter(
-    (u) =>
-      u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.displayName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const allCandidatePool = directoryUsers.length > 0 ? directoryUsers : users;
+  const cleanQuery = searchQuery.trim().replace(/^@/, "").toLowerCase();
+
+  const filteredUsers = allCandidatePool.filter((u) => {
+    const isSelf =
+      u.username.toLowerCase() === dynamicUsername.toLowerCase() ||
+      (user?.username && u.username.toLowerCase() === user.username.toLowerCase()) ||
+      (activeWalletAddress && u.walletAddress?.toLowerCase() === activeWalletAddress) ||
+      (user?.walletAddress && u.walletAddress?.toLowerCase() === user.walletAddress.toLowerCase());
+    if (isSelf) return false;
+    if (!cleanQuery) return true;
+    return (
+      u.username.toLowerCase().includes(cleanQuery) ||
+      u.displayName.toLowerCase().includes(cleanQuery) ||
+      u.walletAddress?.toLowerCase().includes(cleanQuery)
+    );
+  });
 
   if (loading) {
     return (
@@ -122,7 +188,7 @@ export default function CircleDetailPage() {
     return (
       <div className="p-16 text-center bg-neutral-950 rounded-3xl border border-neutral-900 space-y-4">
         <p className="text-neutral-400 text-sm">Circle not found.</p>
-        <Link href="/circles" className="text-xs font-bold text-red-400">
+        <Link href="/circles" className="text-xs font-bold text-amber-400">
           Return to circles
         </Link>
       </div>
@@ -134,6 +200,21 @@ export default function CircleDetailPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8 space-y-8 text-neutral-100">
+      {/* Action Modals */}
+      <EditCircleModal
+        isOpen={isEditOpen}
+        circle={circle}
+        onClose={() => setIsEditOpen(false)}
+        onSuccess={() => fetchCircle()}
+      />
+
+      <DeleteCircleModal
+        isOpen={isDeleteOpen}
+        circle={circle}
+        onClose={() => setIsDeleteOpen(false)}
+        onSuccess={() => router.push("/circles")}
+      />
+
       <Link
         href="/circles"
         className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-400 hover:text-white transition-colors"
@@ -160,16 +241,55 @@ export default function CircleDetailPage() {
             </span>
           </div>
           <p className="text-xs text-neutral-400">
-            Organizer:{" "}
-            <strong className="text-white">
-              {circle.volunteerUsername ? `@${circle.volunteerUsername}` : circle.volunteerWallet}
-            </strong>{" "}
-            • Identifier: <span className="font-mono text-neutral-300">{circle.id}</span>
+            {circle.status !== "FINALIZED" ? (
+              isVolunteer ? (
+                <>
+                  Initiated by: <strong className="text-white">You (Volunteer)</strong> • Identifier:{" "}
+                  <span className="font-mono text-neutral-300">{circle.id}</span>
+                </>
+              ) : (
+                <>
+                  Volunteer:{" "}
+                  <strong className="text-white">
+                    {circle.volunteerUsername ? `@${circle.volunteerUsername}` : circle.volunteerWallet}
+                  </strong>{" "}
+                  • Identifier: <span className="font-mono text-neutral-300">{circle.id}</span>
+                </>
+              )
+            ) : (
+              <>
+                <span className="text-emerald-400 font-semibold">Decentralized Protocol</span> • Identifier:{" "}
+                <span className="font-mono text-neutral-300">{circle.id}</span>
+              </>
+            )}
           </p>
         </div>
 
         {/* Hand off action navigation */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Volunteer Edit & Delete Controls */}
+          {isVolunteer && circle.status !== "FINALIZED" && (
+            <>
+              <button
+                type="button"
+                onClick={() => setIsEditOpen(true)}
+                className="px-4 py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold border border-neutral-800 transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Edit3 className="h-3.5 w-3.5 text-neutral-300" />
+                <span>Edit Circle</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsDeleteOpen(true)}
+                className="px-4 py-2.5 rounded-xl bg-neutral-900 hover:bg-red-950/60 text-red-400 border border-neutral-800 hover:border-red-900/50 transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>Delete</span>
+              </button>
+            </>
+          )}
+
           <Link
             href={`/circles/${circle.id}/issues`}
             className="px-4 py-2.5 rounded-xl bg-amber-950/50 hover:bg-amber-900/50 text-amber-300 text-xs font-bold border border-amber-800/50 transition-colors flex items-center gap-1.5"
@@ -230,7 +350,7 @@ export default function CircleDetailPage() {
         <div className="md:col-span-2 rounded-3xl border border-neutral-900 bg-neutral-950 p-8 shadow-2xl space-y-6">
           <div className="flex items-center justify-between border-b border-neutral-900 pb-4">
             <h2 className="text-xl font-bold text-white flex items-center gap-2.5">
-              <Users className="h-5 w-5 text-red-500" />
+              <Users className="h-5 w-5 text-amber-500" />
               <span>Participant Board ({acceptedInvites.length} of {circle.numPeople})</span>
             </h2>
             <span className="text-xs font-mono text-neutral-400">
@@ -242,6 +362,11 @@ export default function CircleDetailPage() {
             {circle.invites.map((inv) => {
               const u = users.find((usr) => usr.username === inv.inviteeUsername);
               const isVol = inv.inviteeWallet.toLowerCase() === circle.volunteerWallet.toLowerCase();
+              const isCurrentUser =
+                inv.inviteeUsername.toLowerCase() === dynamicUsername.toLowerCase() ||
+                (user?.username && inv.inviteeUsername.toLowerCase() === user.username.toLowerCase()) ||
+                (activeWalletAddress && inv.inviteeWallet.toLowerCase() === activeWalletAddress) ||
+                (user?.walletAddress && inv.inviteeWallet.toLowerCase() === user.walletAddress.toLowerCase());
 
               return (
                 <div
@@ -251,12 +376,17 @@ export default function CircleDetailPage() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-sm text-white">
-                        {u?.displayName || inv.inviteeUsername}
+                        {isCurrentUser ? (u?.displayName ? `${u.displayName} (You)` : "You") : u?.displayName || inv.inviteeUsername}
                       </span>
                       <span className="text-xs text-neutral-400 font-mono">@{inv.inviteeUsername}</span>
-                      {isVol && (
-                        <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-red-950 text-red-300 border border-red-800/50">
-                          Organizer
+                      {isCurrentUser && (
+                        <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-neutral-800 text-neutral-200 border border-neutral-700">
+                          You
+                        </span>
+                      )}
+                      {!isCurrentUser && isVol && circle.status !== "FINALIZED" && (
+                        <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-blue-950/80 text-blue-300 border border-blue-800/50">
+                          Volunteer
                         </span>
                       )}
                     </div>
@@ -292,22 +422,38 @@ export default function CircleDetailPage() {
         <div className="rounded-3xl border border-neutral-900 bg-neutral-950 p-8 shadow-2xl space-y-6">
           <div className="border-b border-neutral-900 pb-4">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <UserPlus className="h-5 w-5 text-red-500" />
+              <UserPlus className="h-5 w-5 text-amber-500" />
               <span>Add Members</span>
             </h3>
-            <p className="text-xs text-neutral-400 mt-1">Search by unique username</p>
+            <p className="text-xs text-neutral-400 mt-1">Search by unique username or wallet address</p>
           </div>
 
-          <div className="relative">
-            <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-neutral-500" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search member username..."
-              className="w-full pl-10 pr-4 py-3 text-xs rounded-xl border border-neutral-800 bg-neutral-900 text-white focus:outline-none focus:border-red-500"
-            />
-          </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!isVolunteer) return;
+              if (filteredUsers.length > 0) {
+                handleInviteUser(filteredUsers[0].username);
+              } else if (cleanQuery) {
+                setInviteError(`Account @${cleanQuery} does not exist in the database.`);
+              }
+            }}
+            className="space-y-3"
+          >
+            <div className="relative flex items-center">
+              <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-neutral-500" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  if (inviteError) setInviteError(null);
+                }}
+                placeholder="Type member username..."
+                className="w-full pl-10 pr-4 py-3 text-xs rounded-xl border border-neutral-800 bg-neutral-900 text-white focus:outline-none focus:border-amber-500 font-mono"
+              />
+            </div>
+          </form>
 
           {inviteError && (
             <div className="p-3.5 rounded-xl bg-red-950/60 border border-red-800/50 text-red-300 text-xs flex items-start gap-2">
@@ -323,10 +469,10 @@ export default function CircleDetailPage() {
             </div>
           )}
 
-          <div className="space-y-2.5 max-h-60 overflow-y-auto">
+          <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
             {filteredUsers.map((u) => {
               const alreadyInvited = circle.invites.some(
-                (i) => i.inviteeUsername === u.username && i.status !== "REJECTED"
+                (i) => i.inviteeUsername?.toLowerCase() === u.username?.toLowerCase() && i.status !== "REJECTED"
               );
               const isInvitingThis = invitingUsername === u.username;
 
@@ -340,6 +486,7 @@ export default function CircleDetailPage() {
                     <p className="text-neutral-400 font-mono text-[11px]">@{u.username}</p>
                   </div>
                   <button
+                    type="button"
                     disabled={alreadyInvited || isInvitingThis || !isVolunteer}
                     onClick={() => handleInviteUser(u.username)}
                     className={`px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all ${
@@ -347,7 +494,7 @@ export default function CircleDetailPage() {
                         ? "bg-neutral-800 text-neutral-500 cursor-not-allowed"
                         : !isVolunteer
                         ? "bg-neutral-800 text-neutral-500 cursor-not-allowed"
-                        : "bg-white hover:bg-neutral-200 text-black cursor-pointer shadow-sm"
+                        : "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-semibold cursor-pointer shadow-sm"
                     }`}
                   >
                     {isInvitingThis ? "Verifying..." : alreadyInvited ? "Added" : "Add"}
@@ -355,6 +502,21 @@ export default function CircleDetailPage() {
                 </div>
               );
             })}
+
+            {cleanQuery && filteredUsers.length === 0 && (
+              <div className="p-5 rounded-2xl border border-neutral-900 bg-neutral-900/40 text-center text-xs space-y-1">
+                <p className="text-white font-medium">No registered member found</p>
+                <p className="text-[11px] text-neutral-500">
+                  No account in the database matches <strong className="text-neutral-300">@{cleanQuery}</strong>.
+                </p>
+              </div>
+            )}
+
+            {!cleanQuery && filteredUsers.length === 0 && (
+              <p className="text-neutral-500 text-xs text-center py-4">
+                Type a registered username to invite them.
+              </p>
+            )}
           </div>
         </div>
       </div>

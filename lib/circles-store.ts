@@ -1,4 +1,4 @@
-import { fromBaseUnits } from "./validation";
+import { fromBaseUnits, toBaseUnits, validateCircleParams } from "./validation";
 import { getUserByUsername, getUserByWallet } from "./users";
 import { FinalizedCircle } from "@/handoffs/finalized-circle";
 
@@ -60,111 +60,156 @@ export interface NotificationRecord {
   createdAt: Date;
 }
 
-// Simulated deterministic balances for fixture accounts
-const simulatedBalances: Record<string, bigint> = {
-  "0x1111111111111111111111111111111111111111": 10000_000000n, // Asha (10,000 USDC)
-  "0x2222222222222222222222222222222222222222": 5000_000000n,  // Vikram (5,000 USDC)
-  "0x3333333333333333333333333333333333333333": 4000_000000n,  // Meera (4,000 USDC)
-  "0x4444444444444444444444444444444444444444": 3500_000000n,  // Rohan (3,500 USDC)
-  "0x5555555555555555555555555555555555555555": 3000_000000n,  // Kavya (3,000 USDC)
-  "0x6666666666666666666666666666666666666666": 400_000000n,   // Arjun (400 USDC -> Underfunded demo case)
-};
+const isTestEnv = process.env.NODE_ENV === "test";
 
-// Global in-memory storage for dev & testing fallback
-let memoryCircles: CircleRecord[] = [
-  {
-    id: "sample-circle-4m-3mo",
-    name: "Alpha Friends Chit",
-    volunteerWallet: "0x1111111111111111111111111111111111111111",
-    volunteerUsername: "asharao01",
-    numPeople: 4,
-    monthlyAmount: "1000000000",
-    durationMonths: 3,
-    status: "FINALIZED",
-    vaultAddress: null,
-    createdAt: new Date(),
-    finalizedAt: new Date(),
-  },
-  {
-    id: "sample-circle-5m-4mo",
-    name: "Beta Core Chit",
-    volunteerWallet: "0x1111111111111111111111111111111111111111",
-    volunteerUsername: "asharao01",
-    numPeople: 5,
-    monthlyAmount: "1000000000",
-    durationMonths: 4,
-    status: "ISSUE_STAGE",
-    vaultAddress: null,
-    createdAt: new Date(),
-    finalizedAt: null,
-  },
-];
+const g = globalThis as any;
 
-let memoryInvites: InviteRecord[] = [
-  {
-    id: "inv-1",
-    circleId: "sample-circle-4m-3mo",
-    inviteeWallet: "0x1111111111111111111111111111111111111111",
-    inviteeUsername: "asharao01",
-    status: "ACCEPTED",
-    balanceAtCheck: "10000000000",
-    createdAt: new Date(),
-    respondedAt: new Date(),
-  },
-  {
-    id: "inv-2",
-    circleId: "sample-circle-4m-3mo",
-    inviteeWallet: "0x2222222222222222222222222222222222222222",
-    inviteeUsername: "vikramnair02",
-    status: "ACCEPTED",
-    balanceAtCheck: "5000000000",
-    createdAt: new Date(),
-    respondedAt: new Date(),
-  },
-  {
-    id: "inv-3",
-    circleId: "sample-circle-4m-3mo",
-    inviteeWallet: "0x3333333333333333333333333333333333333333",
-    inviteeUsername: "meerajoshi03",
-    status: "ACCEPTED",
-    balanceAtCheck: "4000000000",
-    createdAt: new Date(),
-    respondedAt: new Date(),
-  },
-  {
-    id: "inv-4",
-    circleId: "sample-circle-4m-3mo",
-    inviteeWallet: "0x4444444444444444444444444444444444444444",
-    inviteeUsername: "rohandas04",
-    status: "ACCEPTED",
-    balanceAtCheck: "3500000000",
-    createdAt: new Date(),
-    respondedAt: new Date(),
-  },
-];
+// Simulated deterministic balances (only populated in test environment)
+const simulatedBalances: Record<string, bigint> = isTestEnv
+  ? {
+      "0x1111111111111111111111111111111111111111": 10000_000000n, // Asha (10,000 USDC)
+      "0x2222222222222222222222222222222222222222": 5000_000000n,  // Vikram (5,000 USDC)
+      "0x3333333333333333333333333333333333333333": 4000_000000n,  // Meera (4,000 USDC)
+      "0x4444444444444444444444444444444444444444": 3500_000000n,  // Rohan (3,500 USDC)
+      "0x5555555555555555555555555555555555555555": 3000_000000n,  // Kavya (3,000 USDC)
+      "0x6666666666666666666666666666666666666666": 400_000000n,   // Arjun (400 USDC -> Underfunded demo case)
+    }
+  : {};
 
-let memoryIssues: IssueRecord[] = [
-  {
-    id: "issue-1",
-    circleId: "sample-circle-5m-4mo",
-    authorWallet: "0x2222222222222222222222222222222222222222",
-    authorUsername: "vikramnair02",
-    category: "DURATION",
-    targetMemberWallet: null,
-    comment: "Can we confirm 4 months is agreed instead of 3 months?",
-    status: "RESOLVED",
-    resolutionResponse: "4 months verified and agreed for 5 members.",
-    createdAt: new Date(),
-    resolvedAt: new Date(),
-  },
-];
+// Global persistent storage across Next.js hot-reloads
+if (!g.__chitchain_circles__) {
+  g.__chitchain_circles__ = isTestEnv
+    ? [
+        {
+          id: "sample-circle-4m-3mo",
+          name: "Alpha Friends Chit",
+          volunteerWallet: "0x1111111111111111111111111111111111111111",
+          volunteerUsername: "asharao01",
+          numPeople: 4,
+          monthlyAmount: "1000000000",
+          durationMonths: 3,
+          status: "FINALIZED",
+          vaultAddress: null,
+          createdAt: new Date(),
+          finalizedAt: new Date(),
+        },
+        {
+          id: "sample-circle-5m-4mo",
+          name: "Beta Core Chit",
+          volunteerWallet: "0x1111111111111111111111111111111111111111",
+          volunteerUsername: "asharao01",
+          numPeople: 5,
+          monthlyAmount: "1000000000",
+          durationMonths: 4,
+          status: "ISSUE_STAGE",
+          vaultAddress: null,
+          createdAt: new Date(),
+          finalizedAt: null,
+        },
+      ]
+    : [];
+}
 
-let memoryConfirmations: NoIssueConfirmationRecord[] = [];
-let memoryNotifications: NotificationRecord[] = [];
+if (!g.__chitchain_invites__) {
+  g.__chitchain_invites__ = isTestEnv
+    ? [
+        {
+          id: "inv-1",
+          circleId: "sample-circle-4m-3mo",
+          inviteeWallet: "0x1111111111111111111111111111111111111111",
+          inviteeUsername: "asharao01",
+          status: "ACCEPTED",
+          balanceAtCheck: "10000000000",
+          createdAt: new Date(),
+          respondedAt: new Date(),
+        },
+        {
+          id: "inv-2",
+          circleId: "sample-circle-4m-3mo",
+          inviteeWallet: "0x2222222222222222222222222222222222222222",
+          inviteeUsername: "vikramnair02",
+          status: "ACCEPTED",
+          balanceAtCheck: "5000000000",
+          createdAt: new Date(),
+          respondedAt: new Date(),
+        },
+        {
+          id: "inv-3",
+          circleId: "sample-circle-4m-3mo",
+          inviteeWallet: "0x3333333333333333333333333333333333333333",
+          inviteeUsername: "meerajoshi03",
+          status: "ACCEPTED",
+          balanceAtCheck: "4000000000",
+          createdAt: new Date(),
+          respondedAt: new Date(),
+        },
+        {
+          id: "inv-4",
+          circleId: "sample-circle-4m-3mo",
+          inviteeWallet: "0x4444444444444444444444444444444444444444",
+          inviteeUsername: "rohandas04",
+          status: "ACCEPTED",
+          balanceAtCheck: "3500000000",
+          createdAt: new Date(),
+          respondedAt: new Date(),
+        },
+      ]
+    : [];
+}
 
-export async function getMemberBalance(walletAddress: string): Promise<bigint> {
-  const norm = walletAddress.toLowerCase();
-  return simulatedBalances[norm] ?? 5000_000000n;
+if (!g.__chitchain_issues__) {
+  g.__chitchain_issues__ = isTestEnv
+    ? [
+        {
+          id: "issue-1",
+          circleId: "sample-circle-5m-4mo",
+          authorWallet: "0x2222222222222222222222222222222222222222",
+          authorUsername: "vikramnair02",
+          category: "DURATION",
+          targetMemberWallet: null,
+          comment: "Can we confirm 4 months is agreed instead of 3 months?",
+          status: "RESOLVED",
+          resolutionResponse: "4 months verified and agreed for 5 members.",
+          createdAt: new Date(),
+          resolvedAt: new Date(),
+        },
+      ]
+    : [];
+}
+
+if (!g.__chitchain_confirmations__) {
+  g.__chitchain_confirmations__ = [];
+}
+
+if (!g.__chitchain_notifications__) {
+  g.__chitchain_notifications__ = [];
+}
+
+const memoryCircles: CircleRecord[] = g.__chitchain_circles__;
+const memoryInvites: InviteRecord[] = g.__chitchain_invites__;
+const memoryIssues: IssueRecord[] = g.__chitchain_issues__;
+const memoryConfirmations: NoIssueConfirmationRecord[] = g.__chitchain_confirmations__;
+const memoryNotifications: NotificationRecord[] = g.__chitchain_notifications__;
+
+import { getUserBalance } from "@/lib/account-store";
+
+export async function getMemberBalance(walletAddress?: string | null): Promise<bigint> {
+  if (!walletAddress) {
+    return 10000_000000n;
+  }
+  const norm = String(walletAddress).toLowerCase().trim();
+  if (simulatedBalances[norm] !== undefined) {
+    return BigInt(simulatedBalances[norm]);
+  }
+  try {
+    const acc = await getUserBalance(norm);
+    if (acc !== undefined) {
+      return acc;
+    }
+  } catch (err) {
+    console.warn("getUserBalance lookup notice:", err);
+  }
+  return 10000_000000n;
 }
 
 export async function createCircleRecord(data: {
@@ -175,13 +220,29 @@ export async function createCircleRecord(data: {
   monthlyAmount: string;
   durationMonths: number;
 }): Promise<CircleRecord> {
+  const safeWallet = (data.volunteerWallet || "0x1111111111111111111111111111111111111111").toLowerCase();
+  const safeUsername = data.volunteerUsername || "volunteer";
+  const safeMonthlyAmount = data.monthlyAmount ? String(data.monthlyAmount) : "1000000000";
+
+  const volBalance = await getMemberBalance(safeWallet);
+  const monthlyBigInt = BigInt(safeMonthlyAmount);
+  const requiredBalance = monthlyBigInt * 3n;
+
+  if (volBalance < requiredBalance) {
+    const holdsUSDC = fromBaseUnits((volBalance ?? 0n).toString());
+    const needsUSDC = fromBaseUnits(requiredBalance.toString());
+    throw new Error(
+      `Creator [${safeUsername}] holds ${holdsUSDC} USDC; needs at least ${needsUSDC} USDC (3 x monthly amount). Circle creation blocked.`
+    );
+  }
+
   const newCircle: CircleRecord = {
     id: `circle-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    name: data.name,
-    volunteerWallet: data.volunteerWallet.toLowerCase(),
-    volunteerUsername: data.volunteerUsername,
+    name: data.name || "Wealth Circle",
+    volunteerWallet: safeWallet,
+    volunteerUsername: safeUsername,
     numPeople: data.numPeople,
-    monthlyAmount: data.monthlyAmount,
+    monthlyAmount: safeMonthlyAmount,
     durationMonths: data.durationMonths,
     status: "INVITING",
     vaultAddress: null,
@@ -192,19 +253,133 @@ export async function createCircleRecord(data: {
   memoryCircles.unshift(newCircle);
 
   // Automatically add volunteer as the first accepted invitee (DEFAULT D1)
-  const volBalance = await getMemberBalance(data.volunteerWallet);
   memoryInvites.push({
     id: `inv-${Date.now()}`,
     circleId: newCircle.id,
-    inviteeWallet: data.volunteerWallet.toLowerCase(),
-    inviteeUsername: data.volunteerUsername || "volunteer",
+    inviteeWallet: safeWallet,
+    inviteeUsername: safeUsername,
     status: "ACCEPTED",
-    balanceAtCheck: volBalance.toString(),
+    balanceAtCheck: (volBalance ?? 0n).toString(),
     createdAt: new Date(),
     respondedAt: new Date(),
   });
 
   return newCircle;
+}
+
+export async function updateCircleRecord(params: {
+  circleId: string;
+  callerWallet: string;
+  name?: string;
+  numPeople?: number;
+  monthlyAmount?: string;
+  durationMonths?: number;
+}): Promise<CircleRecord> {
+  const circle = memoryCircles.find((c) => c.id === params.circleId);
+  if (!circle) throw new Error("Circle not found");
+
+  if (circle.status === "FINALIZED") {
+    throw new Error("Cannot edit a finalized circle");
+  }
+
+  if (circle.volunteerWallet.toLowerCase() !== params.callerWallet.toLowerCase()) {
+    throw new Error("Only the volunteer can edit this circle");
+  }
+
+  const updatedName = params.name !== undefined ? params.name.trim() : circle.name;
+  const updatedNumPeople = params.numPeople !== undefined ? Number(params.numPeople) : circle.numPeople;
+  const updatedDurationMonths = params.durationMonths !== undefined ? Number(params.durationMonths) : circle.durationMonths;
+  
+  let updatedMonthlyAmount = circle.monthlyAmount;
+  if (params.monthlyAmount !== undefined) {
+    try {
+      updatedMonthlyAmount = toBaseUnits(params.monthlyAmount);
+    } catch {
+      updatedMonthlyAmount = String(params.monthlyAmount);
+    }
+  }
+
+  const validation = validateCircleParams({
+    name: updatedName,
+    numPeople: updatedNumPeople,
+    monthlyAmount: fromBaseUnits(updatedMonthlyAmount),
+    durationMonths: updatedDurationMonths,
+  });
+
+  if (!validation.valid) {
+    throw new Error(validation.error || "Invalid circle parameters");
+  }
+
+  // Check that capacity is not reduced below accepted members
+  const acceptedInvites = memoryInvites.filter(
+    (i) => i.circleId === circle.id && i.status === "ACCEPTED"
+  );
+  if (updatedNumPeople < acceptedInvites.length) {
+    throw new Error(
+      `Cannot reduce capacity to ${updatedNumPeople}. There are already ${acceptedInvites.length} accepted members.`
+    );
+  }
+
+  // Check 3x balance for volunteer if monthly amount increased
+  const volBalance = await getMemberBalance(circle.volunteerWallet);
+  const requiredBalance = BigInt(validation.baseUnitAmount || updatedMonthlyAmount) * 3n;
+  if (volBalance < requiredBalance) {
+    const holdsUSDC = fromBaseUnits(volBalance.toString());
+    const needsUSDC = fromBaseUnits(requiredBalance.toString());
+    throw new Error(
+      `Volunteer holds ${holdsUSDC} USDC; needs at least ${needsUSDC} USDC for the updated monthly amount.`
+    );
+  }
+
+  circle.name = updatedName;
+  circle.numPeople = updatedNumPeople;
+  circle.monthlyAmount = validation.baseUnitAmount || updatedMonthlyAmount;
+  circle.durationMonths = updatedDurationMonths;
+
+  // If accepted members now equals or exceeds new capacity, transition to ISSUE_STAGE if in INVITING
+  if (circle.status === "INVITING" && acceptedInvites.length >= updatedNumPeople) {
+    circle.status = "ISSUE_STAGE";
+  }
+
+  return circle;
+}
+
+export async function deleteCircleRecord(params: {
+  circleId: string;
+  callerWallet: string;
+}): Promise<boolean> {
+  const circleIndex = memoryCircles.findIndex((c) => c.id === params.circleId);
+  if (circleIndex === -1) throw new Error("Circle not found");
+
+  const circle = memoryCircles[circleIndex];
+  if (circle.status === "FINALIZED") {
+    throw new Error("Cannot delete a finalized circle");
+  }
+
+  if (circle.volunteerWallet.toLowerCase() !== params.callerWallet.toLowerCase()) {
+    throw new Error("Only the volunteer can delete this circle");
+  }
+
+  // Remove circle
+  memoryCircles.splice(circleIndex, 1);
+
+  // Remove associated invites
+  const remainingInvites = memoryInvites.filter((i) => i.circleId !== params.circleId);
+  memoryInvites.splice(0, memoryInvites.length, ...remainingInvites);
+
+  // Remove associated issues
+  const remainingIssues = memoryIssues.filter((i) => i.circleId !== params.circleId);
+  memoryIssues.splice(0, memoryIssues.length, ...remainingIssues);
+
+  // Remove associated confirmations
+  const remainingConfirmations = memoryConfirmations.filter((c) => c.circleId !== params.circleId);
+  memoryConfirmations.splice(0, memoryConfirmations.length, ...remainingConfirmations);
+
+  // Remove associated notifications
+  const remainingNotifs = memoryNotifications.filter((n) => n.circleId !== params.circleId);
+  memoryNotifications.splice(0, memoryNotifications.length, ...remainingNotifs);
+
+  return true;
 }
 
 export async function createInviteRecord(params: {
@@ -220,11 +395,13 @@ export async function createInviteRecord(params: {
   }
 
   if (circle.volunteerWallet.toLowerCase() !== params.callerWallet.toLowerCase()) {
-    throw new Error("Only the volunteer organizer can send invites");
+    throw new Error("Only the volunteer can send invites");
   }
 
   const candidate = getUserByUsername(params.username);
-  if (!candidate) throw new Error(`User @${params.username} not found`);
+  if (!candidate) {
+    throw new Error(`Account @${params.username} does not exist in the database. Only registered accounts can be invited.`);
+  }
 
   const existing = memoryInvites.find(
     (i) =>
@@ -269,7 +446,7 @@ export async function createInviteRecord(params: {
   memoryInvites.push(newInvite);
 
   const volunteer = getUserByWallet(circle.volunteerWallet);
-  const volunteerName = volunteer?.displayName || circle.volunteerUsername || "Volunteer Organizer";
+  const volunteerName = volunteer?.displayName || circle.volunteerUsername || "Volunteer";
   
   const notificationBody = `You were added to ${circle.name} by ${volunteerName}. Verify whether you want to join.`;
   memoryNotifications.unshift({
@@ -382,7 +559,8 @@ export async function createIssueRecord(params: {
   memoryIssues.push(newIssue);
 
   // DEFAULT D10: A new issue clears all previous "No issues" confirmations!
-  memoryConfirmations = memoryConfirmations.filter((c) => c.circleId !== circle.id);
+  const remainingConf = memoryConfirmations.filter((c) => c.circleId !== circle.id);
+  memoryConfirmations.splice(0, memoryConfirmations.length, ...remainingConf);
 
   // Notify volunteer
   memoryNotifications.unshift({
@@ -412,7 +590,7 @@ export async function resolveIssueRecord(params: {
   if (!circle) throw new Error("Circle not found");
 
   if (circle.volunteerWallet.toLowerCase() !== params.volunteerWallet.toLowerCase()) {
-    throw new Error("Only the volunteer organizer can resolve issues");
+    throw new Error("Only the volunteer can resolve issues");
   }
 
   if (!params.response || params.response.trim().length === 0) {
@@ -532,9 +710,23 @@ export async function getFinalizedCircle(circleId: string): Promise<FinalizedCir
   };
 }
 
-export async function getNotificationsForUser(walletAddress: string): Promise<NotificationRecord[]> {
-  const norm = walletAddress.toLowerCase();
-  return memoryNotifications.filter((n) => n.userWallet.toLowerCase() === norm);
+export async function getNotificationsForUser(walletAddress: string, username?: string): Promise<NotificationRecord[]> {
+  const normWallet = (walletAddress || "").toLowerCase();
+  const normUser = (username || "").toLowerCase().replace(/^@/, "");
+
+  const matchedWallets = new Set<string>();
+  if (normWallet) matchedWallets.add(normWallet);
+  if (normUser) {
+    const u = getUserByUsername(normUser);
+    if (u?.walletAddress) matchedWallets.add(u.walletAddress.toLowerCase());
+  }
+
+  return memoryNotifications.filter((n) => {
+    return (
+      matchedWallets.has(n.userWallet.toLowerCase()) ||
+      (normUser && (n as any).inviteeUsername?.toLowerCase() === normUser)
+    );
+  });
 }
 
 export async function markNotificationRead(id: string, walletAddress: string): Promise<boolean> {

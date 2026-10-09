@@ -77,7 +77,7 @@ export default function AccountWalletPage() {
       <div className="rounded-3xl border border-neutral-900 bg-neutral-950 p-8 shadow-2xl space-y-8 relative overflow-hidden">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="p-3.5 bg-red-600/10 border border-red-600/20 text-red-400 rounded-2xl">
+            <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-2xl">
               <Wallet className="h-6 w-6" />
             </div>
             <div>
@@ -96,10 +96,10 @@ export default function AccountWalletPage() {
           </div>
         )}
 
-        {/* High End Luxury Metal Card Visual inspired by Xapo Bank */}
-        <div className="relative rounded-3xl bg-gradient-to-br from-neutral-900 via-neutral-950 to-red-950/40 p-8 border border-neutral-800 shadow-2xl space-y-6 overflow-hidden">
+        {/* High End Luxury Bharat Gold Card Visual */}
+        <div className="relative rounded-3xl bg-gradient-to-br from-neutral-900 via-neutral-950 to-amber-950/30 p-8 border border-amber-500/20 shadow-2xl space-y-6 overflow-hidden">
           <div className="flex items-center justify-between text-neutral-400">
-            <div className="flex items-center gap-2 text-xs uppercase tracking-widest font-bold text-red-400">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-widest font-bold text-amber-400">
               <Shield className="w-4 h-4" />
               <span>ChitChain Private Member</span>
             </div>
@@ -112,7 +112,7 @@ export default function AccountWalletPage() {
             </span>
             <div className="text-4xl sm:text-5xl font-extrabold text-white font-mono tracking-tight">
               {Number(balance).toLocaleString()}{" "}
-              <span className="text-lg font-normal text-neutral-400">USDC</span>
+              <span className="text-lg font-normal text-amber-400">USDC</span>
             </div>
           </div>
 
@@ -129,7 +129,7 @@ export default function AccountWalletPage() {
           <button
             onClick={handleMint}
             disabled={minting}
-            className="w-full py-4 rounded-2xl bg-white hover:bg-neutral-200 text-black font-bold text-xs tracking-wider uppercase transition-all flex items-center justify-center gap-2 shadow-xl shadow-white/5 cursor-pointer"
+            className="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold text-xs tracking-wider uppercase transition-all flex items-center justify-center gap-2 shadow-xl shadow-amber-500/20 cursor-pointer disabled:opacity-50"
           >
             <Coins className="h-4 w-4" />
             <span>{minting ? "Minting Gasless Test USDC..." : "Deposit 1,000 Test USDC"}</span>

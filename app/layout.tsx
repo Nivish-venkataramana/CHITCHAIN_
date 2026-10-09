@@ -16,7 +16,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark bg-black">
-      <body className="min-h-screen bg-black text-neutral-100 antialiased flex flex-col font-sans selection:bg-red-950 selection:text-white">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Syne:wght@600;700;800&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="min-h-screen bg-black text-neutral-100 antialiased flex flex-col font-sans selection:bg-orange-950 selection:text-white">
         <Providers>
           <Navbar />
           <main className="flex-1">

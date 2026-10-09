@@ -240,7 +240,7 @@ export default function AutopayPermissionsPage() {
                 Deploy Circle Vault Clone
               </button>
             ) : (
-              <span className="text-neutral-500 italic">Waiting for organizer to deploy vault...</span>
+              <span className="text-neutral-500 italic">Waiting for volunteer to deploy vault...</span>
             )}
           </div>
           <div className="text-[11px] text-neutral-400 pt-2 border-t border-neutral-800/80 leading-relaxed">

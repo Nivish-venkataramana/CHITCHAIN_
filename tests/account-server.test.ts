@@ -13,7 +13,7 @@ function assert(condition: boolean, message: string) {
 }
 
 process.env.DEV_LOGIN = "true";
-process.env.NODE_ENV = "test";
+(process.env as Record<string, string>).NODE_ENV = "test";
 
 async function runAccountServerTests() {
   console.log("▶ Running Stage 4 Server & Username Rule Tests...");

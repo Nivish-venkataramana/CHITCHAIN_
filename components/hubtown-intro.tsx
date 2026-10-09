@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { usePrivy } from "@privy-io/react-auth";
 import * as THREE from "three";
 import { ArrowRight, Shield } from "lucide-react";
 
@@ -10,6 +12,8 @@ interface HubtownIntroProps {
 }
 
 export function HubtownIntro({ onEnter, isOpen }: HubtownIntroProps) {
+  const router = useRouter();
+  const { login, ready, authenticated } = usePrivy();
   const mountRef = useRef<HTMLDivElement>(null);
   const [isClosing, setIsClosing] = useState<boolean>(false);
 
@@ -205,13 +209,6 @@ export function HubtownIntro({ onEnter, isOpen }: HubtownIntroProps) {
       isDragging = false;
     };
 
-    window.addEventListener("mousedown", onPointerDown, { passive: true });
-    window.addEventListener("mousemove", onPointerMove, { passive: true });
-    window.addEventListener("mouseup", onPointerUp, { passive: true });
-    window.addEventListener("touchstart", onPointerDown, { passive: true });
-    window.addEventListener("touchmove", onPointerMove, { passive: true });
-    window.addEventListener("touchend", onPointerUp, { passive: true });
-
     const handleResize = () => {
       if (!currentMount) return;
       width = currentMount.clientWidth;
@@ -220,6 +217,13 @@ export function HubtownIntro({ onEnter, isOpen }: HubtownIntroProps) {
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
     };
+
+    window.addEventListener("mousedown", onPointerDown, { passive: true });
+    window.addEventListener("mousemove", onPointerMove, { passive: true });
+    window.addEventListener("mouseup", onPointerUp, { passive: true });
+    window.addEventListener("touchstart", onPointerDown, { passive: true });
+    window.addEventListener("touchmove", onPointerMove, { passive: true });
+    window.addEventListener("touchend", onPointerUp, { passive: true });
     window.addEventListener("resize", handleResize);
 
     // Butter-smooth 60/120 FPS Animation Loop
@@ -327,11 +331,17 @@ export function HubtownIntro({ onEnter, isOpen }: HubtownIntroProps) {
 
           <div className="flex items-center gap-3">
             <button
-              onClick={handleEnterProtocol}
+              onClick={() => {
+                if (ready) {
+                  login();
+                } else {
+                  router.push("/login");
+                }
+              }}
               className="px-4 py-2 text-xs font-semibold tracking-wide text-neutral-200 hover:text-white bg-neutral-900/90 hover:bg-neutral-800 border border-neutral-800 rounded-full transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
             >
               <Shield className="w-3.5 h-3.5 text-amber-400" />
-              <span>LOGIN</span>
+              <span>{authenticated ? "ACCOUNT" : "LOGIN"}</span>
             </button>
 
             <button

@@ -17,6 +17,7 @@ for (const file of testFiles) {
   const result = spawnSync("npx", ["tsx", `tests/${file}`], {
     stdio: "inherit",
     shell: true,
+    env: { ...process.env, NODE_ENV: "test" },
   });
 
   if (result.status === 0) {

@@ -1,32 +1,58 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getAccessToken } from "@privy-io/react-auth";
+import { getAccessToken, usePrivy, useWallets } from "@privy-io/react-auth";
 import { useAccount } from "@/hooks/useAccount";
 import { useDevUser } from "@/components/providers";
-import { ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, AlertCircle, Wallet } from "lucide-react";
 import { validateUsername } from "@/lib/username-rule";
 
 export default function CreateAccountProfilePage() {
   const router = useRouter();
   const { authenticated, refetchProfile, login } = useAccount();
+  const { wallets } = useWallets();
+  const { user: privyUser } = usePrivy();
   const { user: devUser, setUser: setDevUser } = useDevUser();
 
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
+  const [publicKey, setPublicKey] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Auto-populate public key if Privy wallet connects
+  useEffect(() => {
+    const privyWallet = wallets.find((w) => w.walletClientType === "privy") || wallets[0];
+    const address = privyWallet?.address || privyUser?.wallet?.address;
+    if (address && !publicKey) {
+      setPublicKey(address);
+      if (!username) {
+        setUsername(`user_${address.slice(2, 6).toLowerCase()}`);
+      }
+    }
+  }, [wallets, privyUser, publicKey, username]);
+
   // Live validation (§7.5)
-  const validation = validateUsername(displayName, username);
+  const validation = validateUsername(displayName || username, username);
+  const isPublicKeyValid = !publicKey || /^0x[a-fA-F0-9]{40}$/.test(publicKey.trim());
+  const isValid = (validation.valid || username.trim().length >= 3) && isPublicKeyValid;
+
+  const handleConnectPrivy = () => {
+    setError(null);
+    try {
+      login();
+    } catch (err: any) {
+      setError(err.message || "Failed to open Privy login");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validation.valid) {
-      setError(validation.error || "Please check username format");
+    if (!username.trim()) {
+      setError("Please provide a valid username.");
       return;
     }
 
@@ -48,12 +74,17 @@ export default function CreateAccountProfilePage() {
         headers["x-dev-user"] = devUser.username;
       }
 
+      const cleanUser = username.trim().toLowerCase();
+      const cleanName = displayName.trim() || cleanUser;
+      const cleanKey = publicKey.trim() ? (publicKey.trim().toLowerCase() as `0x${string}`) : undefined;
+
       const res = await fetch("/api/users", {
         method: "POST",
         headers,
         body: JSON.stringify({
-          displayName: displayName.trim(),
-          username: username.toLowerCase().trim(),
+          displayName: cleanName,
+          username: cleanUser,
+          ...(cleanKey ? { walletAddress: cleanKey } : {}),
         }),
       });
 
@@ -62,7 +93,6 @@ export default function CreateAccountProfilePage() {
         throw new Error(data.error || "Failed to create account profile");
       }
 
-      // Update local state and TanStack profile cache
       if (setDevUser) {
         setDevUser(data);
       }
@@ -91,7 +121,7 @@ export default function CreateAccountProfilePage() {
 
       <div className="rounded-3xl border border-neutral-900 bg-neutral-950 p-8 shadow-2xl space-y-6 relative overflow-hidden">
         <div className="space-y-1.5">
-          <span className="text-xs uppercase tracking-widest font-bold text-red-500">
+          <span className="text-xs uppercase tracking-widest font-bold text-amber-500">
             Identity Origination
           </span>
           <h1 className="text-2xl font-bold text-white tracking-tight">Create Member Profile</h1>
@@ -114,16 +144,25 @@ export default function CreateAccountProfilePage() {
           </div>
         )}
 
+        {/* 1-Click Privy Auto-Connect */}
+        <button
+          type="button"
+          onClick={handleConnectPrivy}
+          className="w-full py-3.5 rounded-2xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-white font-semibold text-xs tracking-wider uppercase transition-all flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <Wallet className="h-4 w-4 text-amber-400" />
+          <span>{authenticated ? "Privy Wallet Connected" : "Connect Privy Wallet"}</span>
+        </button>
+
         <form onSubmit={handleSubmit} className="space-y-5 text-xs">
           <div className="space-y-1.5">
             <label className="font-bold text-neutral-300 uppercase tracking-wider text-[10px]">Real Full Name</label>
             <input
               type="text"
-              required
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="e.g. Asha Rao"
-              className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 p-3.5 text-xs text-white focus:outline-none focus:border-red-500 placeholder:text-neutral-600 font-medium"
+              className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 p-3.5 text-xs text-white focus:outline-none focus:border-amber-500 placeholder:text-neutral-600 font-medium"
             />
           </div>
 
@@ -134,11 +173,24 @@ export default function CreateAccountProfilePage() {
             </div>
             <input
               type="text"
+              id="username"
               required
               value={username}
               onChange={(e) => setUsername(e.target.value.toLowerCase())}
               placeholder="e.g. asharao01"
-              className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 p-3.5 text-xs text-white focus:outline-none focus:border-red-500 font-mono placeholder:text-neutral-600"
+              className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 p-3.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono placeholder:text-neutral-600"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="font-bold text-neutral-300 uppercase tracking-wider text-[10px]">Public Key (Optional 0x Address)</label>
+            <input
+              type="text"
+              id="public-key"
+              value={publicKey}
+              onChange={(e) => setPublicKey(e.target.value)}
+              placeholder="0x..."
+              className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 p-3.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono placeholder:text-neutral-600"
             />
           </div>
 
@@ -166,10 +218,10 @@ export default function CreateAccountProfilePage() {
 
           <button
             type="submit"
-            disabled={!validation.valid || submitting}
+            disabled={!isValid || submitting}
             className={`w-full py-4 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all shadow-xl ${
-              validation.valid && !submitting
-                ? "bg-white hover:bg-neutral-200 text-black cursor-pointer shadow-white/5"
+              isValid && !submitting
+                ? "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black cursor-pointer shadow-amber-500/20"
                 : "bg-neutral-900 text-neutral-600 border border-neutral-800 cursor-not-allowed"
             }`}
           >

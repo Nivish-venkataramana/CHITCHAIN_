@@ -6,25 +6,25 @@
 
 @layer base {
   :root {
-    --background: 0 0% 4%;
+    --background: 0 0% 0%;
     --foreground: 0 0% 98%;
-    --card: 0 0% 7%;
+    --card: 0 0% 4%;
     --card-foreground: 0 0% 98%;
-    --popover: 0 0% 7%;
+    --popover: 0 0% 4%;
     --popover-foreground: 0 0% 98%;
-    --primary: 354 85% 54%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 12%;
+    --primary: 38 92% 50%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 9%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14%;
-    --muted-foreground: 0 0% 64%;
-    --accent: 354 85% 54%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 84.2% 60.2%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 16%;
-    --input: 0 0% 16%;
-    --ring: 354 85% 54%;
+    --border: 0 0% 14%;
+    --input: 0 0% 14%;
+    --ring: 38 92% 50%;
     --radius: 1rem;
   }
 }
@@ -34,8 +34,84 @@
     @apply border-border;
   }
   body {
-    @apply bg-black text-neutral-100 antialiased selection:bg-orange-900 selection:text-white;
+    background-color: #000000;
+    color: #f3f4f6;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
+}
+
+/* Transparent Glass Panels */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  transform: translateZ(0);
+}
+
+.glass-panel-glow {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  box-shadow: 0 0 30px -8px rgba(245, 158, 11, 0.2);
+  transform: translateZ(0);
+}
+
+.glass-panel-glow:hover {
+  border-color: rgba(245, 158, 11, 0.4);
+  box-shadow: 0 0 35px -5px rgba(245, 158, 11, 0.3);
+}
+
+/* Underline Floating Label Inputs */
+.line-input-group {
+  position: relative;
+  width: 100%;
+}
+
+.line-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 1.25rem 0 0.5rem 0;
+  font-size: 0.9375rem;
+  color: #ffffff;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.line-input:focus {
+  border-bottom: 1px solid #f59e0b;
+  box-shadow: 0 1px 0 0 #f59e0b, 0 8px 16px -4px rgba(245, 158, 11, 0.25);
+}
+
+.line-label {
+  position: absolute;
+  left: 0;
+  top: 1.25rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.4);
+  pointer-events: none;
+  transform-origin: left top;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+
+.line-input:focus ~ .line-label,
+.line-input:not(:placeholder-shown) ~ .line-label,
+.line-input-active ~ .line-label {
+  top: 0;
+  transform: scale(0.8);
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+.line-input:not(:focus):not(:placeholder-shown) ~ .line-label {
+  color: rgba(255, 255, 255, 0.5);
 }
 
 /* 3D Smooth Moving & Floating Coin Animations */

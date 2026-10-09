@@ -1,11 +1,16 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useDevUser } from "@/components/providers";
 import { PlusCircle, Users, ArrowRight, ShieldCheck, Zap, Lock, TrendingUp, User, Box } from "lucide-react";
-import { FloatingCoinsBackground } from "@/components/floating-coins-background";
 import { fromBaseUnits } from "@/lib/validation";
+
+const FloatingCoinsBackground = dynamic(
+  () => import("@/components/floating-coins-background").then((mod) => mod.FloatingCoinsBackground),
+  { ssr: false }
+);
 
 interface CircleItem {
   id: string;

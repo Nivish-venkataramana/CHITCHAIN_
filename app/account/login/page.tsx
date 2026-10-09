@@ -25,12 +25,12 @@ export default function AccountLoginPage() {
 
   return (
     <div className="max-w-md mx-auto py-16 px-6 space-y-8 text-center text-neutral-100">
-      <div className="h-16 w-16 bg-red-600/10 border border-red-600/20 text-red-400 rounded-3xl flex items-center justify-center mx-auto shadow-xl">
+      <div className="h-16 w-16 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-3xl flex items-center justify-center mx-auto shadow-xl">
         <KeyRound className="h-8 w-8" />
       </div>
 
       <div className="space-y-2">
-        <span className="text-xs uppercase tracking-widest font-bold text-red-500">
+        <span className="text-xs uppercase tracking-widest font-bold text-amber-500">
           Smart Account Access
         </span>
         <h1 className="text-3xl font-bold text-white tracking-tight">Custodial Authentication</h1>
@@ -55,7 +55,7 @@ export default function AccountLoginPage() {
           {!authenticated ? (
             <button
               onClick={() => login()}
-              className="w-full text-center py-4 rounded-2xl bg-white hover:bg-neutral-200 text-black font-bold text-xs uppercase tracking-wider transition-all block shadow-lg shadow-white/5 cursor-pointer"
+              className="w-full text-center py-4 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs uppercase tracking-wider transition-all block shadow-lg shadow-amber-500/20 cursor-pointer"
             >
               Sign In / Connect Wallet
             </button>
@@ -63,7 +63,7 @@ export default function AccountLoginPage() {
             <>
               <Link
                 href="/account/wallet"
-                className="w-full text-center py-4 rounded-2xl bg-white hover:bg-neutral-200 text-black font-bold text-xs uppercase tracking-wider transition-all block shadow-lg shadow-white/5"
+                className="w-full text-center py-4 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs uppercase tracking-wider transition-all block shadow-lg shadow-amber-500/20"
               >
                 Access Smart Vault Wallet
               </Link>
