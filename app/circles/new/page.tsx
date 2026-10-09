@@ -107,10 +107,11 @@ export default function CreateCirclePage() {
     setError(null);
     try {
       const targetUser = dynamicUsername || user?.username || "asharao01";
+      const mintAmount = Math.max(required3xBalance, 10000);
       const res = await fetch("/api/account/faucet", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-dev-user": targetUser },
-        body: JSON.stringify({ amount: 1000 }),
+        body: JSON.stringify({ amount: mintAmount }),
       });
       const data = await res.json();
       if (data?.balanceUSDC !== undefined) {
@@ -322,17 +323,17 @@ export default function CreateCirclePage() {
                 <div className="flex items-start gap-2.5">
                   <AlertTriangle className="h-4 w-4 shrink-0 text-red-400 mt-0.5" />
                   <div className="space-y-1">
-                    <p className="font-bold text-red-200">Insufficient Creator Balance</p>
+                    <p className="font-bold text-red-200">3× Agreed Price Commitment Verification</p>
                     <p className="text-[11px] leading-relaxed text-red-300/90">
                       Your current wallet balance is{" "}
                       <strong className="text-white font-mono">
                         {creatorBalance !== null ? `${creatorBalance.toFixed(2)} USDC` : "0.00 USDC"}
                       </strong>
-                      . You must hold at least{" "}
+                      . Under ChitChain rules, each participant must hold at least{" "}
                       <strong className="text-white font-mono">
                         {required3xBalance.toLocaleString()} USDC
                       </strong>{" "}
-                      (3x the monthly contribution of {parsedAmount.toLocaleString()} USDC) to create this circle.
+                      (3× the agreed monthly price of {parsedAmount.toLocaleString()} USDC) to ensure financial commitment and prevent payment defaults.
                     </p>
                   </div>
                 </div>
@@ -351,14 +352,14 @@ export default function CreateCirclePage() {
                   ) : (
                     <>
                       <Coins className="h-3.5 w-3.5" />
-                      <span>Deposit Faucet USDC</span>
+                      <span>Deposit Faucet USDC ({Math.max(required3xBalance, 10000).toLocaleString()})</span>
                     </>
                   )}
                 </button>
               </div>
             ) : (
               <p className="text-xs text-emerald-400 font-mono mt-1">
-                Required 3x balance check at invite time:{" "}
+                Required 3× agreed price check:{" "}
                 <strong>{required3xBalance.toLocaleString()} USDC</strong>
                 {creatorBalance !== null && (
                   <span className="text-neutral-400 text-[11px] ml-2 font-normal">
