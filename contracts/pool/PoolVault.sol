@@ -233,6 +233,40 @@ contract PoolVault is IPool, Initializable, ReentrancyGuard {
         }
     }
 
+    /**
+     * @notice Settles circle maturity at the end of tenure, distributing remaining compounded dividends and principal pro-rata to truthful members.
+     */
+    function settleMaturity() external nonReentrant {
+        if (phase != Phase.Completed) revert CircleAlreadyCompleted();
+
+        uint256 totalVaultBalance = token.balanceOf(address(this));
+        if (totalVaultBalance == 0) return;
+
+        // Count truthful members (who did not miss payments)
+        uint256 truthfulCount = 0;
+        for (uint256 i = 0; i < _members.length; i++) {
+            if (!hasMissed[_members[i]]) {
+                truthfulCount++;
+            }
+        }
+
+        if (truthfulCount == 0) return;
+
+        uint256 perMemberPayout = totalVaultBalance / truthfulCount;
+        if (perMemberPayout > 0) {
+            for (uint256 i = 0; i < _members.length; i++) {
+                address m = _members[i];
+                if (!hasMissed[m]) {
+                    token.safeTransfer(m, perMemberPayout);
+                }
+            }
+        }
+
+        accountedBalance = 0;
+        carriedDividend = 0;
+        emit CircleMaturitySettled(totalVaultBalance, perMemberPayout);
+    }
+
     // View functions
     function members() external view override returns (address[] memory) {
         return _members;

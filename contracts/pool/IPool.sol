@@ -36,4 +36,5 @@ interface IPool {
     event PayoutSent(uint256 indexed cycle, address indexed winner, uint256 amount);
     event DividendCredited(uint256 indexed cycle, uint256 amount);
     event CycleSettled(uint256 indexed cycle);
+    event CircleMaturitySettled(uint256 totalPayout, uint256 perMemberShare);
 }

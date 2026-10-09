@@ -27,11 +27,20 @@ export function compileContracts() {
   console.log(`[Compile] Compiling contracts with solc ${solc.version()}...`);
 
   const poolDir = path.resolve(__dirname, "../../contracts/pool");
-  const contractFiles = ["IPool.sol", "MockUSDC.sol", "PoolVault.sol", "CircleFactory.sol", "StubPool.sol"];
+  const biddingDir = path.resolve(__dirname, "../../contracts/bidding");
+
+  const poolFiles = ["IPool.sol", "MockUSDC.sol", "PoolVault.sol", "CircleFactory.sol", "StubPool.sol"];
+  const biddingFiles = ["IBidding.sol", "BiddingModule.sol", "MockPool.sol"];
 
   const sources: Record<string, { content: string }> = {};
-  for (const file of contractFiles) {
+  for (const file of poolFiles) {
     const filePath = path.join(poolDir, file);
+    if (fs.existsSync(filePath)) {
+      sources[file] = { content: fs.readFileSync(filePath, "utf-8") };
+    }
+  }
+  for (const file of biddingFiles) {
+    const filePath = path.join(biddingDir, file);
     if (fs.existsSync(filePath)) {
       sources[file] = { content: fs.readFileSync(filePath, "utf-8") };
     }
