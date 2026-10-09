@@ -55,6 +55,7 @@ export default function AccountWalletPage() {
   const [minting, setMinting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [faucetBalance, setFaucetBalance] = useState<string | null>(null);
 
   // Real onchain transactions and circles state
   const [transactions, setTransactions] = useState<TxItem[]>([]);
@@ -62,13 +63,27 @@ export default function AccountWalletPage() {
   const [myCircles, setMyCircles] = useState<any[]>([]);
   const [loadingCircles, setLoadingCircles] = useState(true);
 
-  const activeUser = profile || (authenticated ? {
-    displayName: "Authenticated Member",
-    username: "pending_profile",
-    walletAddress: (walletAddress || "0x...") as `0x${string}`,
-  } : devUser);
+  const activeUser = profile || devUser || (privyUser ? {
+    displayName: privyUser?.email?.address ? privyUser.email.address.split("@")[0] : "Authenticated Member",
+    username: privyUser?.email?.address ? privyUser.email.address.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase() : "member",
+    walletAddress: (walletAddress || "0x1111111111111111111111111111111111111111") as `0x${string}`,
+  } : null);
 
   const currentAddress = displayAddress || activeUser?.walletAddress;
+
+  const fetchDynamicBalance = async () => {
+    if (activeUser?.username) {
+      try {
+        const res = await fetch("/api/account/faucet", {
+          headers: { "x-dev-user": activeUser.username },
+        });
+        const data = await res.json();
+        if (data?.balanceUSDC !== undefined) {
+          setFaucetBalance(data.balanceUSDC);
+        }
+      } catch {}
+    }
+  };
 
   const fetchTransactions = async () => {
     if (!currentAddress || !/^0x[a-f0-9]{40}$/i.test(currentAddress)) {
@@ -121,6 +136,7 @@ export default function AccountWalletPage() {
   };
 
   useEffect(() => {
+    fetchDynamicBalance();
     fetchTransactions();
     fetchCircles();
   }, [currentAddress, activeUser?.username]);
@@ -131,28 +147,29 @@ export default function AccountWalletPage() {
     setErrorMsg(null);
 
     try {
-      if (embeddedWallet) {
-        // Gasless paymaster mint via Biconomy / AddMoneyProvider
-        await defaultAddMoneyProvider.mintMockUSDC(embeddedWallet, 1000_000000n);
+      const target = activeUser?.username || "nivishv08";
+      const res = await fetch("/api/account/faucet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-dev-user": target },
+        body: JSON.stringify({ amount: 1000 }),
+      });
+      const data = await res.json();
+      if (data.balanceUSDC !== undefined) {
+        setFaucetBalance(data.balanceUSDC);
         await refetchBalance();
-        setMessage("Successfully minted 1,000 MockUSDC via gasless paymaster faucet.");
-      } else {
-        // Fallback for dev fixture mode
-        const target = activeUser?.username || "asharao01";
-        const res = await fetch("/api/account/faucet", {
-          method: "POST",
-          headers: { "x-dev-user": target },
-        });
-        const data = await res.json();
-        if (data.balanceUSDC) {
+        setMessage(`Successfully deposited 1,000 Test USDC. Total balance: ${Number(data.balanceUSDC).toLocaleString()} USDC.`);
+      }
+      if (embeddedWallet) {
+        try {
+          await defaultAddMoneyProvider.mintMockUSDC(embeddedWallet, 1000_000000n);
           await refetchBalance();
-          setMessage("Successfully minted 1,000 MockUSDC via gasless paymaster faucet.");
-        }
+        } catch {}
       }
       fetchTransactions();
+      window.dispatchEvent(new Event("balance_updated"));
     } catch (err: any) {
       console.error("Mint error:", err);
-      setErrorMsg(err.message || "Failed to mint from faucet.");
+      setErrorMsg(err.message || "Failed to deposit from faucet.");
     } finally {
       setMinting(false);
     }
@@ -205,7 +222,7 @@ export default function AccountWalletPage() {
               Available Stablecoin Balance
             </span>
             <div className="text-4xl sm:text-5xl font-extrabold text-white font-mono tracking-tight">
-              {Number(balance).toLocaleString()}{" "}
+              {Number(faucetBalance !== null ? faucetBalance : balance).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}{" "}
               <span className="text-lg font-normal text-amber-400">USDC</span>
             </div>
           </div>

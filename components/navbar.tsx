@@ -63,7 +63,17 @@ export function Navbar() {
 
   const fetchBalance = async () => {
     if (!activeWalletAddress || !/^0x[a-f0-9]{40}$/i.test(activeWalletAddress)) {
-      setBalance("10,000.00");
+      if (dynamicUsername) {
+        try {
+          const res = await fetch("/api/account/faucet", { headers: { "x-dev-user": dynamicUsername } });
+          const data = await res.json();
+          if (data?.balanceUSDC !== undefined) {
+            setBalance(Number(data.balanceUSDC).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+            return;
+          }
+        } catch {}
+      }
+      setBalance("0.00");
       return;
     }
     try {
@@ -84,15 +94,15 @@ export function Navbar() {
         fetch("/api/account/faucet", { headers: { "x-dev-user": dynamicUsername } })
           .then((r) => r.json())
           .then((data) => {
-            if (data?.balanceUSDC) {
-              setBalance(Number(data.balanceUSDC).toLocaleString(undefined, { minimumFractionDigits: 2 }));
+            if (data?.balanceUSDC !== undefined) {
+              setBalance(Number(data.balanceUSDC).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
             } else {
-              setBalance("10,000.00");
+              setBalance("0.00");
             }
           })
-          .catch(() => setBalance("10,000.00"));
+          .catch(() => setBalance("0.00"));
       } else {
-        setBalance("10,000.00");
+        setBalance("0.00");
       }
     }
   };
@@ -118,11 +128,20 @@ export function Navbar() {
     if (pathname === "/" || pathname === "/login") return;
     fetchBalance();
     fetchNotifications();
+
+    const handleBalanceUpdate = () => {
+      fetchBalance();
+    };
+    window.addEventListener("balance_updated", handleBalanceUpdate);
+
     const interval = setInterval(() => {
       fetchBalance();
       fetchNotifications();
-    }, 20000);
-    return () => clearInterval(interval);
+    }, 15000);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("balance_updated", handleBalanceUpdate);
+    };
   }, [activeWalletAddress, dynamicUsername, pathname]);
 
   const handleRespond = async (inviteId: string, accept: boolean, notifId: string) => {

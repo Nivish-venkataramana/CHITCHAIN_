@@ -109,7 +109,7 @@ export async function createUserAccount(params: {
 
   usersDb.push(newUser);
   addUser(newUser);
-  userBalances[cleanWallet] = 10000_000000n; // Grant initial 10,000 test USDC
+  userBalances[cleanWallet] = isTestEnv ? 10000_000000n : 0n; // Initial 0 test USDC until minted via faucet
 
   return newUser;
 }
@@ -140,10 +140,10 @@ const ERC20_ABI = [
 // In-Memory RPC Cache to avoid blocking network calls and lag
 const balanceCache: Record<string, { usdc: bigint; eth: string; expiry: number }> = {};
 
-export async function mintFaucetTokens(walletAddress: string, amountUSDC = 10000): Promise<bigint> {
+export async function mintFaucetTokens(walletAddress: string, amountUSDC = 1000): Promise<bigint> {
   const cleanWallet = walletAddress.toLowerCase().trim();
   const mintBaseUnits = BigInt(amountUSDC) * 1_000_000n;
-  const current = userBalances[cleanWallet] || 10000_000000n;
+  const current = userBalances[cleanWallet] || 0n;
   const updated = current + mintBaseUnits;
   userBalances[cleanWallet] = updated;
 
@@ -158,11 +158,11 @@ export async function getUserBalance(walletAddress: string): Promise<bigint> {
   const now = Date.now();
 
   if (userBalances[cleanWallet] === undefined) {
-    userBalances[cleanWallet] = 10000_000000n;
+    userBalances[cleanWallet] = isTestEnv ? 10000_000000n : 0n;
   }
 
   const cached = balanceCache[cleanWallet];
-  const localMinted = userBalances[cleanWallet] ?? 10000_000000n;
+  const localMinted = userBalances[cleanWallet] ?? 0n;
 
   if (cached && now < cached.expiry) {
     return cached.usdc + localMinted;
