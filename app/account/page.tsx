@@ -107,12 +107,14 @@ export default function AccountProfilePage() {
 
     setLoadingBalance(true);
     try {
-      const rawBalance = await publicClient.readContract({
+      const readPromise = publicClient.readContract({
         address: BASE_SEPOLIA_USDC,
         abi: erc20Abi,
         functionName: "balanceOf",
         args: [activeWalletAddress as `0x${string}`],
       });
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("RPC Timeout")), 2000));
+      const rawBalance = (await Promise.race([readPromise, timeoutPromise])) as bigint;
 
       const formatted = Number(formatUnits(rawBalance, 6)).toLocaleString(undefined, {
         minimumFractionDigits: 2,
@@ -120,7 +122,7 @@ export default function AccountProfilePage() {
       });
       setBalance(formatted);
     } catch (err) {
-      console.warn("Error reading onchain USDC balance:", err);
+      console.warn("Notice reading onchain USDC balance:", err);
       try {
         const res = await fetch("/api/account/faucet", {
           headers: { "x-dev-user": dynamicUsername },
@@ -183,7 +185,7 @@ export default function AccountProfilePage() {
         const currentBlock = await publicClient.getBlockNumber();
         const fromBlock = currentBlock > 5000n ? currentBlock - 5000n : 0n;
 
-        const [inLogs, outLogs] = await Promise.all([
+        const logsPromise = Promise.all([
           publicClient.getLogs({
             address: BASE_SEPOLIA_USDC,
             event: transferEventAbi,
@@ -203,6 +205,9 @@ export default function AccountProfilePage() {
             toBlock: "latest",
           }),
         ]);
+
+        const timeoutLogs = new Promise<any[]>((_, reject) => setTimeout(() => reject(new Error("Logs Timeout")), 2500));
+        const [inLogs, outLogs] = (await Promise.race([logsPromise, timeoutLogs])) as [any[], any[]];
 
         const allLogs = [...inLogs, ...outLogs];
 
