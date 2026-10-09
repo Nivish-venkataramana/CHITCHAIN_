@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import * as THREE from "three";
@@ -344,13 +345,14 @@ export function HubtownIntro({ onEnter, isOpen }: HubtownIntroProps) {
               <span>{authenticated ? "ACCOUNT" : "LOGIN"}</span>
             </button>
 
-            <button
-              onClick={handleEnterProtocol}
+            <Link
+              href="/home"
+              onClick={() => onEnter?.()}
               className="px-5 py-2 text-xs font-bold tracking-wider text-white bg-gradient-to-r from-orange-600 via-amber-600 to-orange-700 hover:from-orange-500 hover:to-amber-500 rounded-full transition-all flex items-center gap-1.5 cursor-pointer shadow-[0_0_20px_rgba(234,88,12,0.5)] transform hover:scale-105"
             >
               <span>ENTER</span>
               <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            </Link>
           </div>
         </header>
 
@@ -369,22 +371,27 @@ export function HubtownIntro({ onEnter, isOpen }: HubtownIntroProps) {
           </p>
 
           <div className="pt-2">
-            <button
-              onClick={handleEnterProtocol}
+            <Link
+              href="/home"
+              onClick={() => onEnter?.()}
               className="group relative px-8 sm:px-10 py-3 sm:py-3.5 rounded-full font-bold text-xs sm:text-sm tracking-wider uppercase text-black bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 border border-amber-300/60 transition-all duration-300 shadow-[0_0_30px_rgba(245,158,11,0.6)] hover:shadow-[0_0_45px_rgba(251,191,36,0.85)] flex items-center gap-2.5 cursor-pointer transform hover:scale-105"
             >
               <span className="text-black/60 font-mono font-bold">::</span>
               <span>EXPLORE OUR PROTOCOL</span>
               <span className="text-black/60 font-mono font-bold">::</span>
-            </button>
+            </Link>
           </div>
 
           <div className="text-[11px] font-medium text-neutral-400 flex items-center gap-2">
             <span>Drag cursor to rotate 3D monolith</span>
             <span>•</span>
-            <button onClick={handleEnterProtocol} className="text-amber-400 hover:text-amber-300 hover:underline cursor-pointer font-semibold tracking-wide">
+            <Link
+              href="/home"
+              onClick={() => onEnter?.()}
+              className="text-amber-400 hover:text-amber-300 hover:underline cursor-pointer font-semibold tracking-wide"
+            >
               Skip directly to dashboard
-            </button>
+            </Link>
           </div>
         </main>
 
