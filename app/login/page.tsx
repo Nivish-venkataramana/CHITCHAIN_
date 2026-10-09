@@ -9,7 +9,7 @@ import { Mail, KeyRound, ArrowRight, AlertCircle } from "lucide-react";
 export default function LoginPage() {
   const router = useRouter();
   const { setUser, users } = useDevUser();
-  const { authenticated, ready } = usePrivy();
+  const { authenticated, ready, logout } = usePrivy();
   const { wallets } = useWallets();
 
   const [step, setStep] = useState<"email" | "otp">("email");
@@ -18,6 +18,13 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Clear stale session on initial load if user is on /login to allow multi-account login
+  useEffect(() => {
+    if (ready && authenticated && logout) {
+      logout().catch(() => {});
+    }
+  }, [ready, authenticated, logout]);
 
   // Privy headless email authentication
   const { sendCode, loginWithCode } = useLoginWithEmail({
@@ -75,9 +82,14 @@ export default function LoginPage() {
         setIsLoading(false);
       }
     },
-    onError: (err) => {
+    onError: async (err) => {
       console.error("Login error:", err);
-      setError(err?.message || "Authentication failed. Please verify the code and try again.");
+      if (err?.message?.includes("already has one email") || err?.message?.includes("linked")) {
+        if (logout) await logout().catch(() => {});
+        setError("Previous session cleared. Please click Continue again to sign in with your email.");
+      } else {
+        setError(err?.message || "Authentication failed. Please verify the code and try again.");
+      }
       setIsLoading(false);
     },
   });
@@ -99,6 +111,9 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
+      if (authenticated && logout) {
+        await logout().catch(() => {});
+      }
       if (sendCode) {
         await sendCode({ email: email.trim().toLowerCase() });
         setStep("otp");
@@ -109,6 +124,16 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       console.error("Error sending OTP:", err);
+      if (err?.message?.includes("already has one email") && logout) {
+        await logout().catch(() => {});
+        // retry once
+        try {
+          if (sendCode) await sendCode({ email: email.trim().toLowerCase() });
+          setStep("otp");
+          setResendCooldown(60);
+          return;
+        } catch {}
+      }
       setError(err?.message || "Failed to dispatch verification code.");
     } finally {
       setIsLoading(false);
@@ -227,7 +252,11 @@ export default function LoginPage() {
             <div className="flex items-center justify-between text-xs text-neutral-400 pt-2 border-t border-neutral-800/60">
               <button
                 type="button"
-                onClick={() => setStep("email")}
+                onClick={async () => {
+                  if (logout) await logout().catch(() => {});
+                  setStep("email");
+                  setError(null);
+                }}
                 className="hover:text-white transition-colors cursor-pointer"
               >
                 Change email
