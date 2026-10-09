@@ -38,7 +38,7 @@ export default function HomePage() {
       />
 
       {/* 3D Moving Floating Rupee Coins Dynamic Background Layer */}
-      <FloatingCoinsBackground />
+      {!showIntro && <FloatingCoinsBackground />}
 
       <DemoVideoModal />
 

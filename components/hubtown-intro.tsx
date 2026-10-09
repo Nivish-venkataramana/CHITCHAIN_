@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { ArrowRight, Box, Shield } from "lucide-react";
+import { ArrowRight, Shield } from "lucide-react";
 
 interface HubtownIntroProps {
   onEnter: () => void;
@@ -30,73 +30,79 @@ export function HubtownIntro({ onEnter, isOpen }: HubtownIntroProps) {
     const width = currentMount.clientWidth || window.innerWidth;
     const height = currentMount.clientHeight || window.innerHeight;
 
-    // Scene, Camera, Renderer in Obsidian Warm Tone
+    // High performance Three.js Scene without alpha readback stutter
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x060302, 0.032);
+    scene.background = new THREE.Color(0x060302);
+    scene.fog = new THREE.FogExp2(0x060302, 0.035);
 
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    camera.position.set(0, 0.8, 8.2);
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+    camera.position.set(0, 0.6, 7.8);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance", alpha: true });
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      powerPreference: "high-performance",
+      alpha: false,
+      stencil: false,
+      depth: true,
+    });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.45;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     currentMount.appendChild(renderer.domElement);
 
-    // Warm Ambient and Golden Point Lights
-    const ambientLight = new THREE.AmbientLight(0x1a0a03, 2.2);
+    // Warm Ambient and Directional Lighting optimized for GPU
+    const ambientLight = new THREE.AmbientLight(0x2a1005, 2.5);
     scene.add(ambientLight);
 
-    const mainOrangeLight = new THREE.PointLight(0xff7700, 6.5, 60);
-    mainOrangeLight.position.set(3.5, 4.5, 5.5);
-    scene.add(mainOrangeLight);
+    const mainLight = new THREE.DirectionalLight(0xff8800, 3.5);
+    mainLight.position.set(5, 6, 6);
+    scene.add(mainLight);
 
-    const goldRimLight = new THREE.PointLight(0xfbbf24, 5.0, 45);
-    goldRimLight.position.set(-4.5, -2.5, 4.5);
-    scene.add(goldRimLight);
+    const rimLight = new THREE.DirectionalLight(0xfbbf24, 2.2);
+    rimLight.position.set(-6, -2, 4);
+    scene.add(rimLight);
 
-    const deepCopperGlow = new THREE.PointLight(0xc2410c, 7.0, 35);
-    deepCopperGlow.position.set(0, 0, -2.5);
-    scene.add(deepCopperGlow);
+    const backGlow = new THREE.PointLight(0xe05600, 4.0, 25);
+    backGlow.position.set(0, 0, -2);
+    scene.add(backGlow);
 
-    // Create the Prominent Modular 3D Orange Gold Monolith Cube
+    // Prominent 3D Orange Gold Monolith
     const cubeGroup = new THREE.Group();
-    cubeGroup.position.set(0, 0.6, 0);
+    cubeGroup.position.set(0, 0.5, 0);
     scene.add(cubeGroup);
 
-    // Outer Segmented Box Architecture in Rich Copper and Gold
-    const gridSize = 3;
-    const blockSize = 1.05;
-    const gap = 0.09;
-    const halfGrid = ((gridSize - 1) * (blockSize + gap)) / 2;
-
-    const orangeGoldMat = new THREE.MeshPhysicalMaterial({
+    // Materials optimized for 60/120 FPS
+    const goldCopperMat = new THREE.MeshStandardMaterial({
       color: 0xe06010,
-      emissive: 0x9a3412,
-      emissiveIntensity: 0.45,
-      roughness: 0.22,
-      metalness: 0.92,
-      clearcoat: 1.0,
-      clearcoatRoughness: 0.12,
-      reflectivity: 0.95,
+      emissive: 0x7c2d12,
+      emissiveIntensity: 0.35,
+      roughness: 0.25,
+      metalness: 0.9,
     });
 
-    const innerCoreMat = new THREE.MeshStandardMaterial({
+    const coreMat = new THREE.MeshStandardMaterial({
       color: 0xf59e0b,
       emissive: 0xfbbf24,
-      emissiveIntensity: 1.8,
-      roughness: 0.08,
-      metalness: 0.95,
+      emissiveIntensity: 1.4,
+      roughness: 0.1,
+      metalness: 0.8,
     });
 
-    // Central glowing radiant gold core
-    const coreGeo = new THREE.BoxGeometry(2.0, 2.0, 2.0);
-    const coreMesh = new THREE.Mesh(coreGeo, innerCoreMat);
+    // Glowing Inner Energy Core
+    const coreGeo = new THREE.BoxGeometry(1.8, 1.8, 1.8);
+    const coreMesh = new THREE.Mesh(coreGeo, coreMat);
     cubeGroup.add(coreMesh);
 
-    // Create modular exterior panels with relief variations
+    // Modular Segmented Box
+    const gridSize = 3;
+    const blockSize = 0.96;
+    const gap = 0.08;
+    const halfGrid = ((gridSize - 1) * (blockSize + gap)) / 2;
+
     const panelGeo = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
+    const wireframeEdges = new THREE.EdgesGeometry(panelGeo);
+    const lineMat = new THREE.LineBasicMaterial({ color: 0xfde047, transparent: true, opacity: 0.6 });
+
     for (let x = 0; x < gridSize; x++) {
       for (let y = 0; y < gridSize; y++) {
         for (let z = 0; z < gridSize; z++) {
@@ -104,107 +110,81 @@ export function HubtownIntro({ onEnter, isOpen }: HubtownIntroProps) {
             continue;
           }
           const isOffset = (x + y + z) % 2 === 0;
-          const panel = new THREE.Mesh(panelGeo, orangeGoldMat);
+          const panel = new THREE.Mesh(panelGeo, goldCopperMat);
           const px = x * (blockSize + gap) - halfGrid;
           const py = y * (blockSize + gap) - halfGrid;
-          const pz = z * (blockSize + gap) - halfGrid + (isOffset ? 0.08 : -0.05);
+          const pz = z * (blockSize + gap) - halfGrid + (isOffset ? 0.07 : -0.04);
           panel.position.set(px, py, pz);
           cubeGroup.add(panel);
 
-          // Golden wireframe edge accents
-          const edges = new THREE.EdgesGeometry(panelGeo);
-          const lineMat = new THREE.LineBasicMaterial({ color: 0xfde047, transparent: true, opacity: 0.65 });
-          const wireframe = new THREE.LineSegments(edges, lineMat);
+          const wireframe = new THREE.LineSegments(wireframeEdges, lineMat);
           wireframe.position.copy(panel.position);
           cubeGroup.add(wireframe);
         }
       }
     }
 
-    // Reflective Floor in Obsidian Copper Dark Tone
-    const waterGeo = new THREE.PlaneGeometry(70, 70, 64, 64);
-    const waterMat = new THREE.MeshStandardMaterial({
-      color: 0x080402,
-      roughness: 0.12,
-      metalness: 0.92,
+    // Reflective Base Plane
+    const floorGeo = new THREE.PlaneGeometry(60, 60);
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: 0x0a0502,
+      roughness: 0.2,
+      metalness: 0.8,
     });
-    const water = new THREE.Mesh(waterGeo, waterMat);
-    water.rotation.x = -Math.PI / 2;
-    water.position.y = -3.4;
-    scene.add(water);
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -3.2;
+    scene.add(floor);
 
-    // Warm Atmospheric Mountain Silhouettes
-    const createMountainRidge = (isLeft: boolean) => {
-      const ridgeGeo = new THREE.ConeGeometry(9, 7.5, 5);
-      const ridgeMat = new THREE.MeshBasicMaterial({
-        color: 0x140702,
-      });
-      const ridge = new THREE.Mesh(ridgeGeo, ridgeMat);
-      ridge.position.set(isLeft ? -12 : 12, 0.2, -10);
-      ridge.rotation.y = isLeft ? 0.4 : -0.4;
-      scene.add(ridge);
+    // Mountains
+    const createMountain = (isLeft: boolean) => {
+      const geo = new THREE.ConeGeometry(8, 7, 5);
+      const mat = new THREE.MeshBasicMaterial({ color: 0x120601 });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(isLeft ? -11 : 11, 0.1, -9);
+      mesh.rotation.y = isLeft ? 0.4 : -0.4;
+      scene.add(mesh);
     };
-    createMountainRidge(true);
-    createMountainRidge(false);
+    createMountain(true);
+    createMountain(false);
 
-    // Floating Golden Ember Particles
-    const particleCount = 750;
+    // GPU Accelerated Particle Field (No CPU Buffer updates)
+    const particleCount = 450;
     const particleGeo = new THREE.BufferGeometry();
-    const particlePos = new Float32Array(particleCount * 3);
-    const particleVel = new Float32Array(particleCount * 3);
+    const positions = new Float32Array(particleCount * 3);
 
     for (let i = 0; i < particleCount * 3; i += 3) {
-      particlePos[i] = (Math.random() - 0.5) * 26;
-      particlePos[i + 1] = (Math.random() - 0.5) * 15;
-      particlePos[i + 2] = (Math.random() - 0.5) * 20;
-
-      particleVel[i] = (Math.random() - 0.5) * 0.003;
-      particleVel[i + 1] = Math.random() * 0.009 + 0.003;
-      particleVel[i + 2] = (Math.random() - 0.5) * 0.003;
+      positions[i] = (Math.random() - 0.5) * 22;
+      positions[i + 1] = (Math.random() - 0.5) * 12;
+      positions[i + 2] = (Math.random() - 0.5) * 16;
     }
+    particleGeo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
 
-    particleGeo.setAttribute("position", new THREE.BufferAttribute(particlePos, 3));
-
-    // Particle Radial Glow Texture in Gold Amber
-    const canvas = document.createElement("canvas");
-    canvas.width = 32;
-    canvas.height = 32;
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-      gradient.addColorStop(0, "rgba(253, 224, 71, 1)");
-      gradient.addColorStop(0.35, "rgba(249, 115, 22, 0.7)");
-      gradient.addColorStop(1, "rgba(194, 65, 12, 0)");
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, 32, 32);
-    }
-    const particleTexture = new THREE.CanvasTexture(canvas);
-
-    const particleMat = new THREE.PointsMaterial({
-      size: 0.22,
-      map: particleTexture,
+    const pMat = new THREE.PointsMaterial({
+      color: 0xfbbf24,
+      size: 0.12,
       transparent: true,
+      opacity: 0.85,
       blending: THREE.AdditiveBlending,
-      depthWrite: false,
     });
-    const particles = new THREE.Points(particleGeo, particleMat);
-    scene.add(particles);
+    const particleGroup = new THREE.Points(particleGeo, pMat);
+    scene.add(particleGroup);
 
-    // Physics and Immediate Continuous Rotation
-    let rotationAngleY = 0.5;
-    let rotationAngleX = 0.35;
-    let targetCubePosX = 0;
-    let targetCubePosY = 0.5;
+    // Smooth Interaction Physics
+    let rotY = 0.5;
+    let rotX = 0.25;
+    let targetX = 0;
+    let targetY = 0.5;
     let isDragging = false;
-    let previousMouseX = 0;
-    let previousMouseY = 0;
+    let prevX = 0;
+    let prevY = 0;
 
     const onPointerDown = (e: MouseEvent | TouchEvent) => {
       isDragging = true;
       const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
       const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-      previousMouseX = clientX;
-      previousMouseY = clientY;
+      prevX = clientX;
+      prevY = clientY;
     };
 
     const onPointerMove = (e: MouseEvent | TouchEvent) => {
@@ -212,17 +192,17 @@ export function HubtownIntro({ onEnter, isOpen }: HubtownIntroProps) {
       const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
 
       if (isDragging) {
-        const deltaX = clientX - previousMouseX;
-        const deltaY = clientY - previousMouseY;
-        rotationAngleY += deltaX * 0.009;
-        rotationAngleX += deltaY * 0.009;
-        previousMouseX = clientX;
-        previousMouseY = clientY;
+        const dx = clientX - prevX;
+        const dy = clientY - prevY;
+        rotY += dx * 0.008;
+        rotX += dy * 0.008;
+        prevX = clientX;
+        prevY = clientY;
       } else {
-        const normX = (clientX / window.innerWidth) * 2 - 1;
-        const normY = -(clientY / window.innerHeight) * 2 + 1;
-        targetCubePosX = normX * 0.5;
-        targetCubePosY = 0.5 + normY * 0.4;
+        const nx = (clientX / window.innerWidth) * 2 - 1;
+        const ny = -(clientY / window.innerHeight) * 2 + 1;
+        targetX = nx * 0.4;
+        targetY = 0.5 + ny * 0.3;
       }
     };
 
@@ -230,68 +210,52 @@ export function HubtownIntro({ onEnter, isOpen }: HubtownIntroProps) {
       isDragging = false;
     };
 
-    window.addEventListener("mousedown", onPointerDown);
-    window.addEventListener("mousemove", onPointerMove);
-    window.addEventListener("mouseup", onPointerUp);
-    window.addEventListener("touchstart", onPointerDown);
-    window.addEventListener("touchmove", onPointerMove);
-    window.addEventListener("touchend", onPointerUp);
+    window.addEventListener("mousedown", onPointerDown, { passive: true });
+    window.addEventListener("mousemove", onPointerMove, { passive: true });
+    window.addEventListener("mouseup", onPointerUp, { passive: true });
+    window.addEventListener("touchstart", onPointerDown, { passive: true });
+    window.addEventListener("touchmove", onPointerMove, { passive: true });
+    window.addEventListener("touchend", onPointerUp, { passive: true });
 
     const handleResize = () => {
       if (!currentMount) return;
-      const newWidth = currentMount.clientWidth;
-      const newHeight = currentMount.clientHeight;
-      camera.aspect = newWidth / newHeight;
+      const nw = currentMount.clientWidth;
+      const nh = currentMount.clientHeight;
+      camera.aspect = nw / nh;
       camera.updateProjectionMatrix();
-      renderer.setSize(newWidth, newHeight);
+      renderer.setSize(nw, nh);
     };
     window.addEventListener("resize", handleResize);
 
-    // Continuous Animation Loop running immediately on load
-    let animationFrameId: number;
+    // Fluid 60 FPS Animation Loop
+    let animId: number;
     let clock = new THREE.Clock();
 
     const animate = () => {
-      animationFrameId = requestAnimationFrame(animate);
-      const elapsedTime = clock.getElapsedTime();
+      animId = requestAnimationFrame(animate);
+      const elapsed = clock.getElapsedTime();
 
-      // Continuous dynamic auto rotation on initial load
+      // Fluid auto rotation
       if (!isDragging) {
-        rotationAngleY += 0.0075;
-        rotationAngleX = Math.sin(elapsedTime * 0.6) * 0.25 + 0.2;
+        rotY += 0.006;
+        rotX = Math.sin(elapsed * 0.5) * 0.2 + 0.18;
       }
 
-      // Smooth interpolation for rotational tilt
-      cubeGroup.rotation.y += (rotationAngleY - cubeGroup.rotation.y) * 0.08;
-      cubeGroup.rotation.x += (rotationAngleX - cubeGroup.rotation.x) * 0.08;
+      // Smooth lerp transformations
+      cubeGroup.rotation.y += (rotY - cubeGroup.rotation.y) * 0.06;
+      cubeGroup.rotation.x += (rotX - cubeGroup.rotation.x) * 0.06;
 
-      // Vertical floating oscillation
-      const floatY = targetCubePosY + Math.sin(elapsedTime * 1.5) * 0.2;
-      cubeGroup.position.x += (targetCubePosX - cubeGroup.position.x) * 0.06;
-      cubeGroup.position.y += (floatY - cubeGroup.position.y) * 0.06;
+      const floatY = targetY + Math.sin(elapsed * 1.3) * 0.15;
+      cubeGroup.position.x += (targetX - cubeGroup.position.x) * 0.05;
+      cubeGroup.position.y += (floatY - cubeGroup.position.y) * 0.05;
 
-      // Pulsating golden core
-      const pulse = 1.0 + Math.sin(elapsedTime * 2.8) * 0.22;
+      // Core pulse
+      const pulse = 1.0 + Math.sin(elapsed * 2.5) * 0.18;
       coreMesh.scale.set(pulse, pulse, pulse);
 
-      // Particle upward movement
-      const posArray = particleGeo.attributes.position.array as Float32Array;
-      for (let i = 0; i < particleCount * 3; i += 3) {
-        posArray[i + 1] += particleVel[i + 1];
-        if (posArray[i + 1] > 8.5) {
-          posArray[i + 1] = -5.5;
-        }
-      }
-      particleGeo.attributes.position.needsUpdate = true;
-
-      // Water plane gentle ripples
-      const waterPosArray = waterGeo.attributes.position.array as Float32Array;
-      for (let i = 0; i < waterPosArray.length; i += 3) {
-        const u = waterPosArray[i];
-        const v = waterPosArray[i + 1];
-        waterPosArray[i + 2] = Math.sin(u * 0.35 + elapsedTime * 1.3) * 0.09 + Math.cos(v * 0.35 + elapsedTime * 1.4) * 0.09;
-      }
-      waterGeo.attributes.position.needsUpdate = true;
+      // Hardware accelerated particle drift
+      particleGroup.rotation.y += 0.0008;
+      particleGroup.position.y = Math.sin(elapsed * 0.6) * 0.4;
 
       renderer.render(scene, camera);
     };
@@ -299,7 +263,7 @@ export function HubtownIntro({ onEnter, isOpen }: HubtownIntroProps) {
     animate();
 
     return () => {
-      cancelAnimationFrame(animationFrameId);
+      cancelAnimationFrame(animId);
       window.removeEventListener("mousedown", onPointerDown);
       window.removeEventListener("mousemove", onPointerMove);
       window.removeEventListener("mouseup", onPointerUp);
@@ -320,26 +284,25 @@ export function HubtownIntro({ onEnter, isOpen }: HubtownIntroProps) {
     setTimeout(() => {
       onEnter();
       setIsClosing(false);
-    }, 700);
+    }, 600);
   };
 
   if (!isOpen) return null;
 
   return (
     <div
-      className={`fixed inset-0 z-50 bg-[#060302] text-white select-none transition-all duration-700 ease-in-out ${
+      className={`fixed inset-0 z-50 bg-[#060302] text-white select-none transition-all duration-600 ease-in-out ${
         isClosing ? "opacity-0 scale-105 pointer-events-none" : "opacity-100 scale-100"
       }`}
     >
-      {/* Three.js 3D Interactive WebGL Canvas */}
+      {/* Hardware Accelerated WebGL Canvas */}
       <div ref={mountRef} className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing" />
 
-      {/* Futuristic Chamfered Tech HUD Frame in Warm Orange and Gold matching ChitChain palette */}
-      <div className="absolute inset-4 sm:inset-6 lg:inset-8 pointer-events-none flex flex-col justify-between border border-orange-500/25 rounded-3xl p-6 sm:p-8 backdrop-blur-[0.5px]">
+      {/* Futuristic Chamfered Tech HUD Frame in Warm Orange and Gold */}
+      <div className="absolute inset-4 sm:inset-6 lg:inset-8 pointer-events-none flex flex-col justify-between border border-orange-500/25 rounded-3xl p-6 sm:p-8">
         
         {/* Top Header Row inside HUD */}
         <header className="flex items-center justify-between pointer-events-auto">
-          {/* Logo with Indian Rupee Emblem and Wide Tracking */}
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-600 via-orange-600 to-red-600 flex items-center justify-center shadow-lg shadow-orange-950/60">
               <span className="font-bold text-white text-sm">₹</span>
@@ -352,7 +315,6 @@ export function HubtownIntro({ onEnter, isOpen }: HubtownIntroProps) {
             </span>
           </div>
 
-          {/* Center Navigation Links in Warm Tones */}
           <nav className="hidden lg:flex items-center gap-8 text-xs tracking-[0.2em] text-neutral-300 font-mono font-medium">
             <span className="hover:text-orange-400 cursor-pointer transition-colors">ABOUT</span>
             <span className="hover:text-orange-400 cursor-pointer transition-colors">PROTOCOL</span>
@@ -361,7 +323,6 @@ export function HubtownIntro({ onEnter, isOpen }: HubtownIntroProps) {
             <span className="hover:text-orange-400 cursor-pointer transition-colors">COMMUNITY</span>
           </nav>
 
-          {/* Right Header Controls matching Burnt Orange Style */}
           <div className="flex items-center gap-3">
             <button
               onClick={handleEnterProtocol}
@@ -384,17 +345,14 @@ export function HubtownIntro({ onEnter, isOpen }: HubtownIntroProps) {
         {/* Center Main Content Area with Monolith Title and CTA */}
         <main className="relative z-20 flex flex-col items-center justify-center text-center max-w-4xl mx-auto my-auto space-y-6 pointer-events-auto px-4">
           
-          {/* Main Hero Headline in Warm Gold Drop Shadow */}
           <h1 className="text-3xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-white uppercase drop-shadow-[0_0_40px_rgba(234,88,12,0.85)] leading-[1.08] max-w-3xl">
             WE BUILD THE FUTURE OF CHIT FUNDS
           </h1>
 
-          {/* Narrative Subtitle */}
           <p className="text-xs sm:text-sm lg:text-base text-amber-100/90 max-w-2xl font-light leading-relaxed drop-shadow-md">
             For generations, community chit funds have empowered Indian families. Now transformed on Base Sepolia with automated pooling, confidential sealed bids, and zero intermediary fees.
           </p>
 
-          {/* Interactive CTA Button in Burnt Orange */}
           <div className="pt-4">
             <button
               onClick={handleEnterProtocol}
