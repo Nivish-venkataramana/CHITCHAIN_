@@ -66,20 +66,57 @@ export function AutoPayAuthorization({
 
   const [activeTab, setActiveTab] = useState<"overview" | "members" | "layers" | "bookend" | "simulator">("overview");
 
-  const totalReserveBuffer = monthlyAmountUSDC * 3;
-  const isCurrentUserAuthorized = !!sessionData && sessionData.status === "ACTIVE";
+  const [poolingMemberWallet, setPoolingMemberWallet] = useState<string | null>(null);
+  const [memberDebitSuccess, setMemberDebitSuccess] = useState<string | null>(null);
 
-  // Check which members have granted their own mandates
-  const activeMandateCount = members.reduce((acc, m) => {
-    const isOwner = m.walletAddress.toLowerCase() === smartWalletAddress.toLowerCase() && isCurrentUserAuthorized;
-    const isConsentGiven = allMemberConsents.some(
-      (c) => c.memberAddress.toLowerCase() === m.walletAddress.toLowerCase() && c.status === "GIVEN"
-    );
-    return acc + (isOwner || isConsentGiven ? 1 : 0);
-  }, 0);
+  const poolIndividualAccount = async (targetWallet: string, targetUsername: string) => {
+    setPoolingMemberWallet(targetWallet);
+    setMemberDebitSuccess(null);
+    try {
+      const res = await fetch("/api/keeper/trigger-debit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          circleId,
+          memberAddress: targetWallet.toLowerCase(),
+          monthlyAmount: monthlyAmountUSDC,
+          simulateBounce: false,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to pool funds");
+      }
+      if (data.circleVaultTotalUSDC !== undefined) {
+        setCircleVaultUSDC(data.circleVaultTotalUSDC);
+      }
+      setMemberDebitSuccess(`✓ Debited $${monthlyAmountUSDC.toLocaleString()} USDC from @${targetUsername} -> Pooled into Smart Contract Vault!`);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("chitchain_balance_updated"));
+      }
+      await refreshSession();
+    } catch (e: any) {
+      console.error("Individual pool error:", e);
+    } finally {
+      setPoolingMemberWallet(null);
+    }
+  };
 
-  const totalMembersCount = members.length > 0 ? members.length : 1;
-  const allMandatesComplete = members.length > 0 && activeMandateCount >= members.length;
+  const handleBatchPoolClick = async () => {
+    setMemberDebitSuccess(null);
+    try {
+      const data = await triggerBatchKeeperDebit();
+      if (data?.circleVaultTotalUSDC !== undefined) {
+        setCircleVaultUSDC(data.circleVaultTotalUSDC);
+      }
+      setMemberDebitSuccess(`✓ All ${data.totalParticipants} member pots pooled successfully ($${data.totalPooledUSDC.toLocaleString()} USDC total) into Circle Vault!`);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("chitchain_balance_updated"));
+      }
+    } catch (e) {
+      console.error("Batch pool error:", e);
+    }
+  };
 
   return (
     <div className="w-full bg-[#0a0e17] border border-cyan-500/20 rounded-2xl p-6 sm:p-8 text-white shadow-2xl relative overflow-hidden backdrop-blur-xl">
@@ -160,6 +197,21 @@ export function AutoPayAuthorization({
           )}
         </div>
       </div>
+
+      {memberDebitSuccess && (
+        <div className="mt-4 p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs flex items-center justify-between animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{memberDebitSuccess}</span>
+          </div>
+          <button
+            onClick={() => setMemberDebitSuccess(null)}
+            className="text-gray-400 hover:text-white text-xs cursor-pointer ml-2"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Navigation tabs */}
       <div className="flex items-center gap-2 mt-6 border-b border-gray-800 pb-2 overflow-x-auto text-sm">
@@ -279,7 +331,7 @@ export function AutoPayAuthorization({
               </p>
             </div>
             <button
-              onClick={() => triggerBatchKeeperDebit()}
+              onClick={handleBatchPoolClick}
               disabled={isBatchDebiting}
               className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-bold text-xs transition-all shadow-lg shadow-cyan-500/20 flex items-center gap-2 shrink-0 cursor-pointer disabled:opacity-50"
             >
@@ -327,11 +379,12 @@ export function AutoPayAuthorization({
                     allMemberConsents.some(
                       (c) => c.memberAddress.toLowerCase() === m.walletAddress.toLowerCase() && c.status === "GIVEN"
                     );
+                  const isPoolingThis = poolingMemberWallet === m.walletAddress.toLowerCase();
 
                   return (
                     <div
                       key={m.walletAddress}
-                      className={`p-2.5 rounded-lg border text-xs flex items-center justify-between ${
+                      className={`p-3 rounded-lg border text-xs flex items-center justify-between gap-2 ${
                         hasConsent
                           ? "bg-emerald-950/20 border-emerald-500/30 text-emerald-300"
                           : "bg-gray-900/60 border-gray-800 text-gray-400"
@@ -352,16 +405,32 @@ export function AutoPayAuthorization({
                           {m.walletAddress.slice(0, 6)}...{m.walletAddress.slice(-4)}
                         </p>
                       </div>
-                      <div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
                         {hasConsent ? (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 whitespace-nowrap">
-                            ✓ Authorized
+                            ✓ Active
                           </span>
                         ) : (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/30 whitespace-nowrap">
                             Pending
                           </span>
                         )}
+
+                        {/* One-Click Pool Button for Every Account */}
+                        <button
+                          onClick={() => poolIndividualAccount(m.walletAddress, m.username)}
+                          disabled={isPoolingThis}
+                          className="px-2.5 py-1 rounded-md bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-[10px] transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1 shadow-sm"
+                          title={`Pool $${monthlyAmountUSDC} from @${m.username}`}
+                        >
+                          {isPoolingThis ? (
+                            <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                          ) : (
+                            <Zap className="w-2.5 h-2.5" />
+                          )}
+                          <span>Pool ${monthlyAmountUSDC}</span>
+                        </button>
                       </div>
                     </div>
                   );
@@ -398,6 +467,7 @@ export function AutoPayAuthorization({
                   allMemberConsents.some(
                     (c) => c.memberAddress.toLowerCase() === m.walletAddress.toLowerCase() && c.status === "GIVEN"
                   );
+                const isPoolingThis = poolingMemberWallet === m.walletAddress.toLowerCase();
 
                 return (
                   <div
@@ -422,7 +492,7 @@ export function AutoPayAuthorization({
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 flex-wrap">
                       {hasConsent ? (
                         <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
                           <UserCheck className="w-3.5 h-3.5" />
@@ -445,6 +515,20 @@ export function AutoPayAuthorization({
                           )}
                         </div>
                       )}
+
+                      {/* One-Click Pool Button on Member Row */}
+                      <button
+                        onClick={() => poolIndividualAccount(m.walletAddress, m.username)}
+                        disabled={isPoolingThis}
+                        className="px-3 py-1 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-black font-bold text-xs transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
+                      >
+                        {isPoolingThis ? (
+                          <RefreshCw className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Coins className="w-3 h-3 text-black" />
+                        )}
+                        <span>Pool ${monthlyAmountUSDC}</span>
+                      </button>
                     </div>
                   </div>
                 );

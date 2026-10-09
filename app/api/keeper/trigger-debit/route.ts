@@ -79,6 +79,16 @@ export async function POST(req: NextRequest) {
       lifecycleNote = "Communal pot funded on Day 1 before Day 2 auction reveal.";
     }
 
+    // Execute actual balance cutting and pool deposit if verified
+    let memberNewBalanceUSDC = monthlyAmount;
+    if (layer2Status === "VERIFIED") {
+      await debitUserBalance(normalizedAddress, monthlyAmount);
+      await depositToCirclePool(circleId, monthlyAmount);
+      const newBal = await getUserBalance(normalizedAddress);
+      memberNewBalanceUSDC = fromBaseUnits(newBal.toString());
+    }
+    const totalVaultBalance = await getCirclePoolBalance(circleId);
+
     // Log Notification in DB
     try {
       await prisma.notification.create({
@@ -87,8 +97,8 @@ export async function POST(req: NextRequest) {
           type: layer2Status === "VERIFIED" ? "FINALIZED" : "ISSUE_RAISED",
           circleId,
           body: layer2Status === "VERIFIED"
-            ? `Auto-pay debit of ${monthlyAmount} USDC executed successfully via Rhinestone SmartSession.`
-            : `Auto-pay failed. 1 month collateral (${monthlyAmount} USDC) slashed from 3-month reserve buffer to protect pot.`,
+            ? `Auto-pay debit of $${monthlyAmount.toLocaleString()} USDC executed successfully. Remaining balance: $${memberNewBalanceUSDC.toLocaleString()} USDC.`
+            : `Auto-pay failed. 1 month collateral ($${monthlyAmount.toLocaleString()} USDC) slashed from 3-month reserve buffer to protect pot.`,
         },
       });
     } catch (e) {
@@ -102,6 +112,8 @@ export async function POST(req: NextRequest) {
       memberAddress: normalizedAddress,
       cycleMonth: currentMonth,
       monthlyAmountUSDC: monthlyAmount,
+      memberNewBalanceUSDC,
+      circleVaultTotalUSDC: fromBaseUnits(totalVaultBalance.toString()),
       layer1: checkUpkeepResult,
       layer2: {
         status: layer2Status,

@@ -70,6 +70,14 @@ export function Navbar() {
       return;
     }
     try {
+      const res = await fetch(`/api/account/faucet?walletAddress=${activeWalletAddress}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.balanceUSDC !== undefined) {
+          setBalance(Number(data.balanceUSDC).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+          return;
+        }
+      }
       const rawBalance = await publicClient.readContract({
         address: BASE_SEPOLIA_USDC,
         abi: erc20Abi,
@@ -82,20 +90,7 @@ export function Navbar() {
       });
       setBalance(formatted);
     } catch {
-      if (dynamicUsername) {
-        fetch("/api/account/faucet", { headers: { "x-dev-user": dynamicUsername } })
-          .then((r) => r.json())
-          .then((data) => {
-            if (data?.balanceUSDC) {
-              setBalance(Number(data.balanceUSDC).toLocaleString(undefined, { minimumFractionDigits: 2 }));
-            } else {
-              setBalance("0.00");
-            }
-          })
-          .catch(() => setBalance("0.00"));
-      } else {
-        setBalance("0.00");
-      }
+      setBalance("0.00");
     }
   };
 
@@ -123,8 +118,15 @@ export function Navbar() {
     const interval = setInterval(() => {
       fetchBalance();
       fetchNotifications();
-    }, 20000);
-    return () => clearInterval(interval);
+    }, 15000);
+
+    const handleBalanceEvent = () => fetchBalance();
+    window.addEventListener("chitchain_balance_updated", handleBalanceEvent);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("chitchain_balance_updated", handleBalanceEvent);
+    };
   }, [activeWalletAddress, dynamicUsername, pathname]);
 
   const handleRespond = async (inviteId: string, accept: boolean, notifId: string) => {
