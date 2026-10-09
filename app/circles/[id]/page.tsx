@@ -20,6 +20,7 @@ import {
   Coins,
   Edit3,
   Trash2,
+  TrendingUp,
 } from "lucide-react";
 import { fromBaseUnits } from "@/lib/validation";
 import { EditCircleModal, DeleteCircleModal } from "@/components/circle-action-modals";
@@ -331,6 +332,14 @@ export default function CircleDetailPage() {
               >
                 <Coins className="h-3.5 w-3.5 text-neutral-300" />
                 <span>Secret Auction</span>
+              </Link>
+
+              <Link
+                href={`/circles/${circle.id}/yield`}
+                className="px-3 py-1.5 rounded-xl border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-[0_0_12px_rgba(6,182,212,0.15)]"
+              >
+                <TrendingUp className="h-3.5 w-3.5 text-cyan-400" />
+                <span>Aave Yield</span>
               </Link>
             </>
           )}
