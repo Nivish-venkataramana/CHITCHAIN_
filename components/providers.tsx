@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PrivyProvider, usePrivy, useWallets } from "@privy-io/react-auth";
 import { UserProfile } from "@/handoffs/user-profile";
@@ -24,6 +24,7 @@ const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "cmv07umju004s0fjtw
 function PrivyUserSync({ setUser, onSync }: { setUser: (u: UserProfile | null) => void; onSync?: () => void }) {
   const { user: privyUser, authenticated, ready } = usePrivy();
   const { wallets } = useWallets();
+  const lastSyncedKey = useRef("");
 
   useEffect(() => {
     if (!authenticated || !privyUser) return;
@@ -48,40 +49,32 @@ function PrivyUserSync({ setUser, onSync }: { setUser: (u: UserProfile | null) =
       : "";
 
     const displayName = email ? email.split("@")[0] : username;
+    const syncKey = `${username}_${walletAddress}`;
 
-    if (username && walletAddress && /^0x[a-f0-9]{40}$/i.test(walletAddress)) {
-      fetch("/api/account/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username,
-          walletAddress,
-          displayName,
-        }),
+    if (!username || !walletAddress || !/^0x[a-f0-9]{40}$/i.test(walletAddress)) return;
+    if (lastSyncedKey.current === syncKey) return;
+    lastSyncedKey.current = syncKey;
+
+    fetch("/api/account/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username,
+        walletAddress,
+        displayName,
+      }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((syncedUser) => {
+        if (syncedUser && syncedUser.walletAddress) {
+          setUser(syncedUser);
+        }
+        onSync?.();
       })
-        .then((res) => (res.ok ? res.json() : null))
-        .then((syncedUser) => {
-          if (syncedUser && syncedUser.walletAddress) {
-            setUser(syncedUser);
-          } else {
-            setUser({
-              username,
-              walletAddress: walletAddress as `0x${string}`,
-              displayName,
-            });
-          }
-          onSync?.();
-        })
-        .catch((err) => {
-          console.warn("Privy user sync notice:", err);
-          setUser({
-            username,
-            walletAddress: walletAddress as `0x${string}`,
-            displayName,
-          });
-        });
-    }
-  }, [authenticated, privyUser, wallets, ready]);
+      .catch((err) => {
+        console.warn("Privy user sync notice:", err);
+      });
+  }, [authenticated, privyUser?.email?.address, privyUser?.wallet?.address, ready]);
 
   return null;
 }

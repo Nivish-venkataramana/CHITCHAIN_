@@ -41,27 +41,26 @@ export function DynamicParticlesBackground() {
       "rgba(245, 158, 11, ", // amber-500
       "rgba(234, 88, 12, ",  // orange-600
       "rgba(251, 191, 36, ", // amber-400
-      "rgba(217, 119, 6, ",  // amber-600
     ];
 
-    const particleCount = 70;
+    const particleCount = 28;
     const particles: Particle[] = [];
 
     for (let i = 0; i < particleCount; i++) {
-      const baseOpacity = Math.random() * 0.65 + 0.25;
-      const isSquare = Math.random() > 0.45;
+      const baseOpacity = Math.random() * 0.45 + 0.15;
+      const isSquare = Math.random() > 0.5;
       particles.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        size: isSquare ? Math.random() * 4.5 + 2 : Math.random() * 3 + 1.5,
-        vx: (Math.random() - 0.5) * 0.4,
-        vy: (Math.random() - 0.5) * 0.4 - 0.15,
+        size: isSquare ? Math.random() * 3 + 1.5 : Math.random() * 2.5 + 1,
+        vx: (Math.random() - 0.5) * 0.25,
+        vy: (Math.random() - 0.5) * 0.25 - 0.1,
         opacity: baseOpacity,
         baseOpacity,
-        pulseSpeed: Math.random() * 0.02 + 0.008,
+        pulseSpeed: Math.random() * 0.015 + 0.005,
         color: colors[Math.floor(Math.random() * colors.length)],
         isSquare,
-        depth: Math.random() * 0.8 + 0.4,
+        depth: Math.random() * 0.6 + 0.3,
       });
     }
 
@@ -82,38 +81,35 @@ export function DynamicParticlesBackground() {
     let time = 0;
 
     const render = () => {
-      time += 0.015;
+      time += 0.012;
       // Smooth mouse lerp
-      mouseX += (targetMouseX - mouseX) * 0.05;
-      mouseY += (targetMouseY - mouseY) * 0.05;
+      mouseX += (targetMouseX - mouseX) * 0.04;
+      mouseY += (targetMouseY - mouseY) * 0.04;
 
-      const normMouseX = (mouseX / width - 0.5) * 25;
-      const normMouseY = (mouseY / height - 0.5) * 25;
+      const normMouseX = (mouseX / width - 0.5) * 15;
+      const normMouseY = (mouseY / height - 0.5) * 15;
 
       ctx.clearRect(0, 0, width, height);
 
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
 
-        p.x += p.vx + (p.depth * 0.05);
+        p.x += p.vx + (p.depth * 0.03);
         p.y += p.vy;
 
         // Wrap around boundaries
-        if (p.x < -20) p.x = width + 20;
-        if (p.x > width + 20) p.x = -20;
-        if (p.y < -20) p.y = height + 20;
-        if (p.y > height + 20) p.y = -20;
+        if (p.x < -10) p.x = width + 10;
+        if (p.x > width + 10) p.x = -10;
+        if (p.y < -10) p.y = height + 10;
+        if (p.y > height + 10) p.y = -10;
 
-        // Subtle pulsing glow
-        const currentOpacity = p.baseOpacity + Math.sin(time * 2 + i) * 0.2;
-        const clampedOpacity = Math.max(0.1, Math.min(0.95, currentOpacity));
+        const currentOpacity = p.baseOpacity + Math.sin(time * 1.5 + i) * 0.15;
+        const clampedOpacity = Math.max(0.08, Math.min(0.7, currentOpacity));
 
         const renderX = p.x - normMouseX * p.depth;
         const renderY = p.y - normMouseY * p.depth;
 
         ctx.fillStyle = `${p.color}${clampedOpacity})`;
-        ctx.shadowColor = "rgba(245, 158, 11, 0.8)";
-        ctx.shadowBlur = p.size * 2.2;
 
         if (p.isSquare) {
           ctx.fillRect(renderX, renderY, p.size, p.size);
