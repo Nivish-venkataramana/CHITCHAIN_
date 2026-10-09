@@ -16,6 +16,11 @@ module.exports = {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ["'Plus Jakarta Sans'", "'Outfit'", "sans-serif"],
+        display: ["'Plus Jakarta Sans'", "'Outfit'", "sans-serif"],
+        heading: ["'Plus Jakarta Sans'", "'Outfit'", "sans-serif"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

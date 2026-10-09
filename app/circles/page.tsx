@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useDevUser } from "@/components/providers";
 import { PlusCircle, ArrowRight, Clock, CheckCircle2, AlertCircle, Coins, Shield } from "lucide-react";
 import { fromBaseUnits } from "@/lib/validation";
+import { DemoVideoModal } from "@/components/demo-video-modal";
 
 interface CircleItem {
   id: string;
@@ -40,6 +41,7 @@ export default function CirclesListPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8 space-y-10 text-neutral-100">
+      <DemoVideoModal />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-neutral-900">
         <div className="space-y-1">
           <div className="text-xs uppercase tracking-widest font-bold text-red-500">

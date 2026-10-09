@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useDevUser } from "@/components/providers";
 import { PlusCircle, Users, ArrowRight, ShieldCheck, Zap, Lock, Sparkles, TrendingUp, Coins, User, ArrowUpRight, Box, Compass } from "lucide-react";
-import { DemoVideoModal } from "@/components/demo-video-modal";
 import { FloatingCoinsBackground } from "@/components/floating-coins-background";
 import { HubtownIntro } from "@/components/hubtown-intro";
 
@@ -39,8 +38,6 @@ export default function HomePage() {
 
       {/* 3D Moving Floating Rupee Coins Dynamic Background Layer */}
       {!showIntro && <FloatingCoinsBackground />}
-
-      <DemoVideoModal />
 
       {/* Main Hero Section matching exact Xapo Bank layout and typography in Indian context */}
       <section className="relative z-10 max-w-7xl mx-auto px-6 pt-16 sm:pt-24 lg:pt-28 pb-16">
