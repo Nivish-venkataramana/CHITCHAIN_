@@ -54,7 +54,7 @@ export default function AccountWalletPage() {
   return (
     <div className="max-w-2xl mx-auto py-10 px-6 space-y-8 text-neutral-100">
       <Link
-        href="/"
+        href="/home"
         className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-400 hover:text-white transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
