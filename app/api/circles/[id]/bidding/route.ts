@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBiddingAuctionState } from "@/lib/bidding-store";
+import { getSessionUser } from "@/lib/users";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const state = await getBiddingAuctionState(params.id);
+    const user = getSessionUser(req);
+    const state = await getBiddingAuctionState(params.id, user?.walletAddress);
     return NextResponse.json(state);
   } catch (err: any) {
     return NextResponse.json(

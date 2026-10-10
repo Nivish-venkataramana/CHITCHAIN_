@@ -15,9 +15,9 @@ export async function POST(
     }
 
     const body = await req.json();
-    const { amount } = body;
+    const { amount, salt } = body;
 
-    if (!amount) {
+    if (amount === undefined || amount === null || String(amount).trim() === "") {
       return NextResponse.json({ error: "Bid amount is required" }, { status: 400 });
     }
 
@@ -26,6 +26,7 @@ export async function POST(
       memberWallet: user.walletAddress,
       memberUsername: user.username,
       bidAmountUSDC: String(amount),
+      salt,
     });
 
     return NextResponse.json({
@@ -36,7 +37,7 @@ export async function POST(
         commitment: bid.commitment,
         revealed: false,
       },
-      message: "Secret bid hashed and committed. Amount will stay hidden until reveal.",
+      message: "Secret bid hashed and committed. Amount will stay sealed until reveal.",
     });
   } catch (err: any) {
     return NextResponse.json(

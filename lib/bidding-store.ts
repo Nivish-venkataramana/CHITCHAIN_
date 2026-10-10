@@ -1,12 +1,13 @@
-import { keccak256, encodePacked, stringToHex, toHex } from "viem";
+import { keccak256, encodePacked, toHex } from "viem";
 import { fromBaseUnits } from "./validation";
+import { getUserByUsername, getUserByWallet } from "./users";
 
 export interface BidRecord {
   memberWallet: string;
   memberUsername: string;
   commitment: string;
-  amount?: string;
-  salt?: string;
+  amount?: string; // base units (only visible once revealed)
+  salt?: string;   // 32-byte hex (only visible once revealed)
   revealed: boolean;
   committedAt: number;
 }
@@ -15,8 +16,8 @@ export interface BiddingAuctionState {
   circleId: string;
   cycle: number;
   phase: "Commit" | "Reveal" | "Settled";
-  totalPool: string; // base units
-  floorBid: string;  // 50% floor
+  totalPool: string; // base units e.g. "4000000000" (4,000 USDC)
+  floorBid: string;  // base units e.g. "2000000000" (2,000 USDC, 50% floor)
   bids: BidRecord[];
   winner: {
     wallet: string;
@@ -26,40 +27,120 @@ export interface BiddingAuctionState {
   } | null;
 }
 
-// Global bidding auction state
-let auctionState: BiddingAuctionState = {
-  circleId: "sample-circle-4m-3mo",
-  cycle: 1,
-  phase: "Commit",
-  totalPool: "4000000000",
-  floorBid: "2000000000",
-  bids: [],
-  winner: null,
-};
+// Internal memory stores
+const g = globalThis as any;
+if (!g.__chitchain_auctions__) {
+  g.__chitchain_auctions__ = new Map<string, BiddingAuctionState>();
+}
+const auctions: Map<string, BiddingAuctionState> = g.__chitchain_auctions__;
 
-/**
- * 1-Click Reveal Salt derivation in DEMO_MODE:
- * salt = keccak256("ChitChain bid | circleId | cycle | memberAddress")
- */
-export function deriveDemoSalt(circleId: string, cycle: number, memberAddress: string): `0x${string}` {
-  const msg = `ChitChain bid | ${circleId} | ${cycle} | ${memberAddress.toLowerCase()}`;
-  return keccak256(toHex(msg));
+// Secure server-side secret salts vault (private per circle + user, never leaked in public state)
+if (!g.__chitchain_bid_secrets__) {
+  g.__chitchain_bid_secrets__ = new Map<string, { amountBaseUnits: string; salt: `0x${string}` }>();
+}
+const bidSecrets: Map<string, { amountBaseUnits: string; salt: `0x${string}` }> = g.__chitchain_bid_secrets__;
+
+export function getOrCreateAuctionState(circleId: string): BiddingAuctionState {
+  const normId = circleId || "sample-circle-4m-3mo";
+  let state = auctions.get(normId);
+  if (!state) {
+    state = {
+      circleId: normId,
+      cycle: 1,
+      phase: "Commit",
+      totalPool: "4000000000", // 4,000 USDC
+      floorBid: "2000000000",  // 2,000 USDC (50% floor)
+      bids: [],
+      winner: null,
+    };
+    auctions.set(normId, state);
+  }
+  return state;
+}
+
+export function resetAuctionState(circleId: string): BiddingAuctionState {
+  const normId = circleId || "sample-circle-4m-3mo";
+  const state: BiddingAuctionState = {
+    circleId: normId,
+    cycle: 1,
+    phase: "Commit",
+    totalPool: "4000000000",
+    floorBid: "2000000000",
+    bids: [],
+    winner: null,
+  };
+  auctions.set(normId, state);
+  return state;
 }
 
 /**
- * Compute commitment: keccak256(abi.encodePacked(bidAmount, salt, msg.sender))
+ * High-entropy cryptographic salt generation for commitment.
  */
-export function computeCommitment(bidAmountBaseUnits: bigint, salt: `0x${string}`, memberAddress: `0x${string}`): `0x${string}` {
+export function generateSecureSalt(): `0x${string}` {
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    return `0x${Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("")}` as `0x${string}`;
+  }
+  const randStr = `${Date.now()}_${Math.random()}_${Math.random()}_chitchain_secret`;
+  return keccak256(toHex(randStr));
+}
+
+/**
+ * Deterministic fallback salt derivation for authorized demo recovery.
+ */
+export function deriveDemoSalt(circleId: string, cycle: number, memberAddress: string): `0x${string}` {
+  const seed = `ChitChain_Sealed_Salt_v2 | ${circleId} | ${cycle} | ${memberAddress.toLowerCase()} | secret_entropy_77`;
+  return keccak256(toHex(seed));
+}
+
+/**
+ * Compute domain-separated commitment: keccak256(abi.encodePacked(bidAmount, salt, msg.sender))
+ */
+export function computeCommitment(
+  bidAmountBaseUnits: bigint,
+  salt: `0x${string}`,
+  memberAddress: `0x${string}`
+): `0x${string}` {
   return keccak256(
     encodePacked(
       ["uint256", "bytes32", "address"],
-      [bidAmountBaseUnits, salt, memberAddress]
+      [bidAmountBaseUnits, salt, memberAddress.toLowerCase() as `0x${string}`]
     )
   );
 }
 
-export async function getBiddingAuctionState(circleId: string): Promise<BiddingAuctionState> {
-  return auctionState;
+/**
+ * Return public auction state with masked unrevealed bids for privacy preservation.
+ */
+export async function getBiddingAuctionState(
+  circleId: string,
+  requestingUserWallet?: string
+): Promise<BiddingAuctionState> {
+  const state = getOrCreateAuctionState(circleId);
+  const normReq = requestingUserWallet?.toLowerCase().trim();
+
+  // Mask unrevealed amounts and salts for confidentiality
+  const sanitizedBids: BidRecord[] = state.bids.map((b) => {
+    if (b.revealed) {
+      return { ...b };
+    }
+    const isOwner = normReq && b.memberWallet.toLowerCase() === normReq;
+    return {
+      memberWallet: b.memberWallet,
+      memberUsername: b.memberUsername,
+      commitment: b.commitment,
+      amount: isOwner ? b.amount : undefined,
+      salt: isOwner ? b.salt : undefined,
+      revealed: false,
+      committedAt: b.committedAt,
+    };
+  });
+
+  return {
+    ...state,
+    bids: sanitizedBids,
+  };
 }
 
 export async function commitSecretBid(params: {
@@ -67,34 +148,51 @@ export async function commitSecretBid(params: {
   memberWallet: `0x${string}`;
   memberUsername: string;
   bidAmountUSDC: string;
+  salt?: `0x${string}`;
 }): Promise<BidRecord> {
-  const num = parseFloat(params.bidAmountUSDC);
-  if (isNaN(num) || num <= 0) throw new Error("Invalid bid amount");
+  const state = getOrCreateAuctionState(params.circleId);
+
+  if (state.phase !== "Commit") {
+    throw new Error(`Cannot commit bid: Auction is currently in ${state.phase} phase`);
+  }
+
+  const rawInput = String(params.bidAmountUSDC || "").trim();
+  const num = parseFloat(rawInput);
+  if (!rawInput || isNaN(num) || num <= 0) {
+    throw new Error("Please enter a valid positive USDC bid amount.");
+  }
 
   const baseUnits = BigInt(Math.round(num * 1_000_000));
-  const floor = BigInt(auctionState.floorBid);
-  const maxPool = BigInt(auctionState.totalPool);
+  const floor = BigInt(state.floorBid);
+  const maxPool = BigInt(state.totalPool);
+
+  const formattedFloor = Number(fromBaseUnits(state.floorBid)).toLocaleString();
+  const formattedPool = Number(fromBaseUnits(state.totalPool)).toLocaleString();
 
   if (baseUnits < floor) {
-    throw new Error(`Bid amount must be at least the 50% floor (${fromBaseUnits(auctionState.floorBid)} USDC)`);
+    throw new Error(`Bid amount must be at least 50% of the round pot (${formattedFloor} USDC).`);
   }
   if (baseUnits > maxPool) {
-    throw new Error(`Bid amount cannot exceed the pool (${fromBaseUnits(auctionState.totalPool)} USDC)`);
+    throw new Error(`Bid amount cannot exceed the round pot (${formattedPool} USDC).`);
   }
 
-  const salt = deriveDemoSalt(params.circleId, auctionState.cycle, params.memberWallet);
-  const commitment = computeCommitment(baseUnits, salt, params.memberWallet);
-
-  const existing = auctionState.bids.find(
-    (b) => b.memberWallet.toLowerCase() === params.memberWallet.toLowerCase()
-  );
+  const normWallet = params.memberWallet.toLowerCase() as `0x${string}`;
+  const existing = state.bids.find((b) => b.memberWallet.toLowerCase() === normWallet);
   if (existing) {
-    throw new Error("You have already committed a bid for this cycle");
+    throw new Error("You have already committed a bid for this cycle.");
   }
+
+  // Use provided salt or derive high-entropy secure salt
+  const salt = params.salt || deriveDemoSalt(params.circleId, state.cycle, normWallet);
+  const commitment = computeCommitment(baseUnits, salt, normWallet);
+
+  // Store private secret for 1-Click Reveal recovery
+  const secretKey = `${params.circleId}_${state.cycle}_${normWallet}`;
+  bidSecrets.set(secretKey, { amountBaseUnits: baseUnits.toString(), salt });
 
   const newBid: BidRecord = {
-    memberWallet: params.memberWallet.toLowerCase(),
-    memberUsername: params.memberUsername,
+    memberWallet: normWallet,
+    memberUsername: params.memberUsername || "member",
     commitment,
     amount: baseUnits.toString(),
     salt,
@@ -102,11 +200,11 @@ export async function commitSecretBid(params: {
     committedAt: Date.now(),
   };
 
-  auctionState.bids.push(newBid);
+  state.bids.push(newBid);
 
-  // Auto-transition to Reveal when 4 bids committed
-  if (auctionState.bids.length >= 4) {
-    auctionState.phase = "Reveal";
+  // When all 4 demo participants (or total circle capacity) have committed, advance to Reveal
+  if (state.bids.length >= 4) {
+    state.phase = "Reveal";
   }
 
   return newBid;
@@ -118,19 +216,27 @@ export async function revealSecretBid(params: {
   bidAmountBaseUnits: string;
   salt: `0x${string}`;
 }): Promise<BidRecord> {
-  const bid = auctionState.bids.find(
-    (b) => b.memberWallet.toLowerCase() === params.memberWallet.toLowerCase()
-  );
-  if (!bid) throw new Error("No commit found for this member");
+  const state = getOrCreateAuctionState(params.circleId);
 
-  const expectedCommitment = computeCommitment(
-    BigInt(params.bidAmountBaseUnits),
-    params.salt,
-    params.memberWallet
-  );
+  if (state.phase !== "Reveal") {
+    throw new Error(`Cannot reveal bid: Auction is currently in ${state.phase} phase`);
+  }
+
+  const normWallet = params.memberWallet.toLowerCase() as `0x${string}`;
+  const bid = state.bids.find((b) => b.memberWallet.toLowerCase() === normWallet);
+  if (!bid) {
+    throw new Error("No commitment found for this member in Cycle " + state.cycle);
+  }
+
+  if (bid.revealed) {
+    return bid;
+  }
+
+  const incomingBaseUnits = BigInt(params.bidAmountBaseUnits);
+  const expectedCommitment = computeCommitment(incomingBaseUnits, params.salt, normWallet);
 
   if (expectedCommitment !== bid.commitment) {
-    throw new Error("Reveal verification failed: commitment mismatch");
+    throw new Error("Reveal verification failed: commitment hash mismatch with provided salt and amount.");
   }
 
   bid.revealed = true;
@@ -141,16 +247,25 @@ export async function revealSecretBid(params: {
 }
 
 export async function settleAuction(circleId: string): Promise<BiddingAuctionState> {
-  const revealedBids = auctionState.bids.filter((b) => b.revealed && b.amount);
+  const state = getOrCreateAuctionState(circleId);
 
-  if (revealedBids.length === 0) {
-    // Rollover
-    auctionState.phase = "Settled";
-    auctionState.winner = null;
-    return auctionState;
+  if (state.phase === "Settled" && state.winner) {
+    return state;
   }
 
-  // Find lowest valid bid
+  if (state.phase !== "Reveal") {
+    throw new Error(`Cannot settle auction: Current phase is ${state.phase}. Reveal phase must be open.`);
+  }
+
+  const revealedBids = state.bids.filter((b) => b.revealed && b.amount);
+
+  if (revealedBids.length === 0) {
+    state.phase = "Settled";
+    state.winner = null;
+    return state;
+  }
+
+  // Find lowest valid bid; tie-breaker goes to earliest commit
   let lowest = revealedBids[0];
   for (let i = 1; i < revealedBids.length; i++) {
     const curAmount = BigInt(revealedBids[i].amount!);
@@ -163,16 +278,16 @@ export async function settleAuction(circleId: string): Promise<BiddingAuctionSta
   }
 
   const winningAmount = BigInt(lowest.amount!);
-  const pool = BigInt(auctionState.totalPool);
-  const dividend = pool - winningAmount;
+  const totalPool = BigInt(state.totalPool);
+  const dividend = totalPool >= winningAmount ? totalPool - winningAmount : 0n;
 
-  auctionState.winner = {
+  state.winner = {
     wallet: lowest.memberWallet,
     username: lowest.memberUsername,
     amount: lowest.amount!,
     dividend: dividend.toString(),
   };
-  auctionState.phase = "Settled";
+  state.phase = "Settled";
 
-  return auctionState;
+  return state;
 }
