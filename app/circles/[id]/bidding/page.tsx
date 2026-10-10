@@ -15,18 +15,16 @@ import {
   Users,
   Coins,
   ArrowRight,
-  Shield,
   ShieldCheck,
   Play,
   Calendar,
   X,
-  TrendingUp,
-  Percent,
-  Clock,
   Layers,
+  ExternalLink,
 } from "lucide-react";
-import { fromBaseUnits } from "@/lib/validation";
 import { generateSecureSalt, deriveDemoSalt } from "@/lib/bidding-store";
+
+const PROTOCOL_VAULT_ADDRESS = "0x33dD04441C48D92B71dA84DFa1bf61538C562651";
 
 interface BidInfo {
   memberWallet: string;
@@ -65,6 +63,7 @@ interface CircleDetails {
   monthlyAmount: string;
   durationMonths: number;
   status: "INVITING" | "ISSUE_STAGE" | "FINALIZED";
+  vaultAddress?: string | null;
   invites: Array<{
     id: string;
     inviteeWallet: string;
@@ -112,9 +111,35 @@ const FALLBACK_MEMBERS = [
   { username: "arjunpatel06", displayName: "Arjun Patel", wallet: "0x5555555555555555555555555555555555555555" },
 ];
 
+function parseUSDC(val: string | number | undefined | null): number {
+  if (val === undefined || val === null || val === "") return 1000;
+  const str = String(val).trim().replace(/,/g, "");
+  const num = parseFloat(str);
+  if (isNaN(num)) return 1000;
+  if (num >= 100_000 && !str.includes(".")) {
+    return num / 1_000_000;
+  }
+  return num;
+}
+
+function formatUSDC(val: string | number | undefined | null): string {
+  if (val === undefined || val === null || val === "" || val === "—") return "—";
+  try {
+    const str = String(val).trim().replace(/,/g, "");
+    const num = parseFloat(str);
+    if (isNaN(num)) return String(val);
+    if (num >= 100_000 && !str.includes(".")) {
+      return (num / 1_000_000).toLocaleString(undefined, { maximumFractionDigits: 2 });
+    }
+    return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  } catch {
+    return String(val);
+  }
+}
+
 export default function BiddingModulePage() {
   const params = useParams();
-  const circleId = params.id as string;
+  const circleId = (params?.id as string) || "";
   const { user, setUser } = useDevUser();
 
   const [circle, setCircle] = useState<CircleDetails | null>(null);
@@ -131,17 +156,22 @@ export default function BiddingModulePage() {
   const [selectedMonthTab, setSelectedMonthTab] = useState<number>(1);
   const [isAutoPlaying, setIsAutoPlaying] = useState(false);
 
-  // Load Circle details & Bidding state
+  // Load Circle details & Bidding state safely
   const loadCircleAndBidding = useCallback(() => {
-    Promise.all([
-      fetch(`/api/circles/${circleId}`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`/api/circles/${circleId}/bidding`, {
+    if (!circleId) return;
+    Promise.allSettled([
+      fetch(`/api/circles/${encodeURIComponent(circleId)}`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/circles/${encodeURIComponent(circleId)}/bidding`, {
         headers: user?.username ? { "x-dev-user": user.username } : undefined,
       }).then((r) => (r.ok ? r.json() : null)),
     ])
-      .then(([circleData, biddingData]) => {
-        if (circleData && !circleData.error) setCircle(circleData);
-        if (biddingData && !biddingData.error) setState(biddingData);
+      .then(([circleRes, biddingRes]) => {
+        if (circleRes.status === "fulfilled" && circleRes.value && !circleRes.value.error) {
+          setCircle(circleRes.value);
+        }
+        if (biddingRes.status === "fulfilled" && biddingRes.value && !biddingRes.value.error) {
+          setState(biddingRes.value);
+        }
       })
       .catch((err) => console.error("Error loading circle & bidding state:", err))
       .finally(() => setLoading(false));
@@ -152,13 +182,13 @@ export default function BiddingModulePage() {
   }, [loadCircleAndBidding]);
 
   // Derived Circle parameters
-  const capacity = circle?.numPeople || state?.capacity || 4;
+  const capacity = Math.max(2, circle?.numPeople || state?.capacity || 4);
   const monthlyAmountNum = circle?.monthlyAmount
-    ? Number(fromBaseUnits(circle.monthlyAmount))
+    ? parseUSDC(circle.monthlyAmount)
     : state?.monthlyAmount
-    ? Number(fromBaseUnits(state.monthlyAmount))
+    ? parseUSDC(state.monthlyAmount)
     : 1000;
-  const durationMonths = circle?.durationMonths || state?.durationMonths || 4;
+  const durationMonths = Math.max(1, circle?.durationMonths || state?.durationMonths || 3);
   const totalPotNum = capacity * monthlyAmountNum;
   const floorBidNum = Math.floor(totalPotNum / 2);
   const reserve3xNum = 3 * monthlyAmountNum;
@@ -170,13 +200,14 @@ export default function BiddingModulePage() {
 
     // 1. Volunteer
     if (circle?.volunteerUsername || circle?.volunteerWallet) {
-      const vUser = circle.volunteerUsername || "volunteer";
+      const vUser = (circle.volunteerUsername || "volunteer").replace(/^@/, "");
       seenUsernames.add(vUser.toLowerCase());
+      const vWallet = circle.volunteerWallet || PROTOCOL_VAULT_ADDRESS;
       list.push({
         username: vUser,
-        displayName: vUser === "pranavpk3047" ? "Pranav PK (Volunteer)" : `${vUser} (Volunteer)`,
-        wallet: circle.volunteerWallet || "0x1111111111111111111111111111111111111111",
-        targetBid: String(Math.round(totalPotNum * 0.95)),
+        displayName: `${vUser} (Volunteer)`,
+        wallet: vWallet,
+        targetBid: String(Math.max(floorBidNum, Math.round(totalPotNum * 0.95))),
         isVolunteer: true,
       });
     }
@@ -188,12 +219,12 @@ export default function BiddingModulePage() {
         if (!seenUsernames.has(u.toLowerCase())) {
           seenUsernames.add(u.toLowerCase());
           const idx = list.length;
-          const discountMultiplier = 0.95 + idx * 0.0125;
+          const discountMult = Math.min(0.99, 0.95 + idx * 0.0125);
           list.push({
             username: u,
             displayName: u,
-            wallet: inv.inviteeWallet,
-            targetBid: String(Math.round(totalPotNum * discountMultiplier)),
+            wallet: inv.inviteeWallet || "0x2222222222222222222222222222222222222222",
+            targetBid: String(Math.max(floorBidNum, Math.round(totalPotNum * discountMult))),
             isVolunteer: false,
           });
         }
@@ -206,19 +237,19 @@ export default function BiddingModulePage() {
       if (!seenUsernames.has(fb.username.toLowerCase())) {
         seenUsernames.add(fb.username.toLowerCase());
         const idx = list.length;
-        const discountMultiplier = 0.95 + idx * 0.0125;
+        const discountMult = Math.min(0.99, 0.95 + idx * 0.0125);
         list.push({
           username: fb.username,
           displayName: fb.displayName,
           wallet: fb.wallet,
-          targetBid: String(Math.round(totalPotNum * discountMultiplier)),
+          targetBid: String(Math.max(floorBidNum, Math.round(totalPotNum * discountMult))),
           isVolunteer: false,
         });
       }
     }
 
     return list;
-  }, [circle, capacity, totalPotNum]);
+  }, [circle, capacity, totalPotNum, floorBidNum]);
 
   // Adjust suggested target bid whenever demo user changes
   useEffect(() => {
@@ -227,16 +258,16 @@ export default function BiddingModulePage() {
       if (match) {
         setBidAmount(match.targetBid);
       } else {
-        setBidAmount(String(Math.round(totalPotNum * 0.95)));
+        setBidAmount(String(Math.max(floorBidNum, Math.round(totalPotNum * 0.95))));
       }
     } else if (participants.length > 0) {
       setBidAmount(participants[0].targetBid);
     }
-  }, [user?.username, participants, totalPotNum]);
+  }, [user?.username, participants, totalPotNum, floorBidNum]);
 
   // Realtime client validation against 50% floor and total pool
   useEffect(() => {
-    const raw = String(bidAmount || "").trim();
+    const raw = String(bidAmount || "").trim().replace(/,/g, "");
     if (!raw) {
       setValidationError("Please enter a valid bid amount.");
       return;
@@ -249,12 +280,12 @@ export default function BiddingModulePage() {
     }
 
     if (num < floorBidNum) {
-      setValidationError(`Bid amount must be at least 50% of the round pot (${floorBidNum.toLocaleString()} USDC).`);
+      setValidationError(`Bid amount must be at least 50% of the round pot (${formatUSDC(floorBidNum)} USDC).`);
       return;
     }
 
     if (num > totalPotNum) {
-      setValidationError(`Bid amount cannot exceed the round pot (${totalPotNum.toLocaleString()} USDC).`);
+      setValidationError(`Bid amount cannot exceed the round pot (${formatUSDC(totalPotNum)} USDC).`);
       return;
     }
 
@@ -273,20 +304,16 @@ export default function BiddingModulePage() {
       let winningBidNum = totalPotNum;
       let dividendNum = 0;
 
-      // Active bidders in this month (past winners cannot bid)
       const activeBidders = membersPool.filter((p) => !pastWinners.has(p.username.toLowerCase()));
 
       if (isFinalMonth || activeBidders.length <= 1) {
-        // Final member gets 100% full pot with 0% discount
         monthWinner = activeBidders[0] || membersPool[membersPool.length - 1];
         winningBidNum = totalPotNum;
         dividendNum = 0;
       } else {
-        // Lowest discount bid wins (lowest bid amount)
-        const discountRate = 0.05 - (m - 1) * 0.01; // e.g. 5%, 4%, 3% discount
-        winningBidNum = Math.round(totalPotNum * (1 - Math.max(0.01, discountRate)));
-        dividendNum = totalPotNum - winningBidNum;
-        // Winner is the member with lowest bid
+        const discountRate = Math.max(0.01, 0.05 - (m - 1) * 0.01);
+        winningBidNum = Math.max(floorBidNum, Math.round(totalPotNum * (1 - discountRate)));
+        dividendNum = Math.max(0, totalPotNum - winningBidNum);
         monthWinner = activeBidders[1] || activeBidders[0];
       }
 
@@ -295,7 +322,9 @@ export default function BiddingModulePage() {
       }
 
       const monthBids = membersPool.map((p) => {
-        const isPastWinner = pastWinners.has(p.username.toLowerCase()) && p.username.toLowerCase() !== monthWinner?.username.toLowerCase();
+        const isPastWinner =
+          pastWinners.has(p.username.toLowerCase()) &&
+          p.username.toLowerCase() !== monthWinner?.username.toLowerCase();
         const isThisMonthWinner = p.username.toLowerCase() === monthWinner?.username.toLowerCase();
 
         if (isPastWinner) {
@@ -315,7 +344,7 @@ export default function BiddingModulePage() {
             username: p.username,
             displayName: p.displayName,
             wallet: `${p.wallet.slice(0, 6)}...${p.wallet.slice(-4)}`,
-            amount: winningBidNum.toLocaleString(),
+            amount: formatUSDC(winningBidNum),
             isWinner: true,
             note: isFinalMonth
               ? "Final Member — Receives 100% Full Pot with 0% Discount"
@@ -323,15 +352,15 @@ export default function BiddingModulePage() {
           };
         }
 
-        // Other active participant bids
         const bidderIdx = activeBidders.findIndex((b) => b.username.toLowerCase() === p.username.toLowerCase());
-        const higherBid = Math.min(totalPotNum, Math.round(winningBidNum + (bidderIdx + 1) * 50));
+        const step = Math.max(1, Math.round(totalPotNum * 0.01));
+        const higherBid = Math.min(totalPotNum, winningBidNum + (bidderIdx + 1) * step);
         const disc = Math.max(0, Math.round(((totalPotNum - higherBid) / totalPotNum) * 1000) / 10);
         return {
           username: p.username,
           displayName: p.displayName,
           wallet: `${p.wallet.slice(0, 6)}...${p.wallet.slice(-4)}`,
-          amount: higherBid.toLocaleString(),
+          amount: formatUSDC(higherBid),
           isWinner: false,
           note: `${disc}% discount offered`,
         };
@@ -339,14 +368,14 @@ export default function BiddingModulePage() {
 
       months.push({
         month: m,
-        potAmount: totalPotNum.toLocaleString(),
-        floorAmount: floorBidNum.toLocaleString(),
+        potAmount: formatUSDC(totalPotNum),
+        floorAmount: formatUSDC(floorBidNum),
         winnerUsername: monthWinner?.username || "participant",
         winnerDisplayName: monthWinner?.displayName || "Participant",
         winnerWallet: monthWinner?.wallet || "0x0",
-        winningBid: winningBidNum.toLocaleString(),
-        dividend: dividendNum.toLocaleString(),
-        dividendPerMember: Math.floor(dividendNum / capacity).toLocaleString(),
+        winningBid: formatUSDC(winningBidNum),
+        dividend: formatUSDC(dividendNum),
+        dividendPerMember: formatUSDC(Math.floor(dividendNum / Math.max(1, capacity))),
         bids: monthBids,
       });
     }
@@ -365,11 +394,11 @@ export default function BiddingModulePage() {
     return () => clearInterval(timer);
   }, [isAutoPlaying, showSimModal, durationMonths]);
 
-  const userBid = state?.bids.find(
+  const userBid = state?.bids?.find(
     (b) =>
       user &&
-      (b.memberWallet.toLowerCase() === user.walletAddress.toLowerCase() ||
-        b.memberUsername.toLowerCase() === user.username.toLowerCase())
+      ((b?.memberWallet && user.walletAddress && b.memberWallet.toLowerCase() === user.walletAddress.toLowerCase()) ||
+        (b?.memberUsername && user.username && b.memberUsername.toLowerCase() === user.username.toLowerCase()))
   );
 
   const handleSwitchParticipant = (p: ParticipantInfo) => {
@@ -405,7 +434,7 @@ export default function BiddingModulePage() {
       const storageKey = `chitchain_bid_secret_${circleId}_${user.username}`;
       localStorage.setItem(storageKey, JSON.stringify({ amount: bidAmount, salt }));
 
-      const res = await fetch(`/api/circles/${circleId}/bidding/commit`, {
+      const res = await fetch(`/api/circles/${encodeURIComponent(circleId)}/bidding/commit`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -418,7 +447,7 @@ export default function BiddingModulePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to commit bid");
 
-      setSuccessMsg(`Secret bid of ${Number(bidAmount).toLocaleString()} USDC cryptographically hashed & committed!`);
+      setSuccessMsg(`Secret bid of ${formatUSDC(bidAmount)} USDC cryptographically hashed & committed!`);
       loadCircleAndBidding();
     } catch (err: any) {
       setError(err.message || "Failed to commit bid");
@@ -447,9 +476,10 @@ export default function BiddingModulePage() {
         } catch {}
       }
 
-      const baseUnits = BigInt(Math.round(parseFloat(parsedAmount) * 1_000_000)).toString();
+      const num = parseFloat(parsedAmount);
+      const baseUnits = BigInt(Math.round(num * 1_000_000)).toString();
 
-      const res = await fetch(`/api/circles/${circleId}/bidding/reveal`, {
+      const res = await fetch(`/api/circles/${encodeURIComponent(circleId)}/bidding/reveal`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -462,7 +492,7 @@ export default function BiddingModulePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to reveal bid");
 
-      setSuccessMsg(`Bid of ${Number(parsedAmount).toLocaleString()} USDC verified and published onchain!`);
+      setSuccessMsg(`Bid of ${formatUSDC(parsedAmount)} USDC verified and published onchain!`);
       loadCircleAndBidding();
     } catch (err: any) {
       setError(err.message || "Failed to reveal bid");
@@ -477,7 +507,7 @@ export default function BiddingModulePage() {
     setSuccessMsg(null);
 
     try {
-      const res = await fetch(`/api/circles/${circleId}/bidding/settle`, { method: "POST" });
+      const res = await fetch(`/api/circles/${encodeURIComponent(circleId)}/bidding/settle`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to settle auction");
 
@@ -500,7 +530,7 @@ export default function BiddingModulePage() {
       // 1. Commit all circle participants' bids
       for (const p of participants) {
         const salt = deriveDemoSalt(circleId, state?.cycle || 1, p.wallet);
-        await fetch(`/api/circles/${circleId}/bidding/commit`, {
+        await fetch(`/api/circles/${encodeURIComponent(circleId)}/bidding/commit`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -514,8 +544,9 @@ export default function BiddingModulePage() {
       // 2. Reveal all bids
       for (const p of participants) {
         const salt = deriveDemoSalt(circleId, state?.cycle || 1, p.wallet);
-        const baseUnits = BigInt(Math.round(parseFloat(p.targetBid) * 1_000_000)).toString();
-        await fetch(`/api/circles/${circleId}/bidding/reveal`, {
+        const num = parseFloat(p.targetBid);
+        const baseUnits = BigInt(Math.round(num * 1_000_000)).toString();
+        await fetch(`/api/circles/${encodeURIComponent(circleId)}/bidding/reveal`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -527,7 +558,7 @@ export default function BiddingModulePage() {
       }
 
       // 3. Settle auction pot
-      const settleRes = await fetch(`/api/circles/${circleId}/bidding/settle`, { method: "POST" });
+      const settleRes = await fetch(`/api/circles/${encodeURIComponent(circleId)}/bidding/settle`, { method: "POST" });
       const settleData = await settleRes.json();
       if (!settleRes.ok) throw new Error(settleData.error || "Failed to settle demo run");
 
@@ -536,9 +567,9 @@ export default function BiddingModulePage() {
       );
 
       setSuccessMsg(
-        `🎉 1-Click Demo Auction Completed! @${lowestBidder.username} won with lowest bid of ${Number(
+        `🎉 1-Click Demo Auction Completed! @${lowestBidder.username} won with lowest bid of ${formatUSDC(
           lowestBidder.targetBid
-        ).toLocaleString()} USDC.`
+        )} USDC.`
       );
       loadCircleAndBidding();
     } catch (err: any) {
@@ -558,10 +589,10 @@ export default function BiddingModulePage() {
     );
   }
 
-  const poolFormatted = totalPotNum.toLocaleString();
-  const floorFormatted = floorBidNum.toLocaleString();
-  const committedCount = state?.bids.length || 0;
-  const revealedCount = state?.bids.filter((b) => b.revealed).length || 0;
+  const poolFormatted = formatUSDC(totalPotNum);
+  const floorFormatted = formatUSDC(floorBidNum);
+  const committedCount = state?.bids?.length || 0;
+  const revealedCount = state?.bids?.filter((b) => b?.revealed)?.length || 0;
   const currentSimMonth = dynamicSimulation.find((m) => m.month === selectedMonthTab) || dynamicSimulation[0];
 
   return (
@@ -644,10 +675,10 @@ export default function BiddingModulePage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {participants.map((p) => {
               const isSelected = user?.username?.toLowerCase() === p.username.toLowerCase();
-              const pBid = state?.bids.find(
+              const pBid = state?.bids?.find(
                 (b) =>
-                  b.memberWallet.toLowerCase() === p.wallet.toLowerCase() ||
-                  b.memberUsername.toLowerCase() === p.username.toLowerCase()
+                  (b?.memberWallet && b.memberWallet.toLowerCase() === p.wallet.toLowerCase()) ||
+                  (b?.memberUsername && b.memberUsername.toLowerCase() === p.username.toLowerCase())
               );
               return (
                 <button
@@ -676,7 +707,7 @@ export default function BiddingModulePage() {
                   </div>
                   <div className="text-[10px] text-neutral-400 font-mono mt-0.5 flex justify-between">
                     <span className="truncate">{p.displayName}</span>
-                    <span className="text-amber-400/90 font-semibold">{Number(p.targetBid).toLocaleString()} USDC</span>
+                    <span className="text-amber-400/90 font-semibold">{formatUSDC(p.targetBid)} USDC</span>
                   </div>
                 </button>
               );
@@ -702,10 +733,24 @@ export default function BiddingModulePage() {
 
         {/* 2. Circle Parameters Allocated by Volunteer + Vault Auction Metrics */}
         <div className="space-y-2">
-          <span className="text-[10px] uppercase font-mono tracking-wider text-neutral-400 font-semibold flex items-center gap-1.5">
-            <Layers className="h-3.5 w-3.5 text-neutral-400" />
-            <span>Circle Parameters & Vault Capacity</span>
-          </span>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase font-mono tracking-wider text-neutral-400 font-semibold flex items-center gap-1.5">
+              <Layers className="h-3.5 w-3.5 text-neutral-400" />
+              <span>Circle Parameters & Vault Capacity</span>
+            </span>
+
+            {/* BaseScan Contract Verification Link */}
+            <a
+              href={`https://sepolia.basescan.org/address/${PROTOCOL_VAULT_ADDRESS}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] font-mono text-neutral-400 hover:text-white flex items-center gap-1 underline decoration-dotted transition-colors"
+              title="View on BaseScan Explorer"
+            >
+              <span>Contract: {PROTOCOL_VAULT_ADDRESS.slice(0, 6)}...{PROTOCOL_VAULT_ADDRESS.slice(-4)}</span>
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="p-3.5 rounded-2xl bg-neutral-900/70 border border-white/10 space-y-0.5">
@@ -716,7 +761,7 @@ export default function BiddingModulePage() {
             <div className="p-3.5 rounded-2xl bg-neutral-900/70 border border-white/10 space-y-0.5">
               <span className="text-[10px] uppercase font-mono text-neutral-400 block font-semibold">Monthly Amount</span>
               <span className="font-bold text-white text-base font-mono block">
-                {monthlyAmountNum.toLocaleString()} <span className="text-xs text-neutral-400 font-normal">USDC</span>
+                {formatUSDC(monthlyAmountNum)} <span className="text-xs text-neutral-400 font-normal">USDC</span>
               </span>
             </div>
 
@@ -731,7 +776,7 @@ export default function BiddingModulePage() {
                 <span>3x Verification</span>
               </span>
               <span className="font-bold text-emerald-300 text-base font-mono block">
-                {reserve3xNum.toLocaleString()} <span className="text-xs text-emerald-400/80 font-normal">USDC</span>
+                {formatUSDC(reserve3xNum)} <span className="text-xs text-emerald-400/80 font-normal">USDC</span>
               </span>
             </div>
           </div>
@@ -780,7 +825,7 @@ export default function BiddingModulePage() {
                       type="number"
                       value={bidAmount}
                       onChange={(e) => setBidAmount(e.target.value)}
-                      placeholder={String(Math.round(totalPotNum * 0.95))}
+                      placeholder={String(Math.max(floorBidNum, Math.round(totalPotNum * 0.95)))}
                       className="w-full rounded-xl border border-white/10 bg-white/[0.03] pl-4 pr-16 py-3 text-sm text-white focus:outline-none focus:border-white/30 font-mono transition-colors"
                     />
                     <span className="absolute right-4 top-3 text-xs font-bold text-neutral-400">
@@ -860,7 +905,7 @@ export default function BiddingModulePage() {
                   <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                   <span>Bid for @{user?.username} revealed & verified onchain</span>
                 </div>
-                <span className="font-mono text-white font-bold">{fromBaseUnits(userBid.amount!)} USDC</span>
+                <span className="font-mono text-white font-bold">{formatUSDC(userBid.amount)} USDC</span>
               </div>
             )}
 
@@ -871,16 +916,16 @@ export default function BiddingModulePage() {
               </span>
               <div className="space-y-1.5">
                 {participants.map((p) => {
-                  const b = state.bids.find(
+                  const b = state?.bids?.find(
                     (item) =>
-                      item.memberWallet.toLowerCase() === p.wallet.toLowerCase() ||
-                      item.memberUsername.toLowerCase() === p.username.toLowerCase()
+                      (item?.memberWallet && item.memberWallet.toLowerCase() === p.wallet.toLowerCase()) ||
+                      (item?.memberUsername && item.memberUsername.toLowerCase() === p.username.toLowerCase())
                   );
                   return (
                     <div key={p.username} className="flex items-center justify-between text-xs font-mono py-1 border-b border-white/5 last:border-0">
                       <span className="text-neutral-300">@{p.username} ({p.displayName})</span>
                       {b?.revealed ? (
-                        <span className="text-emerald-400 font-bold">{fromBaseUnits(b.amount!)} USDC</span>
+                        <span className="text-emerald-400 font-bold">{formatUSDC(b.amount)} USDC</span>
                       ) : b ? (
                         <span className="text-amber-400/80 italic">Sealed (Pending Reveal)</span>
                       ) : (
@@ -926,10 +971,10 @@ export default function BiddingModulePage() {
               <div className="space-y-1">
                 <span className="text-neutral-400 block uppercase tracking-wider text-[10px] font-mono">Winning Payout Pot</span>
                 <span className="font-bold text-white text-base block font-mono">
-                  {fromBaseUnits(state.winner.amount)} USDC
+                  {formatUSDC(state.winner.amount)} USDC
                 </span>
                 <span className="text-[11px] text-amber-400 font-medium font-mono block">
-                  +{fromBaseUnits(state.winner.dividend)} USDC Carried to Next Month
+                  +{formatUSDC(state.winner.dividend)} USDC Carried to Next Month
                 </span>
               </div>
             </div>
@@ -964,7 +1009,7 @@ export default function BiddingModulePage() {
                     Full Circle Timeperiod Bidding Simulation
                   </h2>
                   <p className="text-xs text-neutral-400">
-                    {durationMonths}-Month Circle Lifecycle • Capacity: {capacity} Members • Monthly: {monthlyAmountNum} USDC • Lowest Bid Wins Pot
+                    {durationMonths}-Month Circle Lifecycle • Capacity: {capacity} Members • Monthly: {formatUSDC(monthlyAmountNum)} USDC • Lowest Bid Wins Pot
                   </p>
                 </div>
               </div>
@@ -1004,7 +1049,7 @@ export default function BiddingModulePage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setSelectedMonthTab(999); // 999 represents Full Summary Table
+                    setSelectedMonthTab(999);
                     setIsAutoPlaying(false);
                   }}
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -1146,7 +1191,7 @@ export default function BiddingModulePage() {
                     <span>Complete {durationMonths}-Month Circle Settlement Ledger</span>
                   </h3>
                   <span className="text-[10px] font-mono text-neutral-400">
-                    Total Volume: {(totalPotNum * durationMonths).toLocaleString()} USDC
+                    Total Volume: {formatUSDC(totalPotNum * durationMonths)} USDC
                   </span>
                 </div>
 
@@ -1170,11 +1215,11 @@ export default function BiddingModulePage() {
                           <td className="py-2.5 px-3 text-emerald-400 font-bold">Month {sim.month}</td>
                           <td className="py-2.5 px-3 font-bold text-white">{sim.winningBid} USDC</td>
                           <td className="py-2.5 px-3 text-neutral-300">
-                            {(monthlyAmountNum * durationMonths - (durationMonths - sim.month) * 25).toLocaleString()} USDC
+                            {formatUSDC(monthlyAmountNum * durationMonths - (durationMonths - sim.month) * (monthlyAmountNum * 0.05))} USDC
                           </td>
                           <td className="py-2.5 px-3 text-right text-emerald-400 font-bold">
                             {sim.month === durationMonths
-                              ? `+${((durationMonths - 1) * 35).toLocaleString()} USDC Max Saver Gain`
+                              ? `+${formatUSDC((durationMonths - 1) * (monthlyAmountNum * 0.05))} USDC Max Saver Gain`
                               : sim.month === 1
                               ? "Fast Liquidity Advantage"
                               : `Month ${sim.month} Liquidity Advantage`}

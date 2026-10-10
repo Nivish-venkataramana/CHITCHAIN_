@@ -318,7 +318,7 @@ export async function createCircleVaultAddress(circleId: string, volunteerWallet
     throw new Error("Only the volunteer can deploy the circle vault.");
   }
 
-  const simulatedVault = `0x${Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join("")}`;
+  const simulatedVault = "0x33dD04441C48D92B71dA84DFa1bf61538C562651";
   circleVaults[circleId] = {
     vaultAddress: simulatedVault,
     isStarted: false,
