@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { findUserByUsername } from "@/lib/users";
 import { getUserBalance } from "@/lib/account-store";
 
+export const dynamic = "force-dynamic";
+
 export interface TxItem {
   hash: string;
   from: string;

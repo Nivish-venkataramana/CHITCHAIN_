@@ -4,6 +4,8 @@ import { keccak256, toHex, parseUnits } from "viem";
 import { debitUserBalance, depositToCirclePool, getCirclePoolBalance, getUserBalance } from "@/lib/account-store";
 import { fromBaseUnits } from "@/lib/validation";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();

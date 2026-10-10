@@ -9,6 +9,8 @@ import {
 } from "@/lib/yield/db-store";
 import { toTokenBaseUnits, fromTokenBaseUnits } from "@/lib/yield/reconciliation";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
