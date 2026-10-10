@@ -27,6 +27,7 @@ export async function POST(
       inviteId: params.id,
       accept,
       userWallet: user.walletAddress,
+      username: user.username,
     });
 
     return NextResponse.json(result);

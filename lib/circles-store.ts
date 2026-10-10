@@ -200,7 +200,25 @@ async function ensureCircleLoaded(id: string): Promise<CircleRecord | null> {
     try {
       const dbCircle = await prisma.circle.findUnique({ where: { id } });
       if (dbCircle) {
-        const volUser = getUserByWallet(dbCircle.volunteerWallet);
+        let volUser = getUserByWallet(dbCircle.volunteerWallet);
+        if (!volUser) {
+          try {
+            const dbUser = await prisma.user.findFirst({
+              where: { walletAddress: { equals: dbCircle.volunteerWallet, mode: "insensitive" } },
+            });
+            if (dbUser) {
+              volUser = {
+                privyUserId: dbUser.privyUserId || undefined,
+                username: dbUser.username,
+                walletAddress: dbUser.walletAddress as `0x${string}`,
+                displayName: dbUser.displayName,
+                createdAt: dbUser.createdAt.toISOString(),
+              };
+              addUser(volUser);
+            }
+          } catch {}
+        }
+
         circle = {
           id: dbCircle.id,
           name: dbCircle.name,
@@ -716,6 +734,7 @@ export async function respondToInvite(params: {
   inviteId: string;
   accept: boolean;
   userWallet: string;
+  username?: string;
 }): Promise<{ invite: InviteRecord; circle: CircleRecord }> {
   let invite = memoryInvites.find((i) => i.id === params.inviteId);
   if (!invite && !isTestEnv) {
@@ -739,8 +758,19 @@ export async function respondToInvite(params: {
 
   if (!invite) throw new Error("Invite not found");
 
-  if (invite.inviteeWallet.toLowerCase() !== params.userWallet.toLowerCase()) {
+  const normUserWallet = (params.userWallet || "").toLowerCase().trim();
+  const normUsername = (params.username || "").toLowerCase().trim().replace(/^@/, "");
+
+  const isWalletMatch = normUserWallet && invite.inviteeWallet.toLowerCase() === normUserWallet;
+  const isUserMatch = normUsername && invite.inviteeUsername.toLowerCase() === normUsername;
+
+  if (!isWalletMatch && !isUserMatch) {
     throw new Error("Unauthorized to respond to this invite");
+  }
+
+  // If user matched by username and has a valid incoming wallet, sync the invite wallet
+  if (normUserWallet && /^0x[a-f0-9]{40}$/i.test(normUserWallet)) {
+    invite.inviteeWallet = normUserWallet;
   }
 
   if (invite.status !== "PENDING") {
@@ -1310,7 +1340,41 @@ export async function markNotificationRead(id: string, walletAddress: string): P
 export async function getAllCircles(): Promise<CircleRecord[]> {
   if (!isTestEnv) {
     try {
-      const dbCircles = await prisma.circle.findMany({ orderBy: { createdAt: "desc" } });
+      const [dbCircles, dbUsers, dbInvites] = await Promise.all([
+        prisma.circle.findMany({ orderBy: { createdAt: "desc" } }),
+        prisma.user.findMany(),
+        prisma.invite.findMany(),
+      ]);
+
+      dbUsers.forEach((u) => {
+        addUser({
+          privyUserId: u.privyUserId || undefined,
+          username: u.username,
+          walletAddress: u.walletAddress as `0x${string}`,
+          displayName: u.displayName,
+          createdAt: u.createdAt.toISOString(),
+        });
+      });
+
+      dbInvites.forEach((inv) => {
+        const invIdx = memoryInvites.findIndex((i) => i.id === inv.id);
+        const formatted: InviteRecord = {
+          id: inv.id,
+          circleId: inv.circleId,
+          inviteeWallet: inv.inviteeWallet,
+          inviteeUsername: inv.inviteeUsername,
+          status: inv.status as any,
+          balanceAtCheck: inv.balanceAtCheck,
+          createdAt: inv.createdAt,
+          respondedAt: inv.respondedAt,
+        };
+        if (invIdx !== -1) {
+          memoryInvites[invIdx] = formatted;
+        } else {
+          memoryInvites.push(formatted);
+        }
+      });
+
       dbCircles.forEach((c) => {
         const existingIdx = memoryCircles.findIndex((existing) => existing.id === c.id);
         const volUser = getUserByWallet(c.volunteerWallet);

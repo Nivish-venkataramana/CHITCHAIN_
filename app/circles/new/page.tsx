@@ -198,7 +198,8 @@ export default function CreateCirclePage() {
         throw new Error(data?.error || "Failed to create circle. Please verify parameters and wallet balance.");
       }
 
-      router.push(`/circles/${data.id}`);
+      window.dispatchEvent(new Event("balance_updated"));
+      router.push("/dashboard");
     } catch (err: any) {
       setError(err.message || "Failed to create circle");
     } finally {

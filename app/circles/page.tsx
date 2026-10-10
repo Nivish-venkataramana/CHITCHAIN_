@@ -23,15 +23,35 @@ export default function CirclesListPage() {
   const { user } = useDevUser();
   const [circles, setCircles] = useState<CircleItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [respondingInviteId, setRespondingInviteId] = useState<string | null>(null);
 
   const [editModalCircle, setEditModalCircle] = useState<CircleActionData | null>(null);
   const [deleteModalCircle, setDeleteModalCircle] = useState<{ id: string; name: string } | null>(null);
+
+  const fetchNotifications = useCallback(() => {
+    if (!user) return;
+    fetch("/api/notifications", {
+      headers: {
+        "x-dev-user": user.username,
+        "x-dev-wallet": user.walletAddress || "",
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setNotifications(data);
+      })
+      .catch(() => {});
+  }, [user]);
 
   const fetchCircles = useCallback(() => {
     if (!user) return;
     setLoading(true);
     fetch("/api/circles/mine", {
-      headers: { "x-dev-user": user.username },
+      headers: {
+        "x-dev-user": user.username,
+        "x-dev-wallet": user.walletAddress || "",
+      },
     })
       .then((res) => res.json())
       .then((data: CircleItem[]) => {
@@ -45,7 +65,43 @@ export default function CirclesListPage() {
 
   useEffect(() => {
     fetchCircles();
-  }, [fetchCircles]);
+    fetchNotifications();
+  }, [fetchCircles, fetchNotifications]);
+
+  const handleRespondInvite = async (inviteId: string, accept: boolean, notifId?: string) => {
+    if (!user) return;
+    setRespondingInviteId(inviteId);
+    try {
+      const res = await fetch(`/api/invites/${inviteId}/respond`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-dev-user": user.username,
+          "x-dev-wallet": user.walletAddress || "",
+        },
+        body: JSON.stringify({ accept }),
+      });
+      if (res.ok) {
+        if (notifId) {
+          await fetch(`/api/notifications/${notifId}/read`, {
+            method: "POST",
+            headers: { "x-dev-user": user.username },
+          }).catch(() => {});
+        }
+        fetchCircles();
+        fetchNotifications();
+        window.dispatchEvent(new Event("balance_updated"));
+      }
+    } catch (err) {
+      console.error("Error responding to invite:", err);
+    } finally {
+      setRespondingInviteId(null);
+    }
+  };
+
+  const pendingInvites = notifications.filter(
+    (n) => n.type === "JOIN_REQUEST" && n.inviteId && !n.readAt
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8 space-y-10 text-neutral-100">
@@ -79,12 +135,65 @@ export default function CirclesListPage() {
 
         <Link
           href="/circles/new"
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold text-xs tracking-wider uppercase transition-all shadow-lg shadow-amber-500/20"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold text-xs tracking-wider uppercase transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
         >
           <PlusCircle className="h-4 w-4" />
           <span>Create New Circle</span>
         </Link>
       </div>
+
+      {/* Pending Invites Section */}
+      {pendingInvites.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
+            <h2 className="text-xs font-bold uppercase tracking-widest text-amber-400">
+              Pending Circle Invitations ({pendingInvites.length})
+            </h2>
+          </div>
+          <div className="grid gap-3">
+            {pendingInvites.map((inv) => (
+              <div
+                key={inv.id}
+                className="rounded-3xl border border-amber-500/30 bg-amber-950/20 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl backdrop-blur-sm"
+              >
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2.5">
+                    <h3 className="text-lg font-bold text-white">{inv.circleName || "Chit Circle"}</h3>
+                    <span className="px-2.5 py-0.5 rounded-full bg-amber-900/60 border border-amber-700/60 text-amber-300 text-[10px] font-bold uppercase tracking-wider">
+                      Invite Received
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-300 leading-relaxed">{inv.body}</p>
+                  <p className="text-xs text-neutral-400 font-mono">
+                    Organizer: <span className="text-white font-medium">@{inv.volunteerName || "Organizer"}</span>
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 shrink-0">
+                  <button
+                    type="button"
+                    disabled={respondingInviteId === inv.inviteId}
+                    onClick={() => handleRespondInvite(inv.inviteId!, true, inv.id)}
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold text-xs tracking-wider uppercase transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{respondingInviteId === inv.inviteId ? "Joining..." : "Accept"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={respondingInviteId === inv.inviteId}
+                    onClick={() => handleRespondInvite(inv.inviteId!, false, inv.id)}
+                    className="px-5 py-2.5 rounded-xl border border-neutral-800 hover:border-neutral-700 bg-neutral-900/80 hover:bg-neutral-800 text-neutral-400 hover:text-white font-semibold text-xs transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    <span>Decline</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Circles Grid */}
       {loading ? (

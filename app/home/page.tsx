@@ -32,7 +32,10 @@ export default function HomePage() {
     if (!user) return;
     setLoading(true);
     fetch("/api/circles/mine", {
-      headers: { "x-dev-user": user.username },
+      headers: {
+        "x-dev-user": user.username,
+        "x-dev-wallet": user.walletAddress || "",
+      },
     })
       .then((res) => res.json())
       .then((data: CircleItem[]) => {
@@ -97,11 +100,11 @@ export default function HomePage() {
             </Link>
 
             <Link
-              href="/circles"
-              className="px-6 py-3.5 rounded-full bg-neutral-900/90 hover:bg-neutral-800 text-neutral-200 hover:text-white font-bold text-sm tracking-wide border border-neutral-800 transition-all flex items-center gap-2"
+              href="/dashboard"
+              className="px-6 py-3.5 rounded-full bg-neutral-900/90 hover:bg-neutral-800 text-neutral-200 hover:text-white font-bold text-sm tracking-wide border border-neutral-800 transition-all flex items-center gap-2 cursor-pointer group"
             >
               <span>Explore Active Chits ({circles.length})</span>
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
 
@@ -128,8 +131,11 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="p-6 rounded-2xl bg-neutral-950/80 border border-neutral-900 space-y-1.5 backdrop-blur-md">
-            <div className="text-xs uppercase tracking-widest text-neutral-400 font-semibold">
+          <Link
+            href="/dashboard"
+            className="p-6 rounded-2xl bg-neutral-950/80 border border-neutral-900 hover:border-orange-500/40 transition-all space-y-1.5 backdrop-blur-md cursor-pointer block group"
+          >
+            <div className="text-xs uppercase tracking-widest text-neutral-400 font-semibold group-hover:text-orange-400 transition-colors">
               Active Wealth Circles
             </div>
             <div className="text-2xl sm:text-3xl font-bold text-orange-400 font-mono">
@@ -138,7 +144,7 @@ export default function HomePage() {
             <div className="text-[11px] text-neutral-400">
               {finalizedCount} Finalized • {invitingCount} Inviting
             </div>
-          </div>
+          </Link>
 
           <div className="p-6 rounded-2xl bg-neutral-950/80 border border-neutral-900 space-y-1.5 backdrop-blur-md">
             <div className="text-xs uppercase tracking-widest text-neutral-400 font-semibold">
@@ -205,7 +211,7 @@ export default function HomePage() {
 
           {/* Card 2: Existing Circles */}
           <Link
-            href="/circles"
+            href="/dashboard"
             className="group relative rounded-3xl bg-gradient-to-b from-neutral-900/90 via-neutral-950 to-black p-8 sm:p-10 border border-neutral-800/80 hover:border-neutral-700 shadow-2xl transition-all duration-300 flex flex-col justify-between overflow-hidden"
           >
             <div className="space-y-6 relative z-10">
