@@ -783,6 +783,64 @@ export async function respondToInvite(params: {
   invite.status = params.accept ? "ACCEPTED" : "REJECTED";
   invite.respondedAt = new Date();
 
+  // Send INVITE_ACCEPTED or INVITE_REJECTED notification to the circle volunteer
+  const volWallet = circle.volunteerWallet.toLowerCase();
+  const participantHandle = invite.inviteeUsername ? `@${invite.inviteeUsername}` : "A participant";
+
+  if (params.accept) {
+    const acceptedNotif: NotificationRecord = {
+      id: `notif-${Date.now()}-${invite.inviteeUsername || "member"}-acc`,
+      userWallet: volWallet,
+      type: "INVITE_ACCEPTED",
+      circleId: circle.id,
+      inviteId: invite.id,
+      circleName: circle.name,
+      volunteerName: circle.volunteerUsername || "Volunteer",
+      body: `${participantHandle} accepted the invitation to join "${circle.name}".`,
+      readAt: null,
+      createdAt: new Date(),
+    };
+    memoryNotifications.unshift(acceptedNotif);
+
+    if (!isTestEnv) {
+      prisma.notification.create({
+        data: {
+          id: acceptedNotif.id,
+          userWallet: acceptedNotif.userWallet,
+          type: acceptedNotif.type,
+          circleId: acceptedNotif.circleId,
+          body: acceptedNotif.body,
+        },
+      }).catch((err) => console.warn("Prisma notification create notice:", err.message));
+    }
+  } else {
+    const rejectedNotif: NotificationRecord = {
+      id: `notif-${Date.now()}-${invite.inviteeUsername || "member"}-rej`,
+      userWallet: volWallet,
+      type: "INVITE_REJECTED",
+      circleId: circle.id,
+      inviteId: invite.id,
+      circleName: circle.name,
+      volunteerName: circle.volunteerUsername || "Volunteer",
+      body: `${participantHandle} declined the invitation to join "${circle.name}".`,
+      readAt: null,
+      createdAt: new Date(),
+    };
+    memoryNotifications.unshift(rejectedNotif);
+
+    if (!isTestEnv) {
+      prisma.notification.create({
+        data: {
+          id: rejectedNotif.id,
+          userWallet: rejectedNotif.userWallet,
+          type: rejectedNotif.type,
+          circleId: rejectedNotif.circleId,
+          body: rejectedNotif.body,
+        },
+      }).catch((err) => console.warn("Prisma notification create notice:", err.message));
+    }
+  }
+
   if (params.accept) {
     const acceptedCount = memoryInvites.filter(
       (i) => i.circleId === circle.id && i.status === "ACCEPTED"
@@ -1343,29 +1401,35 @@ export async function getNotificationsForUser(walletAddress: string, username?: 
         }
       }
 
-      dbNotifs.forEach((n) => {
+      for (const n of dbNotifs) {
         const idx = memoryNotifications.findIndex((item) => item.id === n.id);
-        const matchingInv = memoryInvites.find(
+        let matchingInv = memoryInvites.find(
           (i) =>
             i.circleId === n.circleId &&
             (matchedWallets.has(i.inviteeWallet.toLowerCase()) ||
               (normUser && i.inviteeUsername.toLowerCase() === normUser))
         );
+
+        if (!matchingInv && n.type === "JOIN_REQUEST") {
+          matchingInv = memoryInvites.find((i) => i.circleId === n.circleId && i.status === "PENDING");
+        }
+
+        const circle = await ensureCircleLoaded(n.circleId);
         const item: NotificationRecord = {
           id: n.id,
           userWallet: n.userWallet,
           type: n.type as any,
           circleId: n.circleId,
-          inviteId: matchingInv?.id,
-          circleName: "Circle",
-          volunteerName: "Volunteer",
+          inviteId: matchingInv?.id || undefined,
+          circleName: circle?.name || "Wealth Circle",
+          volunteerName: circle?.volunteerUsername || "Volunteer",
           body: n.body,
           readAt: n.readAt,
           createdAt: n.createdAt,
         };
         if (idx !== -1) memoryNotifications[idx] = item;
         else memoryNotifications.push(item);
-      });
+      }
     } catch (err) {
       console.warn("getNotificationsForUser DB lookup notice:", err);
     }

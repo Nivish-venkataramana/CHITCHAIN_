@@ -56,8 +56,39 @@ export function useAutoPaySession(circleId: string, monthlyAmountUSDC: number, v
     if (!circleId) return;
 
     try {
-      // 1. Fetch current logged-in user's consent
-      if (smartWalletAddress && /^0x[a-f0-9]{40}$/i.test(smartWalletAddress)) {
+      // 1. Fetch all members' consents for this circle
+      const allRes = await fetch(`/api/autopay/consent?circleId=${circleId}`);
+      let consentsList: MemberConsentItem[] = [];
+      if (allRes.ok) {
+        const allJson = await allRes.json();
+        if (Array.isArray(allJson.consents)) {
+          consentsList = allJson.consents.map((c: any) => ({
+            memberAddress: (c.memberAddress || "").toLowerCase(),
+            status: c.status,
+            grantedAt: c.grantedAt,
+            sessionId: c.sessionId,
+          }));
+          setAllMemberConsents(consentsList);
+        }
+      }
+
+      // 2. Fetch or find current logged-in user's consent
+      const matchedConsent = consentsList.find(
+        (c) =>
+          (smartWalletAddress && c.memberAddress === smartWalletAddress.toLowerCase()) ||
+          (devUser?.walletAddress && c.memberAddress === devUser.walletAddress.toLowerCase())
+      );
+
+      if (matchedConsent && matchedConsent.status === "GIVEN") {
+        setSessionData({
+          sessionId: matchedConsent.sessionId || `session-${circleId.slice(0, 8)}`,
+          sessionHash: keccak256(toHex(`mandate-${circleId}-${matchedConsent.memberAddress}`)),
+          grantedAt: matchedConsent.grantedAt || new Date().toISOString(),
+          status: "ACTIVE",
+          timeFramePolicy: "Strict 30-Day Interval (TimeFramePolicy)",
+          spendingLimitPolicy: `Strict ${monthlyAmountUSDC} USDC / month (ERC20SpendingLimitPolicy)`,
+        });
+      } else if (smartWalletAddress && /^0x[a-f0-9]{40}$/i.test(smartWalletAddress)) {
         const userRes = await fetch(
           `/api/autopay/consent?circleId=${circleId}&memberAddress=${smartWalletAddress.toLowerCase()}`
         );
@@ -77,26 +108,10 @@ export function useAutoPaySession(circleId: string, monthlyAmountUSDC: number, v
           }
         }
       }
-
-      // 2. Fetch all members' consents for this circle
-      const allRes = await fetch(`/api/autopay/consent?circleId=${circleId}`);
-      if (allRes.ok) {
-        const allJson = await allRes.json();
-        if (Array.isArray(allJson.consents)) {
-          setAllMemberConsents(
-            allJson.consents.map((c: any) => ({
-              memberAddress: c.memberAddress.toLowerCase(),
-              status: c.status,
-              grantedAt: c.grantedAt,
-              sessionId: c.sessionId,
-            }))
-          );
-        }
-      }
     } catch (e) {
       console.warn("Could not load autopay consent from database:", e);
     }
-  }, [circleId, smartWalletAddress, monthlyAmountUSDC]);
+  }, [circleId, smartWalletAddress, devUser?.walletAddress, monthlyAmountUSDC]);
 
   useEffect(() => {
     loadConsent();
@@ -105,8 +120,9 @@ export function useAutoPaySession(circleId: string, monthlyAmountUSDC: number, v
   /**
    * Layer 2: Authorize Rhinestone SmartSession Mandate strictly for the currently logged-in wallet
    */
-  const authorizeSmartSession = useCallback(async () => {
-    if (!smartWalletAddress || !/^0x[a-f0-9]{40}$/i.test(smartWalletAddress)) {
+  const authorizeSmartSession = useCallback(async (targetWallet?: string) => {
+    const authWallet = (targetWallet || smartWalletAddress || devUser?.walletAddress || "").toLowerCase();
+    if (!authWallet || !/^0x[a-f0-9]{40}$/i.test(authWallet)) {
       setError("Please connect your wallet or sign in first to mandate autopay.");
       return;
     }
@@ -121,7 +137,7 @@ export function useAutoPaySession(circleId: string, monthlyAmountUSDC: number, v
       // 1. Build Rhinestone Session Mandate Parameters for THIS specific user
       const mandatePayload = {
         circleId,
-        memberAddress: smartWalletAddress.toLowerCase(),
+        memberAddress: authWallet,
         monthlyAmount: monthlyAmountUSDC.toString(),
         monthlyAmountBaseUnits: parsedAmount,
         tokenAddress: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // Base Sepolia USDC
@@ -144,15 +160,37 @@ export function useAutoPaySession(circleId: string, monthlyAmountUSDC: number, v
       };
 
       const sessionHash = keccak256(toHex(JSON.stringify(mandatePayload)));
-      const sessionId = `ss-${Date.now().toString(36)}-${smartWalletAddress.slice(2, 6)}`;
+      const sessionId = `ss-${Date.now().toString(36)}-${authWallet.slice(2, 6)}`;
+      const nowStr = new Date().toISOString();
 
-      // 2. Persist ONLY this user's consent mandate to database
+      // Optimistically update local state immediately
+      setSessionData({
+        sessionId,
+        sessionHash,
+        grantedAt: nowStr,
+        status: "ACTIVE",
+        timeFramePolicy: "Strict 30-Day Interval (TimeFramePolicy)",
+        spendingLimitPolicy: `Strict ${monthlyAmountUSDC} USDC / month (ERC20SpendingLimitPolicy)`,
+      });
+
+      setAllMemberConsents((prev) => {
+        const next = [...prev.filter((c) => c.memberAddress !== authWallet)];
+        next.push({
+          memberAddress: authWallet,
+          status: "GIVEN",
+          grantedAt: nowStr,
+          sessionId,
+        });
+        return next;
+      });
+
+      // 2. Persist consent mandate to database
       const res = await fetch("/api/autopay/consent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           circleId,
-          memberAddress: smartWalletAddress.toLowerCase(),
+          memberAddress: authWallet,
           status: "GIVEN",
           sessionId,
           txHash: sessionHash,
@@ -164,17 +202,12 @@ export function useAutoPaySession(circleId: string, monthlyAmountUSDC: number, v
         throw new Error("Failed to register session mandate in database");
       }
 
-      setSessionData({
-        sessionId,
-        sessionHash,
-        grantedAt: new Date().toISOString(),
-        status: "ACTIVE",
-        timeFramePolicy: "Strict 30-Day Interval (TimeFramePolicy)",
-        spendingLimitPolicy: `Strict ${monthlyAmountUSDC} USDC / month (ERC20SpendingLimitPolicy)`,
-      });
-
-      // Refresh all member consents
+      // Refresh all member consents to confirm on-chain / server state
       await loadConsent();
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("chitchain_autopay_updated"));
+      }
 
       return { success: true, sessionId, sessionHash };
     } catch (err: any) {
@@ -184,7 +217,7 @@ export function useAutoPaySession(circleId: string, monthlyAmountUSDC: number, v
     } finally {
       setIsAuthorizing(false);
     }
-  }, [circleId, monthlyAmountUSDC, smartWalletAddress, vaultAddress, loadConsent]);
+  }, [circleId, monthlyAmountUSDC, smartWalletAddress, devUser?.walletAddress, vaultAddress, loadConsent]);
 
   const [walletBalanceUSDC, setWalletBalanceUSDC] = useState<number>(100000);
   const [circleVaultUSDC, setCircleVaultUSDC] = useState<number>(0);

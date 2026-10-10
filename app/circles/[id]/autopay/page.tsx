@@ -38,22 +38,41 @@ export default function AutoPayDedicatedPage() {
   const durationMonths = circle?.durationMonths || 3;
   const circleName = circle?.name || "Chit Circle";
 
-  const membersList = circle
-    ? [
-        {
-          walletAddress: circle.volunteerWallet,
-          username: circle.volunteerUsername || "volunteer",
-          displayName: circle.volunteerUsername ? `@${circle.volunteerUsername}` : "Volunteer Leader",
-          isVolunteer: true,
-        },
-        ...(circle.invites || []).map((inv: any) => ({
-          walletAddress: inv.inviteeWallet,
-          username: inv.inviteeUsername,
-          displayName: `@${inv.inviteeUsername}`,
-          isVolunteer: false,
-        })),
-      ]
-    : [];
+  // Deduplicate members list by wallet address to avoid duplicate volunteer entries
+  const memberMap = new Map<string, any>();
+  if (circle?.volunteerWallet) {
+    const vWallet = circle.volunteerWallet.toLowerCase();
+    memberMap.set(vWallet, {
+      walletAddress: circle.volunteerWallet,
+      username: circle.volunteerUsername || "volunteer",
+      displayName: circle.volunteerUsername ? `@${circle.volunteerUsername}` : "Volunteer Leader",
+      isVolunteer: true,
+    });
+  }
+
+  (circle?.invites || []).forEach((inv: any) => {
+    if (inv.status !== "REJECTED") {
+      const w = (inv.inviteeWallet || "").toLowerCase();
+      if (w) {
+        const existing = memberMap.get(w);
+        if (existing) {
+          if (inv.inviteeUsername) {
+            existing.username = inv.inviteeUsername;
+            existing.displayName = `@${inv.inviteeUsername}`;
+          }
+        } else {
+          memberMap.set(w, {
+            walletAddress: inv.inviteeWallet,
+            username: inv.inviteeUsername || "member",
+            displayName: `@${inv.inviteeUsername || "member"}`,
+            isVolunteer: false,
+          });
+        }
+      }
+    }
+  });
+
+  const membersList = Array.from(memberMap.values());
 
   return (
     <div className="min-h-screen bg-[#07090e] text-white p-4 sm:p-8">

@@ -65,15 +65,36 @@ export function AutoPayAuthorization({
   const [activeTab, setActiveTab] = useState<"overview" | "members" | "layers" | "bookend" | "simulator">("overview");
 
   const totalReserveBuffer = monthlyAmountUSDC * 3;
-  const isCurrentUserAuthorized = !!sessionData && sessionData.status === "ACTIVE";
+  const isCurrentUserAuthorized =
+    (!!sessionData && sessionData.status === "ACTIVE") ||
+    allMemberConsents.some(
+      (c) =>
+        ((smartWalletAddress && c.memberAddress.toLowerCase() === smartWalletAddress.toLowerCase()) ||
+          (user?.walletAddress && c.memberAddress.toLowerCase() === user.walletAddress.toLowerCase())) &&
+        c.status === "GIVEN"
+    );
+
+  // Helper to consistently check if a specific circle member has authorized their mandate
+  const checkMemberConsent = (m: MemberItem) => {
+    const normW = (m.walletAddress || "").toLowerCase();
+    const isOwner =
+      (normW && smartWalletAddress && normW === smartWalletAddress.toLowerCase()) ||
+      (normW && user?.walletAddress && normW === user.walletAddress.toLowerCase());
+
+    if (isOwner && isCurrentUserAuthorized) {
+      return true;
+    }
+
+    return allMemberConsents.some(
+      (c) =>
+        (normW && c.memberAddress.toLowerCase() === normW && c.status === "GIVEN") ||
+        (m.username && c.memberAddress.toLowerCase() === m.username.toLowerCase() && c.status === "GIVEN")
+    );
+  };
 
   // Check which members have granted their own mandates
   const activeMandateCount = members.reduce((acc, m) => {
-    const isOwner = m.walletAddress.toLowerCase() === smartWalletAddress.toLowerCase() && isCurrentUserAuthorized;
-    const isConsentGiven = allMemberConsents.some(
-      (c) => c.memberAddress.toLowerCase() === m.walletAddress.toLowerCase() && c.status === "GIVEN"
-    );
-    return acc + (isOwner || isConsentGiven ? 1 : 0);
+    return acc + (checkMemberConsent(m) ? 1 : 0);
   }, 0);
 
   const totalMembersCount = members.length > 0 ? members.length : 1;
@@ -523,13 +544,12 @@ export function AutoPayAuthorization({
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {members.map((m) => {
-                  const isCurrent = m.walletAddress.toLowerCase() === smartWalletAddress.toLowerCase();
-                  const hasConsent =
-                    (isCurrent && isCurrentUserAuthorized) ||
-                    allMemberConsents.some(
-                      (c) => c.memberAddress.toLowerCase() === m.walletAddress.toLowerCase() && c.status === "GIVEN"
-                    );
-                  const isPoolingThis = poolingMemberWallet === m.walletAddress.toLowerCase();
+                  const normW = (m.walletAddress || "").toLowerCase();
+                  const isCurrent =
+                    (normW && smartWalletAddress && normW === smartWalletAddress.toLowerCase()) ||
+                    (normW && user?.walletAddress && normW === user.walletAddress.toLowerCase());
+                  const hasConsent = checkMemberConsent(m);
+                  const isPoolingThis = poolingMemberWallet === normW;
 
                   return (
                     <div
@@ -610,13 +630,12 @@ export function AutoPayAuthorization({
               </div>
             ) : (
               members.map((m) => {
-                const isCurrent = m.walletAddress.toLowerCase() === smartWalletAddress.toLowerCase();
-                const hasConsent =
-                  (isCurrent && isCurrentUserAuthorized) ||
-                  allMemberConsents.some(
-                    (c) => c.memberAddress.toLowerCase() === m.walletAddress.toLowerCase() && c.status === "GIVEN"
-                  );
-                const isPoolingThis = poolingMemberWallet === m.walletAddress.toLowerCase();
+                const normW = (m.walletAddress || "").toLowerCase();
+                const isCurrent =
+                  (normW && smartWalletAddress && normW === smartWalletAddress.toLowerCase()) ||
+                  (normW && user?.walletAddress && normW === user.walletAddress.toLowerCase());
+                const hasConsent = checkMemberConsent(m);
+                const isPoolingThis = poolingMemberWallet === normW;
 
                 return (
                   <div
@@ -655,7 +674,7 @@ export function AutoPayAuthorization({
                           </div>
                           {isCurrent && (
                             <button
-                              onClick={() => authorizeSmartSession()}
+                              onClick={() => authorizeSmartSession(m.walletAddress)}
                               disabled={isAuthorizing}
                               className="px-3 py-1 rounded-xl bg-white text-black font-semibold text-xs hover:bg-neutral-200 transition-colors cursor-pointer disabled:opacity-50 shadow-sm"
                             >
