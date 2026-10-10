@@ -1,6 +1,7 @@
 import { keccak256, encodePacked, toHex } from "viem";
 import { fromBaseUnits } from "./validation";
 import { getUserByUsername, getUserByWallet } from "./users";
+import { getCircleRecordById } from "./circles-store";
 
 export interface BidRecord {
   memberWallet: string;
@@ -18,6 +19,9 @@ export interface BiddingAuctionState {
   phase: "Commit" | "Reveal" | "Settled";
   totalPool: string; // base units e.g. "4000000000" (4,000 USDC)
   floorBid: string;  // base units e.g. "2000000000" (2,000 USDC, 50% floor)
+  capacity?: number;
+  durationMonths?: number;
+  monthlyAmount?: string;
   bids: BidRecord[];
   winner: {
     wallet: string;
@@ -40,6 +44,23 @@ if (!g.__chitchain_bid_secrets__) {
 }
 const bidSecrets: Map<string, { amountBaseUnits: string; salt: `0x${string}` }> = g.__chitchain_bid_secrets__;
 
+export async function syncCirclePoolParams(circleId: string, state: BiddingAuctionState) {
+  try {
+    const { circle } = await getCircleRecordById(circleId);
+    if (circle && circle.numPeople && circle.monthlyAmount) {
+      const potBaseUnits = (BigInt(circle.monthlyAmount) * BigInt(circle.numPeople)).toString();
+      const floorBaseUnits = (BigInt(potBaseUnits) / 2n).toString();
+      state.totalPool = potBaseUnits;
+      state.floorBid = floorBaseUnits;
+      state.capacity = circle.numPeople;
+      state.durationMonths = circle.durationMonths;
+      state.monthlyAmount = circle.monthlyAmount;
+    }
+  } catch (err) {
+    // keep existing values if circle not in store
+  }
+}
+
 export function getOrCreateAuctionState(circleId: string): BiddingAuctionState {
   const normId = circleId || "sample-circle-4m-3mo";
   let state = auctions.get(normId);
@@ -50,6 +71,7 @@ export function getOrCreateAuctionState(circleId: string): BiddingAuctionState {
       phase: "Commit",
       totalPool: "4000000000", // 4,000 USDC
       floorBid: "2000000000",  // 2,000 USDC (50% floor)
+      capacity: 4,
       bids: [],
       winner: null,
     };
@@ -118,6 +140,7 @@ export async function getBiddingAuctionState(
   requestingUserWallet?: string
 ): Promise<BiddingAuctionState> {
   const state = getOrCreateAuctionState(circleId);
+  await syncCirclePoolParams(circleId, state);
   const normReq = requestingUserWallet?.toLowerCase().trim();
 
   // Mask unrevealed amounts and salts for confidentiality
@@ -151,6 +174,7 @@ export async function commitSecretBid(params: {
   salt?: `0x${string}`;
 }): Promise<BidRecord> {
   const state = getOrCreateAuctionState(params.circleId);
+  await syncCirclePoolParams(params.circleId, state);
 
   if (state.phase !== "Commit") {
     throw new Error(`Cannot commit bid: Auction is currently in ${state.phase} phase`);
@@ -202,8 +226,9 @@ export async function commitSecretBid(params: {
 
   state.bids.push(newBid);
 
-  // When all 4 demo participants (or total circle capacity) have committed, advance to Reveal
-  if (state.bids.length >= 4) {
+  // When all circle participants (capacity, default 4) have committed, advance to Reveal
+  const targetCount = state.capacity || 4;
+  if (state.bids.length >= targetCount) {
     state.phase = "Reveal";
   }
 
