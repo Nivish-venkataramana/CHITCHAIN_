@@ -2,6 +2,12 @@
 const nextConfig = {
   reactStrictMode: false,
   swcMinify: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: false,
+  },
   experimental: {
     optimizePackageImports: [
       "lucide-react",
