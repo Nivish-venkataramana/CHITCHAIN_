@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useDevUser } from "@/components/providers";
@@ -25,6 +25,7 @@ import {
 import { generateSecureSalt, deriveDemoSalt } from "@/lib/bidding-store";
 
 const PROTOCOL_VAULT_ADDRESS = "0x33dD04441C48D92B71dA84DFa1bf61538C562651";
+const USER_BASE_WALLET = "0x30B57439583BA53ADC20BbadfE79018A204C8186";
 
 interface BidInfo {
   memberWallet: string;
@@ -64,7 +65,7 @@ interface CircleDetails {
   durationMonths: number;
   status: "INVITING" | "ISSUE_STAGE" | "FINALIZED";
   vaultAddress?: string | null;
-  invites: Array<{
+  invites?: Array<{
     id: string;
     inviteeWallet: string;
     inviteeUsername: string;
@@ -102,20 +103,20 @@ interface MonthSimulation {
   }>;
 }
 
-// Fallback pool of sample members if circle invites are fewer than capacity
-const FALLBACK_MEMBERS = [
-  { username: "asharao01", displayName: "Asha Rao", wallet: "0x1111111111111111111111111111111111111111" },
-  { username: "vikramnair02", displayName: "Vikram Nair", wallet: "0x2222222222222222222222222222222222222222" },
-  { username: "meerajoshi03", displayName: "Meera Joshi", wallet: "0x3333333333333333333333333333333333333333" },
-  { username: "rohandas04", displayName: "Rohan Das", wallet: "0x4444444444444444444444444444444444444444" },
-  { username: "arjunpatel06", displayName: "Arjun Patel", wallet: "0x5555555555555555555555555555555555555555" },
+// Benchmark participant pool
+const DEFAULT_PARTICIPANTS: ParticipantInfo[] = [
+  { username: "pranavpk3047", displayName: "Pranav PK (Volunteer)", wallet: USER_BASE_WALLET, targetBid: "3800", isVolunteer: true },
+  { username: "asharao01", displayName: "Asha Rao", wallet: "0x1111111111111111111111111111111111111111", targetBid: "3900" },
+  { username: "vikramnair02", displayName: "Vikram Nair", wallet: "0x2222222222222222222222222222222222222222", targetBid: "3800" },
+  { username: "meerajoshi03", displayName: "Meera Joshi", wallet: "0x3333333333333333333333333333333333333333", targetBid: "3850" },
+  { username: "rohandas04", displayName: "Rohan Das", wallet: "0x4444444444444444444444444444444444444444", targetBid: "3950" },
 ];
 
 function parseUSDC(val: string | number | undefined | null): number {
   if (val === undefined || val === null || val === "") return 1000;
   const str = String(val).trim().replace(/,/g, "");
   const num = parseFloat(str);
-  if (isNaN(num)) return 1000;
+  if (isNaN(num) || num <= 0) return 1000;
   if (num >= 100_000 && !str.includes(".")) {
     return num / 1_000_000;
   }
@@ -139,7 +140,7 @@ function formatUSDC(val: string | number | undefined | null): string {
 
 export default function BiddingModulePage() {
   const params = useParams();
-  const circleId = (params?.id as string) || "";
+  const circleId = (params?.id as string) || "sample-circle";
   const { user, setUser } = useDevUser();
 
   const [circle, setCircle] = useState<CircleDetails | null>(null);
@@ -193,16 +194,16 @@ export default function BiddingModulePage() {
   const floorBidNum = Math.floor(totalPotNum / 2);
   const reserve3xNum = 3 * monthlyAmountNum;
 
-  // Build the dynamic Participant Board from the circle's actual members
+  // Dynamic participant list built safely
   const participants = useMemo<ParticipantInfo[]>(() => {
     const list: ParticipantInfo[] = [];
     const seenUsernames = new Set<string>();
 
-    // 1. Volunteer
+    // 1. Volunteer from Circle
     if (circle?.volunteerUsername || circle?.volunteerWallet) {
       const vUser = (circle.volunteerUsername || "volunteer").replace(/^@/, "");
       seenUsernames.add(vUser.toLowerCase());
-      const vWallet = circle.volunteerWallet || PROTOCOL_VAULT_ADDRESS;
+      const vWallet = circle.volunteerWallet || USER_BASE_WALLET;
       list.push({
         username: vUser,
         displayName: `${vUser} (Volunteer)`,
@@ -212,9 +213,10 @@ export default function BiddingModulePage() {
       });
     }
 
-    // 2. Invites from circle
+    // 2. Invites from Circle
     if (circle?.invites && Array.isArray(circle.invites)) {
       for (const inv of circle.invites) {
+        if (!inv?.inviteeUsername) continue;
         const u = inv.inviteeUsername.replace(/^@/, "");
         if (!seenUsernames.has(u.toLowerCase())) {
           seenUsernames.add(u.toLowerCase());
@@ -231,24 +233,24 @@ export default function BiddingModulePage() {
       }
     }
 
-    // 3. Fill up to circle capacity with benchmark members if circle invites are pending
-    for (const fb of FALLBACK_MEMBERS) {
+    // 3. Fill up to capacity from defaults
+    for (const p of DEFAULT_PARTICIPANTS) {
       if (list.length >= capacity) break;
-      if (!seenUsernames.has(fb.username.toLowerCase())) {
-        seenUsernames.add(fb.username.toLowerCase());
+      if (!seenUsernames.has(p.username.toLowerCase())) {
+        seenUsernames.add(p.username.toLowerCase());
         const idx = list.length;
         const discountMult = Math.min(0.99, 0.95 + idx * 0.0125);
         list.push({
-          username: fb.username,
-          displayName: fb.displayName,
-          wallet: fb.wallet,
+          username: p.username,
+          displayName: p.displayName,
+          wallet: p.wallet,
           targetBid: String(Math.max(floorBidNum, Math.round(totalPotNum * discountMult))),
-          isVolunteer: false,
+          isVolunteer: p.isVolunteer,
         });
       }
     }
 
-    return list;
+    return list.length > 0 ? list : DEFAULT_PARTICIPANTS;
   }, [circle, capacity, totalPotNum, floorBidNum]);
 
   // Adjust suggested target bid whenever demo user changes
@@ -265,7 +267,7 @@ export default function BiddingModulePage() {
     }
   }, [user?.username, participants, totalPotNum, floorBidNum]);
 
-  // Realtime client validation against 50% floor and total pool
+  // Realtime client validation
   useEffect(() => {
     const raw = String(bidAmount || "").trim().replace(/,/g, "");
     if (!raw) {
@@ -292,7 +294,7 @@ export default function BiddingModulePage() {
     setValidationError(null);
   }, [bidAmount, floorBidNum, totalPotNum]);
 
-  // Build Dynamic Multi-Month Simulation Data based on Circle Parameters & Actual Members
+  // Build Dynamic Multi-Month Simulation Data safely
   const dynamicSimulation = useMemo<MonthSimulation[]>(() => {
     const months: MonthSimulation[] = [];
     const membersPool = [...participants];
@@ -380,7 +382,22 @@ export default function BiddingModulePage() {
       });
     }
 
-    return months;
+    return months.length > 0
+      ? months
+      : [
+          {
+            month: 1,
+            potAmount: formatUSDC(totalPotNum),
+            floorAmount: formatUSDC(floorBidNum),
+            winnerUsername: "vikramnair02",
+            winnerDisplayName: "Vikram Nair",
+            winnerWallet: "0x2222222222222222222222222222222222222222",
+            winningBid: formatUSDC(Math.round(totalPotNum * 0.95)),
+            dividend: formatUSDC(Math.round(totalPotNum * 0.05)),
+            dividendPerMember: formatUSDC(Math.floor((totalPotNum * 0.05) / 4)),
+            bids: [],
+          },
+        ];
   }, [participants, durationMonths, totalPotNum, floorBidNum, capacity]);
 
   // Auto-play timer for full simulation
@@ -432,7 +449,9 @@ export default function BiddingModulePage() {
     try {
       const salt = generateSecureSalt();
       const storageKey = `chitchain_bid_secret_${circleId}_${user.username}`;
-      localStorage.setItem(storageKey, JSON.stringify({ amount: bidAmount, salt }));
+      if (typeof window !== "undefined") {
+        localStorage.setItem(storageKey, JSON.stringify({ amount: bidAmount, salt }));
+      }
 
       const res = await fetch(`/api/circles/${encodeURIComponent(circleId)}/bidding/commit`, {
         method: "POST",
@@ -464,16 +483,18 @@ export default function BiddingModulePage() {
 
     try {
       const storageKey = `chitchain_bid_secret_${circleId}_${user.username}`;
-      const saved = localStorage.getItem(storageKey);
       let parsedAmount = bidAmount;
       let parsedSalt = deriveDemoSalt(circleId, state?.cycle || 1, user.walletAddress);
 
-      if (saved) {
-        try {
-          const obj = JSON.parse(saved);
-          if (obj.amount) parsedAmount = obj.amount;
-          if (obj.salt) parsedSalt = obj.salt;
-        } catch {}
+      if (typeof window !== "undefined") {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          try {
+            const obj = JSON.parse(saved);
+            if (obj.amount) parsedAmount = obj.amount;
+            if (obj.salt) parsedSalt = obj.salt;
+          } catch {}
+        }
       }
 
       const num = parseFloat(parsedAmount);
@@ -520,7 +541,7 @@ export default function BiddingModulePage() {
     }
   };
 
-  // Quick 1-Click Demo Auction Simulation for all members in this circle
+  // Quick 1-Click Demo Auction Simulation
   const handleQuickDemoRun = async () => {
     setSubmitting(true);
     setError(null);
@@ -593,7 +614,20 @@ export default function BiddingModulePage() {
   const floorFormatted = formatUSDC(floorBidNum);
   const committedCount = state?.bids?.length || 0;
   const revealedCount = state?.bids?.filter((b) => b?.revealed)?.length || 0;
-  const currentSimMonth = dynamicSimulation.find((m) => m.month === selectedMonthTab) || dynamicSimulation[0];
+  const currentSimMonth =
+    dynamicSimulation.find((m) => m.month === selectedMonthTab) ||
+    dynamicSimulation[0] || {
+      month: 1,
+      potAmount: poolFormatted,
+      floorAmount: floorFormatted,
+      winnerUsername: "participant",
+      winnerDisplayName: "Participant",
+      winnerWallet: "0x0",
+      winningBid: poolFormatted,
+      dividend: "0",
+      dividendPerMember: "0",
+      bids: [],
+    };
 
   return (
     <div className="w-full max-w-4xl mx-auto py-6 px-4 space-y-6 text-neutral-100">
@@ -741,13 +775,13 @@ export default function BiddingModulePage() {
 
             {/* BaseScan Contract Verification Link */}
             <a
-              href={`https://sepolia.basescan.org/address/${PROTOCOL_VAULT_ADDRESS}`}
+              href={`https://sepolia.basescan.org/address/${USER_BASE_WALLET}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-[10px] font-mono text-neutral-400 hover:text-white flex items-center gap-1 underline decoration-dotted transition-colors"
               title="View on BaseScan Explorer"
             >
-              <span>Contract: {PROTOCOL_VAULT_ADDRESS.slice(0, 6)}...{PROTOCOL_VAULT_ADDRESS.slice(-4)}</span>
+              <span>Wallet: {USER_BASE_WALLET.slice(0, 6)}...{USER_BASE_WALLET.slice(-4)}</span>
               <ExternalLink className="h-3 w-3" />
             </a>
           </div>
@@ -1149,34 +1183,40 @@ export default function BiddingModulePage() {
                   </div>
 
                   <div className="space-y-2">
-                    {currentSimMonth.bids.map((b) => (
-                      <div
-                        key={b.username}
-                        className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono transition-all ${
-                          b.isWinner
-                            ? "border-emerald-500/60 bg-emerald-950/30 text-white shadow-sm"
-                            : "border-white/5 bg-white/[0.01] text-neutral-300"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-white">@{b.username}</span>
-                          <span className="text-neutral-400 text-[11px]">({b.displayName})</span>
-                          {b.isWinner && (
-                            <span className="px-2 py-0.5 rounded-full bg-emerald-500 text-black font-extrabold text-[9px] uppercase tracking-wider flex items-center gap-1">
-                              <Trophy className="h-2.5 w-2.5" />
-                              Winner
-                            </span>
-                          )}
-                        </div>
+                    {currentSimMonth.bids && currentSimMonth.bids.length > 0 ? (
+                      currentSimMonth.bids.map((b) => (
+                        <div
+                          key={b.username}
+                          className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono transition-all ${
+                            b.isWinner
+                              ? "border-emerald-500/60 bg-emerald-950/30 text-white shadow-sm"
+                              : "border-white/5 bg-white/[0.01] text-neutral-300"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-white">@{b.username}</span>
+                            <span className="text-neutral-400 text-[11px]">({b.displayName})</span>
+                            {b.isWinner && (
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-500 text-black font-extrabold text-[9px] uppercase tracking-wider flex items-center gap-1">
+                                <Trophy className="h-2.5 w-2.5" />
+                                Winner
+                              </span>
+                            )}
+                          </div>
 
-                        <div className="flex items-center justify-between sm:justify-end gap-3 text-right">
-                          <span className="text-[11px] text-neutral-400">{b.note}</span>
-                          <span className={`text-sm font-bold ${b.isWinner ? "text-emerald-400" : "text-white"}`}>
-                            {b.amount === "—" ? "—" : `${b.amount} USDC`}
-                          </span>
+                          <div className="flex items-center justify-between sm:justify-end gap-3 text-right">
+                            <span className="text-[11px] text-neutral-400">{b.note}</span>
+                            <span className={`text-sm font-bold ${b.isWinner ? "text-emerald-400" : "text-white"}`}>
+                              {b.amount === "—" ? "—" : `${b.amount} USDC`}
+                            </span>
+                          </div>
                         </div>
+                      ))
+                    ) : (
+                      <div className="p-3 text-center text-xs text-neutral-500 font-mono">
+                        Bids calculated for cycle progression.
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               </div>
