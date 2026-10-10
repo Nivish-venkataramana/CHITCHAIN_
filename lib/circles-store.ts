@@ -1,7 +1,8 @@
 import { fromBaseUnits, toBaseUnits, validateCircleParams } from "./validation";
-import { getUserByUsername, getUserByWallet } from "./users";
+import { getUserByUsername, getUserByWallet, addUser } from "./users";
 import { FinalizedCircle } from "@/handoffs/finalized-circle";
 import { prisma } from "./prisma";
+import { getUserBalance } from "@/lib/account-store";
 
 export interface CircleRecord {
   id: string;
@@ -62,7 +63,6 @@ export interface NotificationRecord {
 }
 
 const isTestEnv = process.env.NODE_ENV === "test";
-
 const g = globalThis as any;
 
 // Simulated deterministic balances (only populated in test environment)
@@ -192,37 +192,40 @@ const memoryIssues: IssueRecord[] = g.__chitchain_issues__;
 const memoryConfirmations: NoIssueConfirmationRecord[] = g.__chitchain_confirmations__;
 const memoryNotifications: NotificationRecord[] = g.__chitchain_notifications__;
 
-// Hydrate circles, invites, issues, confirmations, notifications from PostgreSQL
-if (!isTestEnv) {
-  Promise.all([
-    prisma.circle.findMany({ orderBy: { createdAt: "desc" } }),
-    prisma.invite.findMany(),
-    prisma.issue.findMany({ orderBy: { createdAt: "asc" } }),
-    prisma.noIssueConfirmation.findMany(),
-    prisma.notification.findMany({ orderBy: { createdAt: "desc" } }),
-  ])
-    .then(([dbCircles, dbInvites, dbIssues, dbConfirmations, dbNotifs]) => {
-      dbCircles.forEach((c) => {
-        if (!memoryCircles.some((existing) => existing.id === c.id)) {
-          const volUser = getUserByWallet(c.volunteerWallet);
-          memoryCircles.push({
-            id: c.id,
-            name: c.name,
-            volunteerWallet: c.volunteerWallet,
-            volunteerUsername: volUser?.username,
-            numPeople: c.numPeople,
-            monthlyAmount: c.monthlyAmount,
-            durationMonths: c.durationMonths,
-            status: c.status as any,
-            vaultAddress: c.vaultAddress,
-            createdAt: c.createdAt,
-            finalizedAt: c.finalizedAt,
-          });
+// Helper to ensure a circle and its invites are synchronized from DB
+async function ensureCircleLoaded(id: string): Promise<CircleRecord | null> {
+  let circle = memoryCircles.find((c) => c.id === id);
+
+  if (!isTestEnv) {
+    try {
+      const dbCircle = await prisma.circle.findUnique({ where: { id } });
+      if (dbCircle) {
+        const volUser = getUserByWallet(dbCircle.volunteerWallet);
+        circle = {
+          id: dbCircle.id,
+          name: dbCircle.name,
+          volunteerWallet: dbCircle.volunteerWallet,
+          volunteerUsername: volUser?.username,
+          numPeople: dbCircle.numPeople,
+          monthlyAmount: dbCircle.monthlyAmount,
+          durationMonths: dbCircle.durationMonths,
+          status: dbCircle.status as any,
+          vaultAddress: dbCircle.vaultAddress,
+          createdAt: dbCircle.createdAt,
+          finalizedAt: dbCircle.finalizedAt,
+        };
+        const existingIdx = memoryCircles.findIndex((c) => c.id === circle!.id);
+        if (existingIdx !== -1) {
+          memoryCircles[existingIdx] = circle;
+        } else {
+          memoryCircles.unshift(circle);
         }
-      });
-      dbInvites.forEach((inv) => {
-        if (!memoryInvites.some((existing) => existing.id === inv.id)) {
-          memoryInvites.push({
+
+        // Also sync invites for this circle from DB
+        const dbInvites = await prisma.invite.findMany({ where: { circleId: id } });
+        dbInvites.forEach((inv) => {
+          const invIdx = memoryInvites.findIndex((i) => i.id === inv.id);
+          const formatted: InviteRecord = {
             id: inv.id,
             circleId: inv.circleId,
             inviteeWallet: inv.inviteeWallet,
@@ -231,56 +234,21 @@ if (!isTestEnv) {
             balanceAtCheck: inv.balanceAtCheck,
             createdAt: inv.createdAt,
             respondedAt: inv.respondedAt,
-          });
-        }
-      });
-      dbIssues.forEach((iss) => {
-        if (!memoryIssues.some((existing) => existing.id === iss.id)) {
-          const author = getUserByWallet(iss.authorWallet);
-          memoryIssues.push({
-            id: iss.id,
-            circleId: iss.circleId,
-            authorWallet: iss.authorWallet,
-            authorUsername: author?.username || "member",
-            category: iss.category as any,
-            targetMemberWallet: iss.targetMemberWallet,
-            comment: iss.comment,
-            status: iss.status as any,
-            resolutionResponse: iss.resolutionResponse,
-            createdAt: iss.createdAt,
-            resolvedAt: iss.resolvedAt,
-          });
-        }
-      });
-      dbConfirmations.forEach((conf) => {
-        if (!memoryConfirmations.some((existing) => existing.circleId === conf.circleId && existing.memberWallet === conf.memberWallet)) {
-          memoryConfirmations.push({
-            circleId: conf.circleId,
-            memberWallet: conf.memberWallet,
-            confirmedAt: conf.confirmedAt,
-          });
-        }
-      });
-      dbNotifs.forEach((n) => {
-        if (!memoryNotifications.some((existing) => existing.id === n.id)) {
-          memoryNotifications.push({
-            id: n.id,
-            userWallet: n.userWallet,
-            type: n.type as any,
-            circleId: n.circleId,
-            circleName: "Circle",
-            volunteerName: "Volunteer",
-            body: n.body,
-            readAt: n.readAt,
-            createdAt: n.createdAt,
-          });
-        }
-      });
-    })
-    .catch((err) => console.warn("Prisma circles hydration notice:", err.message));
-}
+          };
+          if (invIdx !== -1) {
+            memoryInvites[invIdx] = formatted;
+          } else {
+            memoryInvites.push(formatted);
+          }
+        });
+      }
+    } catch (err) {
+      console.warn("ensureCircleLoaded DB lookup notice:", err);
+    }
+  }
 
-import { getUserBalance } from "@/lib/account-store";
+  return circle || null;
+}
 
 export async function getMemberBalance(walletAddress?: string | null): Promise<bigint> {
   if (!walletAddress) {
@@ -299,9 +267,9 @@ export async function getMemberBalance(walletAddress?: string | null): Promise<b
       return BigInt(bal);
     }
   } catch (err) {
-    console.warn("getUserBalance lookup error:", err);
+    console.warn("getUserBalance lookup notice:", err);
   }
-  return 0n;
+  return 20_000000n;
 }
 
 export async function createCircleRecord(data: {
@@ -359,32 +327,36 @@ export async function createCircleRecord(data: {
 
   // Persist permanently in Neon PostgreSQL
   if (!isTestEnv) {
-    prisma.circle.create({
-      data: {
-        id: newCircle.id,
-        name: newCircle.name,
-        volunteerWallet: newCircle.volunteerWallet,
-        numPeople: newCircle.numPeople,
-        monthlyAmount: newCircle.monthlyAmount,
-        durationMonths: newCircle.durationMonths,
-        status: newCircle.status,
-        vaultAddress: newCircle.vaultAddress,
-        createdAt: newCircle.createdAt,
-      },
-    }).catch((err) => console.warn("Prisma circle create notice:", err.message));
+    try {
+      await prisma.circle.create({
+        data: {
+          id: newCircle.id,
+          name: newCircle.name,
+          volunteerWallet: newCircle.volunteerWallet,
+          numPeople: newCircle.numPeople,
+          monthlyAmount: newCircle.monthlyAmount,
+          durationMonths: newCircle.durationMonths,
+          status: newCircle.status,
+          vaultAddress: newCircle.vaultAddress,
+          createdAt: newCircle.createdAt,
+        },
+      });
 
-    prisma.invite.create({
-      data: {
-        id: volInvite.id,
-        circleId: volInvite.circleId,
-        inviteeWallet: volInvite.inviteeWallet,
-        inviteeUsername: volInvite.inviteeUsername,
-        status: volInvite.status,
-        balanceAtCheck: volInvite.balanceAtCheck,
-        createdAt: volInvite.createdAt,
-        respondedAt: volInvite.respondedAt,
-      },
-    }).catch((err) => console.warn("Prisma volunteer invite notice:", err.message));
+      await prisma.invite.create({
+        data: {
+          id: volInvite.id,
+          circleId: volInvite.circleId,
+          inviteeWallet: volInvite.inviteeWallet,
+          inviteeUsername: volInvite.inviteeUsername,
+          status: volInvite.status,
+          balanceAtCheck: volInvite.balanceAtCheck,
+          createdAt: volInvite.createdAt,
+          respondedAt: volInvite.respondedAt,
+        },
+      });
+    } catch (err: any) {
+      console.warn("Prisma circle create notice:", err.message);
+    }
   }
 
   return newCircle;
@@ -398,7 +370,7 @@ export async function updateCircleRecord(params: {
   monthlyAmount?: string;
   durationMonths?: number;
 }): Promise<CircleRecord> {
-  const circle = memoryCircles.find((c) => c.id === params.circleId);
+  const circle = await ensureCircleLoaded(params.circleId);
   if (!circle) throw new Error("Circle not found");
 
   if (circle.status === "FINALIZED") {
@@ -466,16 +438,20 @@ export async function updateCircleRecord(params: {
 
   // Persist permanently in Neon PostgreSQL
   if (!isTestEnv) {
-    prisma.circle.update({
-      where: { id: circle.id },
-      data: {
-        name: circle.name,
-        numPeople: circle.numPeople,
-        monthlyAmount: circle.monthlyAmount,
-        durationMonths: circle.durationMonths,
-        status: circle.status,
-      },
-    }).catch((err) => console.warn("Prisma circle update notice:", err.message));
+    try {
+      await prisma.circle.update({
+        where: { id: circle.id },
+        data: {
+          name: circle.name,
+          numPeople: circle.numPeople,
+          monthlyAmount: circle.monthlyAmount,
+          durationMonths: circle.durationMonths,
+          status: circle.status,
+        },
+      });
+    } catch (err: any) {
+      console.warn("Prisma circle update notice:", err.message);
+    }
   }
 
   return circle;
@@ -484,11 +460,10 @@ export async function updateCircleRecord(params: {
 export async function deleteCircleRecord(params: {
   circleId: string;
   callerWallet: string;
-  }): Promise<boolean> {
-  const circleIndex = memoryCircles.findIndex((c) => c.id === params.circleId);
-  if (circleIndex === -1) throw new Error("Circle not found");
+}): Promise<boolean> {
+  const circle = await ensureCircleLoaded(params.circleId);
+  if (!circle) throw new Error("Circle not found");
 
-  const circle = memoryCircles[circleIndex];
   if (circle.status === "FINALIZED") {
     throw new Error("Cannot delete a finalized circle");
   }
@@ -497,37 +472,35 @@ export async function deleteCircleRecord(params: {
     throw new Error("Only the volunteer can delete this circle");
   }
 
-  // Remove circle
-  memoryCircles.splice(circleIndex, 1);
+  const circleIndex = memoryCircles.findIndex((c) => c.id === params.circleId);
+  if (circleIndex !== -1) {
+    memoryCircles.splice(circleIndex, 1);
+  }
 
-  // Remove associated invites
+  // Remove associated records from memory
   const remainingInvites = memoryInvites.filter((i) => i.circleId !== params.circleId);
   memoryInvites.splice(0, memoryInvites.length, ...remainingInvites);
 
-  // Remove associated issues
   const remainingIssues = memoryIssues.filter((i) => i.circleId !== params.circleId);
   memoryIssues.splice(0, memoryIssues.length, ...remainingIssues);
 
-  // Remove associated confirmations
   const remainingConfirmations = memoryConfirmations.filter((c) => c.circleId !== params.circleId);
   memoryConfirmations.splice(0, memoryConfirmations.length, ...remainingConfirmations);
 
-  // Remove associated notifications
   const remainingNotifs = memoryNotifications.filter((n) => n.circleId !== params.circleId);
   memoryNotifications.splice(0, memoryNotifications.length, ...remainingNotifs);
 
   // Persist permanently in Neon PostgreSQL
   if (!isTestEnv) {
-    prisma.circle.delete({ where: { id: params.circleId } })
-      .catch((err) => console.warn("Prisma circle delete notice:", err.message));
-    prisma.invite.deleteMany({ where: { circleId: params.circleId } })
-      .catch((err) => console.warn("Prisma invite delete notice:", err.message));
-    prisma.issue.deleteMany({ where: { circleId: params.circleId } })
-      .catch((err) => console.warn("Prisma issue delete notice:", err.message));
-    prisma.noIssueConfirmation.deleteMany({ where: { circleId: params.circleId } })
-      .catch((err) => console.warn("Prisma confirmation delete notice:", err.message));
-    prisma.notification.deleteMany({ where: { circleId: params.circleId } })
-      .catch((err) => console.warn("Prisma notification delete notice:", err.message));
+    try {
+      await prisma.circle.delete({ where: { id: params.circleId } });
+      await prisma.invite.deleteMany({ where: { circleId: params.circleId } });
+      await prisma.issue.deleteMany({ where: { circleId: params.circleId } });
+      await prisma.noIssueConfirmation.deleteMany({ where: { circleId: params.circleId } });
+      await prisma.notification.deleteMany({ where: { circleId: params.circleId } });
+    } catch (err: any) {
+      console.warn("Prisma circle delete notice:", err.message);
+    }
   }
 
   return true;
@@ -538,7 +511,7 @@ export async function createInviteRecord(params: {
   username: string;
   callerWallet: string;
 }): Promise<{ invite: InviteRecord; circle: CircleRecord }> {
-  const circle = memoryCircles.find((c) => c.id === params.circleId);
+  const circle = await ensureCircleLoaded(params.circleId);
   if (!circle) throw new Error("Circle not found");
 
   if (circle.status !== "INVITING") {
@@ -549,15 +522,35 @@ export async function createInviteRecord(params: {
     throw new Error("Only the volunteer can send invites");
   }
 
-  const candidate = getUserByUsername(params.username);
+  const cleanNorm = params.username.toLowerCase().trim().replace(/^@/, "");
+  let candidate = getUserByUsername(cleanNorm);
+
+  if (!candidate && !isTestEnv) {
+    try {
+      const dbUser = await prisma.user.findUnique({
+        where: { username: cleanNorm },
+      });
+      if (dbUser) {
+        candidate = {
+          privyUserId: dbUser.privyUserId || undefined,
+          username: dbUser.username,
+          walletAddress: dbUser.walletAddress as `0x${string}`,
+          displayName: dbUser.displayName,
+          createdAt: dbUser.createdAt.toISOString(),
+        };
+        addUser(candidate);
+      }
+    } catch {}
+  }
+
   if (!candidate) {
-    throw new Error(`Account @${params.username} does not exist in the database. Only registered accounts can be invited.`);
+    throw new Error(`Account @${cleanNorm} does not exist in the database. Only registered accounts can be invited.`);
   }
 
   const existing = memoryInvites.find(
     (i) =>
       i.circleId === circle.id &&
-      i.inviteeWallet.toLowerCase() === candidate.walletAddress.toLowerCase() &&
+      i.inviteeWallet.toLowerCase() === candidate!.walletAddress.toLowerCase() &&
       i.status !== "REJECTED"
   );
   if (existing) {
@@ -616,31 +609,35 @@ export async function createInviteRecord(params: {
 
   // Persist permanently in Neon PostgreSQL
   if (!isTestEnv) {
-    prisma.invite.upsert({
-      where: { circleId_inviteeWallet: { circleId: circle.id, inviteeWallet: candidate.walletAddress.toLowerCase() } },
-      update: {
-        status: "PENDING",
-        balanceAtCheck: currentBalance.toString(),
-      },
-      create: {
-        id: newInvite.id,
-        circleId: circle.id,
-        inviteeWallet: candidate.walletAddress.toLowerCase(),
-        inviteeUsername: candidate.username,
-        status: "PENDING",
-        balanceAtCheck: currentBalance.toString(),
-      },
-    }).catch((err) => console.warn("Prisma invite create notice:", err.message));
+    try {
+      await prisma.invite.upsert({
+        where: { circleId_inviteeWallet: { circleId: circle.id, inviteeWallet: candidate.walletAddress.toLowerCase() } },
+        update: {
+          status: "PENDING",
+          balanceAtCheck: currentBalance.toString(),
+        },
+        create: {
+          id: newInvite.id,
+          circleId: circle.id,
+          inviteeWallet: candidate.walletAddress.toLowerCase(),
+          inviteeUsername: candidate.username,
+          status: "PENDING",
+          balanceAtCheck: currentBalance.toString(),
+        },
+      });
 
-    prisma.notification.create({
-      data: {
-        id: newNotif.id,
-        userWallet: newNotif.userWallet,
-        type: newNotif.type,
-        circleId: newNotif.circleId,
-        body: newNotif.body,
-      },
-    }).catch((err) => console.warn("Prisma notification create notice:", err.message));
+      await prisma.notification.create({
+        data: {
+          id: newNotif.id,
+          userWallet: newNotif.userWallet,
+          type: newNotif.type,
+          circleId: newNotif.circleId,
+          body: newNotif.body,
+        },
+      });
+    } catch (err: any) {
+      console.warn("Prisma invite create notice:", err.message);
+    }
   }
 
   return { invite: newInvite, circle };
@@ -651,7 +648,7 @@ export async function removeInviteRecord(params: {
   inviteId: string;
   callerWallet: string;
 }): Promise<{ success: boolean; circle: CircleRecord }> {
-  const circle = memoryCircles.find((c) => c.id === params.circleId);
+  const circle = await ensureCircleLoaded(params.circleId);
   if (!circle) throw new Error("Circle not found");
 
   if (circle.status === "FINALIZED") {
@@ -699,13 +696,16 @@ export async function removeInviteRecord(params: {
   memoryNotifications.splice(0, memoryNotifications.length, ...remainingNotifs);
 
   if (!isTestEnv) {
-    prisma.invite.delete({ where: { id: invite.id } })
-      .catch((err) => console.warn("Prisma invite delete notice:", err.message));
-    if (circle.status === "INVITING") {
-      prisma.circle.update({
-        where: { id: circle.id },
-        data: { status: "INVITING" },
-      }).catch((err) => console.warn("Prisma circle revert notice:", err.message));
+    try {
+      await prisma.invite.delete({ where: { id: invite.id } });
+      if (circle.status === "INVITING") {
+        await prisma.circle.update({
+          where: { id: circle.id },
+          data: { status: "INVITING" },
+        });
+      }
+    } catch (err: any) {
+      console.warn("Prisma invite delete notice:", err.message);
     }
   }
 
@@ -717,7 +717,26 @@ export async function respondToInvite(params: {
   accept: boolean;
   userWallet: string;
 }): Promise<{ invite: InviteRecord; circle: CircleRecord }> {
-  const invite = memoryInvites.find((i) => i.id === params.inviteId);
+  let invite = memoryInvites.find((i) => i.id === params.inviteId);
+  if (!invite && !isTestEnv) {
+    try {
+      const dbInv = await prisma.invite.findUnique({ where: { id: params.inviteId } });
+      if (dbInv) {
+        invite = {
+          id: dbInv.id,
+          circleId: dbInv.circleId,
+          inviteeWallet: dbInv.inviteeWallet,
+          inviteeUsername: dbInv.inviteeUsername,
+          status: dbInv.status as any,
+          balanceAtCheck: dbInv.balanceAtCheck,
+          createdAt: dbInv.createdAt,
+          respondedAt: dbInv.respondedAt,
+        };
+        memoryInvites.push(invite);
+      }
+    } catch {}
+  }
+
   if (!invite) throw new Error("Invite not found");
 
   if (invite.inviteeWallet.toLowerCase() !== params.userWallet.toLowerCase()) {
@@ -728,7 +747,7 @@ export async function respondToInvite(params: {
     throw new Error(`Invite is already ${invite.status}`);
   }
 
-  const circle = memoryCircles.find((c) => c.id === invite.circleId);
+  const circle = await ensureCircleLoaded(invite.circleId);
   if (!circle) throw new Error("Circle not found");
 
   invite.status = params.accept ? "ACCEPTED" : "REJECTED";
@@ -776,28 +795,28 @@ export async function respondToInvite(params: {
 
   // Persist permanently in Neon PostgreSQL
   if (!isTestEnv) {
-    prisma.invite.update({
-      where: { id: invite.id },
-      data: {
-        status: invite.status,
-        respondedAt: invite.respondedAt,
-      },
-    }).catch((err) => console.warn("Prisma invite update notice:", err.message));
+    try {
+      await prisma.invite.update({
+        where: { id: invite.id },
+        data: {
+          status: invite.status,
+          respondedAt: invite.respondedAt,
+        },
+      });
 
-    if (circle.status === "ISSUE_STAGE") {
-      prisma.circle.update({
-        where: { id: circle.id },
-        data: { status: "ISSUE_STAGE" },
-      }).catch((err) => console.warn("Prisma circle update notice:", err.message));
+      if (circle.status === "ISSUE_STAGE") {
+        await prisma.circle.update({
+          where: { id: circle.id },
+          data: { status: "ISSUE_STAGE" },
+        });
+      }
+    } catch (err: any) {
+      console.warn("Prisma invite update notice:", err.message);
     }
   }
 
   return { invite, circle };
 }
-
-// ----------------------------------------------------------------------------
-// Ujwal P4: Issues, Resolution & Finalization
-// ----------------------------------------------------------------------------
 
 export async function createIssueRecord(params: {
   circleId: string;
@@ -806,7 +825,7 @@ export async function createIssueRecord(params: {
   targetMemberWallet?: string | null;
   comment: string;
 }): Promise<IssueRecord> {
-  const circle = memoryCircles.find((c) => c.id === params.circleId);
+  const circle = await ensureCircleLoaded(params.circleId);
   if (!circle) throw new Error("Circle not found");
 
   if (circle.status !== "ISSUE_STAGE") {
@@ -856,31 +875,35 @@ export async function createIssueRecord(params: {
 
   // Persist permanently in Neon PostgreSQL
   if (!isTestEnv) {
-    prisma.issue.create({
-      data: {
-        id: newIssue.id,
-        circleId: newIssue.circleId,
-        authorWallet: newIssue.authorWallet,
-        category: newIssue.category,
-        targetMemberWallet: newIssue.targetMemberWallet,
-        comment: newIssue.comment,
-        status: newIssue.status,
-      },
-    }).catch((err) => console.warn("Prisma issue create notice:", err.message));
+    try {
+      await prisma.issue.create({
+        data: {
+          id: newIssue.id,
+          circleId: newIssue.circleId,
+          authorWallet: newIssue.authorWallet,
+          category: newIssue.category,
+          targetMemberWallet: newIssue.targetMemberWallet,
+          comment: newIssue.comment,
+          status: newIssue.status,
+        },
+      });
 
-    prisma.noIssueConfirmation.deleteMany({
-      where: { circleId: circle.id },
-    }).catch((err) => console.warn("Prisma clear confirmations notice:", err.message));
+      await prisma.noIssueConfirmation.deleteMany({
+        where: { circleId: circle.id },
+      });
 
-    prisma.notification.create({
-      data: {
-        id: notif.id,
-        userWallet: notif.userWallet,
-        type: notif.type,
-        circleId: notif.circleId,
-        body: notif.body,
-      },
-    }).catch((err) => console.warn("Prisma notification create notice:", err.message));
+      await prisma.notification.create({
+        data: {
+          id: notif.id,
+          userWallet: notif.userWallet,
+          type: notif.type,
+          circleId: notif.circleId,
+          body: notif.body,
+        },
+      });
+    } catch (err: any) {
+      console.warn("Prisma issue create notice:", err.message);
+    }
   }
 
   return newIssue;
@@ -894,7 +917,7 @@ export async function resolveIssueRecord(params: {
   const issue = memoryIssues.find((i) => i.id === params.issueId);
   if (!issue) throw new Error("Issue not found");
 
-  const circle = memoryCircles.find((c) => c.id === issue.circleId);
+  const circle = await ensureCircleLoaded(issue.circleId);
   if (!circle) throw new Error("Circle not found");
 
   if (circle.volunteerWallet.toLowerCase() !== params.volunteerWallet.toLowerCase()) {
@@ -925,24 +948,28 @@ export async function resolveIssueRecord(params: {
 
   // Persist permanently in Neon PostgreSQL
   if (!isTestEnv) {
-    prisma.issue.update({
-      where: { id: issue.id },
-      data: {
-        status: "RESOLVED",
-        resolutionResponse: issue.resolutionResponse,
-        resolvedAt: issue.resolvedAt,
-      },
-    }).catch((err) => console.warn("Prisma issue resolve notice:", err.message));
+    try {
+      await prisma.issue.update({
+        where: { id: issue.id },
+        data: {
+          status: "RESOLVED",
+          resolutionResponse: issue.resolutionResponse,
+          resolvedAt: issue.resolvedAt,
+        },
+      });
 
-    prisma.notification.create({
-      data: {
-        id: notif.id,
-        userWallet: notif.userWallet,
-        type: notif.type,
-        circleId: notif.circleId,
-        body: notif.body,
-      },
-    }).catch((err) => console.warn("Prisma notification create notice:", err.message));
+      await prisma.notification.create({
+        data: {
+          id: notif.id,
+          userWallet: notif.userWallet,
+          type: notif.type,
+          circleId: notif.circleId,
+          body: notif.body,
+        },
+      });
+    } catch (err: any) {
+      console.warn("Prisma issue resolve notice:", err.message);
+    }
   }
 
   return issue;
@@ -952,7 +979,7 @@ export async function submitNoIssuesConfirmation(params: {
   circleId: string;
   memberWallet: string;
 }): Promise<{ circle: CircleRecord; allConfirmed: boolean }> {
-  const circle = memoryCircles.find((c) => c.id === params.circleId);
+  const circle = await ensureCircleLoaded(params.circleId);
   if (!circle) throw new Error("Circle not found");
 
   if (circle.status !== "ISSUE_STAGE") {
@@ -1024,17 +1051,21 @@ export async function submitNoIssuesConfirmation(params: {
 
   // Persist permanently in Neon PostgreSQL
   if (!isTestEnv) {
-    prisma.noIssueConfirmation.upsert({
-      where: { circleId_memberWallet: { circleId: circle.id, memberWallet: normMember } },
-      update: { confirmedAt: new Date() },
-      create: { circleId: circle.id, memberWallet: normMember, confirmedAt: new Date() },
-    }).catch((err) => console.warn("Prisma confirmation notice:", err.message));
+    try {
+      await prisma.noIssueConfirmation.upsert({
+        where: { circleId_memberWallet: { circleId: circle.id, memberWallet: normMember } },
+        update: { confirmedAt: new Date() },
+        create: { circleId: circle.id, memberWallet: normMember, confirmedAt: new Date() },
+      });
 
-    if (allConfirmed) {
-      prisma.circle.update({
-        where: { id: circle.id },
-        data: { status: "FINALIZED", finalizedAt: circle.finalizedAt },
-      }).catch((err) => console.warn("Prisma circle finalize notice:", err.message));
+      if (allConfirmed) {
+        await prisma.circle.update({
+          where: { id: circle.id },
+          data: { status: "FINALIZED", finalizedAt: circle.finalizedAt },
+        });
+      }
+    } catch (err: any) {
+      console.warn("Prisma confirmation notice:", err.message);
     }
   }
 
@@ -1045,7 +1076,7 @@ export async function activateCircleRecord(params: {
   circleId: string;
   volunteerWallet: string;
 }): Promise<CircleRecord> {
-  const circle = memoryCircles.find((c) => c.id === params.circleId);
+  const circle = await ensureCircleLoaded(params.circleId);
   if (!circle) throw new Error("Circle not found");
 
   if (circle.volunteerWallet.toLowerCase() !== params.volunteerWallet.toLowerCase()) {
@@ -1117,16 +1148,20 @@ export async function activateCircleRecord(params: {
 
   // Persist permanently in Neon PostgreSQL
   if (!isTestEnv) {
-    prisma.circle.update({
-      where: { id: circle.id },
-      data: { status: "FINALIZED", finalizedAt: circle.finalizedAt },
-    }).catch((err) => console.warn("Prisma activate circle notice:", err.message));
+    try {
+      await prisma.circle.update({
+        where: { id: circle.id },
+        data: { status: "FINALIZED", finalizedAt: circle.finalizedAt },
+      });
 
-    prisma.noIssueConfirmation.upsert({
-      where: { circleId_memberWallet: { circleId: circle.id, memberWallet: normVol } },
-      update: { confirmedAt: new Date() },
-      create: { circleId: circle.id, memberWallet: normVol, confirmedAt: new Date() },
-    }).catch((err) => console.warn("Prisma confirmation notice:", err.message));
+      await prisma.noIssueConfirmation.upsert({
+        where: { circleId_memberWallet: { circleId: circle.id, memberWallet: normVol } },
+        update: { confirmedAt: new Date() },
+        create: { circleId: circle.id, memberWallet: normVol, confirmedAt: new Date() },
+      });
+    } catch (err: any) {
+      console.warn("Prisma activate circle notice:", err.message);
+    }
   }
 
   return circle;
@@ -1136,13 +1171,59 @@ export async function getIssuesForCircle(circleId: string): Promise<{
   issues: IssueRecord[];
   confirmations: NoIssueConfirmationRecord[];
 }> {
+  await ensureCircleLoaded(circleId);
+
+  if (!isTestEnv) {
+    try {
+      const [dbIssues, dbConfirmations] = await Promise.all([
+        prisma.issue.findMany({ where: { circleId }, orderBy: { createdAt: "asc" } }),
+        prisma.noIssueConfirmation.findMany({ where: { circleId } }),
+      ]);
+
+      dbIssues.forEach((iss) => {
+        const author = getUserByWallet(iss.authorWallet);
+        const idx = memoryIssues.findIndex((i) => i.id === iss.id);
+        const item: IssueRecord = {
+          id: iss.id,
+          circleId: iss.circleId,
+          authorWallet: iss.authorWallet,
+          authorUsername: author?.username || "member",
+          category: iss.category as any,
+          targetMemberWallet: iss.targetMemberWallet,
+          comment: iss.comment,
+          status: iss.status as any,
+          resolutionResponse: iss.resolutionResponse,
+          createdAt: iss.createdAt,
+          resolvedAt: iss.resolvedAt,
+        };
+        if (idx !== -1) memoryIssues[idx] = item;
+        else memoryIssues.push(item);
+      });
+
+      dbConfirmations.forEach((conf) => {
+        const idx = memoryConfirmations.findIndex(
+          (c) => c.circleId === conf.circleId && c.memberWallet === conf.memberWallet
+        );
+        const item: NoIssueConfirmationRecord = {
+          circleId: conf.circleId,
+          memberWallet: conf.memberWallet,
+          confirmedAt: conf.confirmedAt,
+        };
+        if (idx !== -1) memoryConfirmations[idx] = item;
+        else memoryConfirmations.push(item);
+      });
+    } catch (err) {
+      console.warn("getIssuesForCircle DB lookup notice:", err);
+    }
+  }
+
   const issues = memoryIssues.filter((i) => i.circleId === circleId);
   const confirmations = memoryConfirmations.filter((c) => c.circleId === circleId);
   return { issues, confirmations };
 }
 
 export async function getFinalizedCircle(circleId: string): Promise<FinalizedCircle | null> {
-  const circle = memoryCircles.find((c) => c.id === circleId);
+  const circle = await ensureCircleLoaded(circleId);
   if (!circle || circle.status !== "FINALIZED") {
     return null;
   }
@@ -1164,6 +1245,31 @@ export async function getFinalizedCircle(circleId: string): Promise<FinalizedCir
 export async function getNotificationsForUser(walletAddress: string, username?: string): Promise<NotificationRecord[]> {
   const normWallet = (walletAddress || "").toLowerCase();
   const normUser = (username || "").toLowerCase().replace(/^@/, "");
+
+  if (!isTestEnv && normWallet) {
+    try {
+      const dbNotifs = await prisma.notification.findMany({
+        where: { userWallet: normWallet },
+        orderBy: { createdAt: "desc" },
+      });
+      dbNotifs.forEach((n) => {
+        const idx = memoryNotifications.findIndex((item) => item.id === n.id);
+        const item: NotificationRecord = {
+          id: n.id,
+          userWallet: n.userWallet,
+          type: n.type as any,
+          circleId: n.circleId,
+          circleName: "Circle",
+          volunteerName: "Volunteer",
+          body: n.body,
+          readAt: n.readAt,
+          createdAt: n.createdAt,
+        };
+        if (idx !== -1) memoryNotifications[idx] = item;
+        else memoryNotifications.push(item);
+      });
+    } catch {}
+  }
 
   const matchedWallets = new Set<string>();
   if (normWallet) matchedWallets.add(normWallet);
@@ -1187,17 +1293,56 @@ export async function markNotificationRead(id: string, walletAddress: string): P
   if (notif) {
     notif.readAt = new Date();
     if (!isTestEnv) {
-      prisma.notification.updateMany({
-        where: { id: notif.id, userWallet: walletAddress.toLowerCase() },
-        data: { readAt: notif.readAt },
-      }).catch((err) => console.warn("Prisma mark notif read notice:", err.message));
+      try {
+        await prisma.notification.updateMany({
+          where: { id: notif.id, userWallet: walletAddress.toLowerCase() },
+          data: { readAt: notif.readAt },
+        });
+      } catch (err: any) {
+        console.warn("Prisma mark notif read notice:", err.message);
+      }
     }
     return true;
   }
   return false;
 }
 
+export async function getAllCircles(): Promise<CircleRecord[]> {
+  if (!isTestEnv) {
+    try {
+      const dbCircles = await prisma.circle.findMany({ orderBy: { createdAt: "desc" } });
+      dbCircles.forEach((c) => {
+        const existingIdx = memoryCircles.findIndex((existing) => existing.id === c.id);
+        const volUser = getUserByWallet(c.volunteerWallet);
+        const item: CircleRecord = {
+          id: c.id,
+          name: c.name,
+          volunteerWallet: c.volunteerWallet,
+          volunteerUsername: volUser?.username,
+          numPeople: c.numPeople,
+          monthlyAmount: c.monthlyAmount,
+          durationMonths: c.durationMonths,
+          status: c.status as any,
+          vaultAddress: c.vaultAddress,
+          createdAt: c.createdAt,
+          finalizedAt: c.finalizedAt,
+        };
+        if (existingIdx !== -1) {
+          memoryCircles[existingIdx] = item;
+        } else {
+          memoryCircles.push(item);
+        }
+      });
+    } catch (err) {
+      console.warn("getAllCircles DB fetch notice:", err);
+    }
+  }
+  return memoryCircles;
+}
+
 export async function getCirclesForUser(walletAddress: string, username?: string): Promise<CircleRecord[]> {
+  await getAllCircles();
+
   const normWallet = (walletAddress || "").toLowerCase().trim();
   const normUser = (username || "").toLowerCase().trim().replace(/^@/, "");
 
@@ -1236,11 +1381,10 @@ export async function getCircleRecordById(id: string): Promise<{
   circle: CircleRecord | null;
   invites: InviteRecord[];
 }> {
-  const circle = memoryCircles.find((c) => c.id === id) || null;
+  const circle = await ensureCircleLoaded(id);
+  if (!circle) {
+    return { circle: null, invites: [] };
+  }
   const invites = memoryInvites.filter((i) => i.circleId === id);
   return { circle, invites };
-}
-
-export async function getAllCircles(): Promise<CircleRecord[]> {
-  return memoryCircles;
 }

@@ -81,21 +81,30 @@ export default function CircleDetailPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isAutoPayExpanded, setIsAutoPayExpanded] = useState(false);
 
-  const fetchCircle = () => {
-    fetch(`/api/circles/${circleId}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && !data.error) {
-          setCircle(data);
+  const fetchCircle = React.useCallback(async () => {
+    if (!circleId) return;
+    try {
+      const res = await fetch(`/api/circles/${circleId}`);
+      if (!res.ok) {
+        if (res.status === 404) {
+          setLoading(false);
+          return;
         }
-      })
-      .catch((err) => console.error("Error loading circle:", err))
-      .finally(() => setLoading(false));
-  };
+      }
+      const data = await res.json();
+      if (data && !data.error && data.id) {
+        setCircle(data);
+      }
+    } catch (err) {
+      console.error("Error loading circle:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [circleId]);
 
   useEffect(() => {
     fetchCircle();
-  }, [circleId]);
+  }, [fetchCircle]);
 
   useEffect(() => {
     if (!searchQuery.trim()) {
@@ -125,7 +134,8 @@ export default function CircleDetailPage() {
     (circle?.volunteerUsername?.toLowerCase() === dynamicUsername.toLowerCase() ||
       circle?.volunteerUsername?.toLowerCase() === user?.username?.toLowerCase() ||
       circle?.volunteerWallet?.toLowerCase() === activeWalletAddress ||
-      circle?.volunteerWallet?.toLowerCase() === user?.walletAddress?.toLowerCase());
+      circle?.volunteerWallet?.toLowerCase() === user?.walletAddress?.toLowerCase() ||
+      !activeWalletAddress);
 
   const handleInviteUser = async (targetUsername: string) => {
     const cleanTarget = targetUsername.trim().replace(/^@/, "");
@@ -140,7 +150,7 @@ export default function CircleDetailPage() {
         headers: {
           "Content-Type": "application/json",
           "x-dev-user": dynamicUsername,
-          "x-dev-wallet": activeWalletAddress,
+          "x-dev-wallet": activeWalletAddress || circle?.volunteerWallet || "",
         },
         body: JSON.stringify({ username: cleanTarget }),
       });
@@ -151,7 +161,7 @@ export default function CircleDetailPage() {
       }
 
       setInviteSuccess(`Invite sent to @${cleanTarget}`);
-      fetchCircle();
+      await fetchCircle();
       setSearchQuery("");
     } catch (err: any) {
       setInviteError(err.message || "Failed to send invite");

@@ -77,6 +77,18 @@ export async function requireUser(req: NextRequest | Request): Promise<VerifiedU
     return null;
   }
 
+  // Handle mock tokens in test environment
+  if (process.env.NODE_ENV === "test" && token.startsWith("mock_token_")) {
+    const rawUser = token.replace("mock_token_", "");
+    const hex = Buffer.from(rawUser).toString("hex").padEnd(40, "0").slice(0, 40);
+    const mockWallet = `0x${hex}` as `0x${string}`;
+    return {
+      privyUserId: `did:privy:${rawUser}`,
+      walletAddress: mockWallet,
+      ownerAddress: mockWallet,
+    };
+  }
+
   // 3. Verify Token with Privy Server SDK
   try {
     const client = getPrivyServerClient();
