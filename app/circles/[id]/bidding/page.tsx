@@ -19,6 +19,11 @@ import {
   Shield,
   UserCheck,
   User,
+  Play,
+  Calendar,
+  X,
+  TrendingUp,
+  Percent,
 } from "lucide-react";
 import { fromBaseUnits } from "@/lib/validation";
 import { generateSecureSalt, deriveDemoSalt } from "@/lib/bidding-store";
@@ -48,12 +53,104 @@ interface BiddingState {
   } | null;
 }
 
+interface MonthSimulation {
+  month: number;
+  potAmount: string;
+  floorAmount: string;
+  winnerUsername: string;
+  winnerDisplayName: string;
+  winnerWallet: string;
+  winningBid: string;
+  dividend: string;
+  dividendPerMember: string;
+  bids: Array<{
+    username: string;
+    displayName: string;
+    wallet: string;
+    amount: string;
+    isWinner: boolean;
+    note?: string;
+  }>;
+}
+
 // 4 Demo participants with suggested benchmark bids
 const DEMO_PARTICIPANTS = [
   { username: "asharao01", displayName: "Asha Rao", wallet: "0x1111111111111111111111111111111111111111", targetBid: "3900" },
   { username: "vikramnair02", displayName: "Vikram Nair", wallet: "0x2222222222222222222222222222222222222222", targetBid: "3800" },
   { username: "meerajoshi03", displayName: "Meera Joshi", wallet: "0x3333333333333333333333333333333333333333", targetBid: "3850" },
   { username: "rohandas04", displayName: "Rohan Das", wallet: "0x4444444444444444444444444444444444444444", targetBid: "3950" },
+];
+
+// Full 4-Month Circle Auction Lifecycle Simulation Data
+const FULL_LIFECYCLE_SIMULATION: MonthSimulation[] = [
+  {
+    month: 1,
+    potAmount: "4,000",
+    floorAmount: "2,000",
+    winnerUsername: "vikramnair02",
+    winnerDisplayName: "Vikram Nair",
+    winnerWallet: "0x2222222222222222222222222222222222222222",
+    winningBid: "3,800",
+    dividend: "200",
+    dividendPerMember: "50",
+    bids: [
+      { username: "vikramnair02", displayName: "Vikram Nair", wallet: "0x2222...2222", amount: "3,800", isWinner: true, note: "Lowest Bid (5% discount) — Awarded Pot" },
+      { username: "meerajoshi03", displayName: "Meera Joshi", wallet: "0x3333...3333", amount: "3,850", isWinner: false, note: "3.75% discount offered" },
+      { username: "asharao01", displayName: "Asha Rao", wallet: "0x1111...1111", amount: "3,900", isWinner: false, note: "2.5% discount offered" },
+      { username: "rohandas04", displayName: "Rohan Das", wallet: "0x4444...4444", amount: "3,950", isWinner: false, note: "1.25% discount offered" },
+    ],
+  },
+  {
+    month: 2,
+    potAmount: "4,000",
+    floorAmount: "2,000",
+    winnerUsername: "meerajoshi03",
+    winnerDisplayName: "Meera Joshi",
+    winnerWallet: "0x3333333333333333333333333333333333333333",
+    winningBid: "3,820",
+    dividend: "180",
+    dividendPerMember: "45",
+    bids: [
+      { username: "meerajoshi03", displayName: "Meera Joshi", wallet: "0x3333...3333", amount: "3,820", isWinner: true, note: "Lowest Bid (4.5% discount) — Awarded Month 2 Pot" },
+      { username: "asharao01", displayName: "Asha Rao", wallet: "0x1111...1111", amount: "3,890", isWinner: false, note: "2.75% discount offered" },
+      { username: "rohandas04", displayName: "Rohan Das", wallet: "0x4444...4444", amount: "3,940", isWinner: false, note: "1.5% discount offered" },
+      { username: "vikramnair02", displayName: "Vikram Nair", wallet: "0x2222...2222", amount: "—", isWinner: false, note: "Past Winner (Contributes without bidding)" },
+    ],
+  },
+  {
+    month: 3,
+    potAmount: "4,000",
+    floorAmount: "2,000",
+    winnerUsername: "asharao01",
+    winnerDisplayName: "Asha Rao",
+    winnerWallet: "0x1111111111111111111111111111111111111111",
+    winningBid: "3,880",
+    dividend: "120",
+    dividendPerMember: "30",
+    bids: [
+      { username: "asharao01", displayName: "Asha Rao", wallet: "0x1111...1111", amount: "3,880", isWinner: true, note: "Lowest Bid (3% discount) — Awarded Month 3 Pot" },
+      { username: "rohandas04", displayName: "Rohan Das", wallet: "0x4444...4444", amount: "3,920", isWinner: false, note: "2% discount offered" },
+      { username: "vikramnair02", displayName: "Vikram Nair", wallet: "0x2222...2222", amount: "—", isWinner: false, note: "Past Winner (Contributes only)" },
+      { username: "meerajoshi03", displayName: "Meera Joshi", wallet: "0x3333...3333", amount: "—", isWinner: false, note: "Past Winner (Contributes only)" },
+    ],
+  },
+  {
+    month: 4,
+    potAmount: "4,000",
+    floorAmount: "2,000",
+    winnerUsername: "rohandas04",
+    winnerDisplayName: "Rohan Das",
+    winnerWallet: "0x4444444444444444444444444444444444444444",
+    winningBid: "4,000",
+    dividend: "0",
+    dividendPerMember: "0",
+    bids: [
+      { username: "rohandas04", displayName: "Rohan Das", wallet: "0x4444...4444", amount: "4,000", isWinner: true, note: "Final Member — Receives 100% Full Pot with 0% Discount" },
+      { username: "asharao01", displayName: "Asha Rao", wallet: "0x1111...1111", amount: "—", isWinner: false, note: "Past Winner (Contributes only)" },
+      { username: "vikramnair02", displayName: "Vikram Nair", wallet: "0x2222...2222", amount: "—", isWinner: false, note: "Past Winner (Contributes only)" },
+      { username: "meerajoshi03", displayName: "Meera Joshi", wallet: "0x3333...3333", amount: "—", isWinner: false, note: "Past Winner (Contributes only)" },
+    ],
+  },
 ];
 
 export default function BiddingModulePage() {
@@ -68,6 +165,11 @@ export default function BiddingModulePage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Full Timeperiod Simulation Modal state
+  const [showSimModal, setShowSimModal] = useState(false);
+  const [selectedMonthTab, setSelectedMonthTab] = useState<number>(1);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(false);
 
   const loadBiddingState = () => {
     fetch(`/api/circles/${circleId}/bidding`, {
@@ -125,6 +227,17 @@ export default function BiddingModulePage() {
 
     setValidationError(null);
   }, [bidAmount, state]);
+
+  // Auto-play timer for full simulation
+  useEffect(() => {
+    let timer: any;
+    if (isAutoPlaying && showSimModal) {
+      timer = setInterval(() => {
+        setSelectedMonthTab((prev) => (prev >= 4 ? 1 : prev + 1));
+      }, 2500);
+    }
+    return () => clearInterval(timer);
+  }, [isAutoPlaying, showSimModal]);
 
   const userBid = state?.bids.find(
     (b) => user && (
@@ -252,6 +365,56 @@ export default function BiddingModulePage() {
     }
   };
 
+  // Quick 1-Click Demo Auction Simulation for the current cycle
+  const handleQuickDemoRun = async () => {
+    setSubmitting(true);
+    setError(null);
+    setSuccessMsg(null);
+
+    try {
+      // 1. Commit all 4 demo bids
+      for (const p of DEMO_PARTICIPANTS) {
+        const salt = deriveDemoSalt(circleId, state?.cycle || 1, p.wallet);
+        await fetch(`/api/circles/${circleId}/bidding/commit`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-dev-user": p.username,
+            "x-dev-wallet": p.wallet,
+          },
+          body: JSON.stringify({ amount: p.targetBid, salt }),
+        });
+      }
+
+      // 2. Reveal all 4 demo bids
+      for (const p of DEMO_PARTICIPANTS) {
+        const salt = deriveDemoSalt(circleId, state?.cycle || 1, p.wallet);
+        const baseUnits = BigInt(Math.round(parseFloat(p.targetBid) * 1_000_000)).toString();
+        await fetch(`/api/circles/${circleId}/bidding/reveal`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-dev-user": p.username,
+            "x-dev-wallet": p.wallet,
+          },
+          body: JSON.stringify({ amountBaseUnits: baseUnits, salt }),
+        });
+      }
+
+      // 3. Settle auction
+      const settleRes = await fetch(`/api/circles/${circleId}/bidding/settle`, { method: "POST" });
+      const settleData = await settleRes.json();
+      if (!settleRes.ok) throw new Error(settleData.error || "Failed to settle demo run");
+
+      setSuccessMsg("🎉 1-Click Demo Auction Completed! Vikram Nair won with lowest bid of 3,800 USDC (200 USDC dividend carry).");
+      loadBiddingState();
+    } catch (err: any) {
+      setError(err.message || "Failed to execute quick demo auction");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center min-h-[60vh]">
@@ -266,11 +429,12 @@ export default function BiddingModulePage() {
   const floorUSDC = state ? Number(fromBaseUnits(state.floorBid)).toLocaleString() : "2,000";
   const committedCount = state?.bids.length || 0;
   const revealedCount = state?.bids.filter((b) => b.revealed).length || 0;
+  const currentSimMonth = FULL_LIFECYCLE_SIMULATION.find((m) => m.month === selectedMonthTab) || FULL_LIFECYCLE_SIMULATION[0];
 
   return (
     <div className="w-full max-w-4xl mx-auto py-6 px-4 space-y-6 text-neutral-100">
-      {/* Top Bar */}
-      <div className="flex items-center justify-between">
+      {/* Top Bar with Demo Action Buttons */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <Link
           href={`/circles/${circleId}`}
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-400 hover:text-white transition-colors"
@@ -278,6 +442,30 @@ export default function BiddingModulePage() {
           <ArrowLeft className="h-3.5 w-3.5" />
           <span>Return to Circle</span>
         </Link>
+
+        {/* Demo Simulation Action Buttons */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setShowSimModal(true)}
+            className="px-3.5 py-1.5 rounded-xl border border-amber-500/50 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+            title="View Bidding of the whole timeperiod set in circle"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+            <span>Full Timeperiod Simulation</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleQuickDemoRun}
+            disabled={submitting}
+            className="px-3.5 py-1.5 rounded-xl bg-white text-black hover:bg-neutral-200 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-md"
+            title="Auto-commit, reveal, and settle Month 1 demo auction in 1 click"
+          >
+            <Play className="h-3 w-3 fill-current" />
+            <span>{submitting ? "Simulating..." : "1-Click Demo Auction"}</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Container Card */}
@@ -581,6 +769,289 @@ export default function BiddingModulePage() {
           </div>
         )}
       </div>
+
+      {/* ========================================================================= */}
+      {/* Interactive Full Timeperiod Simulation Modal */}
+      {/* ========================================================================= */}
+      {showSimModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md">
+          <div className="w-full max-w-3xl max-h-[90vh] rounded-3xl border border-white/15 bg-neutral-950 p-5 sm:p-7 shadow-2xl overflow-y-auto space-y-5 text-neutral-100 relative">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
+                    Full Circle Timeperiod Bidding Simulation
+                  </h2>
+                  <p className="text-xs text-neutral-400">
+                    4-Month Circle Lifecycle: Lowest Discount Bid Winner & Monthly Dividend Distribution
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSimModal(false);
+                  setIsAutoPlaying(false);
+                }}
+                className="p-2 text-neutral-400 hover:text-white rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Month Navigation Tabs & Auto-Play Toggle */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5 p-1 bg-white/[0.03] border border-white/10 rounded-2xl">
+                {[1, 2, 3, 4].map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => {
+                      setSelectedMonthTab(m);
+                      setIsAutoPlaying(false);
+                    }}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      selectedMonthTab === m
+                        ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
+                        : "text-neutral-400 hover:text-white"
+                    }`}
+                  >
+                    Month {m}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedMonthTab(5); // 5 represents Summary Table
+                    setIsAutoPlaying(false);
+                  }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    selectedMonthTab === 5
+                      ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
+                      : "text-neutral-400 hover:text-white"
+                  }`}
+                >
+                  Full Summary
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsAutoPlaying(!isAutoPlaying)}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  isAutoPlaying
+                    ? "border-amber-500 bg-amber-500/20 text-amber-300"
+                    : "border-white/10 bg-white/[0.02] text-neutral-300 hover:text-white"
+                }`}
+              >
+                <Play className={`h-3 w-3 ${isAutoPlaying ? "animate-spin" : "fill-current"}`} />
+                <span>{isAutoPlaying ? "Auto-Playing..." : "Auto-Play Walkthrough"}</span>
+              </button>
+            </div>
+
+            {/* Content for Months 1-4 */}
+            {selectedMonthTab <= 4 && (
+              <div className="space-y-4">
+                {/* Month Highlights Banner */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-3.5 rounded-2xl border border-white/10 bg-white/[0.02] space-y-0.5 text-center">
+                    <span className="text-[10px] uppercase font-mono tracking-wider text-neutral-400 block font-semibold">
+                      Month {currentSimMonth.month} Round Pot
+                    </span>
+                    <span className="text-base font-bold text-white font-mono block">
+                      {currentSimMonth.potAmount} USDC
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl border border-emerald-500/30 bg-emerald-950/20 space-y-0.5 text-center">
+                    <span className="text-[10px] uppercase font-mono tracking-wider text-emerald-400 block font-semibold">
+                      Lowest Bid Winner
+                    </span>
+                    <span className="text-base font-bold text-emerald-300 font-mono block">
+                      @{currentSimMonth.winnerUsername} ({currentSimMonth.winningBid} USDC)
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl border border-amber-500/30 bg-amber-950/20 space-y-0.5 text-center">
+                    <span className="text-[10px] uppercase font-mono tracking-wider text-amber-400 block font-semibold">
+                      Dividend Generated
+                    </span>
+                    <span className="text-base font-bold text-amber-300 font-mono block">
+                      +{currentSimMonth.dividend} USDC ({currentSimMonth.dividendPerMember} USDC/member)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Winner Spotlight Card */}
+                <div className="p-4 rounded-2xl border border-emerald-500/40 bg-emerald-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400">
+                      <Trophy className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase tracking-wider font-mono text-emerald-400 font-bold block">
+                        Month {currentSimMonth.month} Winning Member
+                      </span>
+                      <h4 className="text-base font-bold text-white">
+                        {currentSimMonth.winnerDisplayName} (@{currentSimMonth.winnerUsername})
+                      </h4>
+                      <p className="text-[11px] font-mono text-neutral-400">
+                        Awarded Payout Pot: <strong className="text-emerald-300">{currentSimMonth.winningBid} USDC</strong>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-right sm:border-l sm:border-emerald-500/20 sm:pl-4">
+                    <span className="text-[10px] font-mono uppercase text-neutral-400 block">Member Benefit</span>
+                    <span className="text-xs font-mono text-amber-300 font-bold">
+                      +{currentSimMonth.dividend} USDC Dividend Discount
+                    </span>
+                  </div>
+                </div>
+
+                {/* All Bids Table for this Month */}
+                <div className="p-4 rounded-2xl border border-white/10 bg-white/[0.02] space-y-3">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                    <span className="text-xs font-bold text-white font-mono flex items-center gap-1.5">
+                      <Users className="h-3.5 w-3.5 text-neutral-400" />
+                      <span>All Participant Bids in Month {currentSimMonth.month}</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-neutral-400">
+                      Minimum Floor: {currentSimMonth.floorAmount} USDC (50%)
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {currentSimMonth.bids.map((b) => (
+                      <div
+                        key={b.username}
+                        className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono transition-all ${
+                          b.isWinner
+                            ? "border-emerald-500/60 bg-emerald-950/30 text-white shadow-sm"
+                            : "border-white/5 bg-white/[0.01] text-neutral-300"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-white">@{b.username}</span>
+                          <span className="text-neutral-400 text-[11px]">({b.displayName})</span>
+                          {b.isWinner && (
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-500 text-black font-extrabold text-[9px] uppercase tracking-wider flex items-center gap-1">
+                              <Trophy className="h-2.5 w-2.5" />
+                              Winner
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between sm:justify-end gap-3 text-right">
+                          <span className="text-[11px] text-neutral-400">{b.note}</span>
+                          <span className={`text-sm font-bold ${b.isWinner ? "text-emerald-400" : "text-white"}`}>
+                            {b.amount === "—" ? "—" : `${b.amount} USDC`}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Summary Table for Full Timeperiod (Tab 5) */}
+            {selectedMonthTab === 5 && (
+              <div className="p-4 rounded-2xl border border-white/10 bg-white/[0.02] space-y-4">
+                <div className="border-b border-white/10 pb-2 flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-white font-mono flex items-center gap-1.5">
+                    <Trophy className="h-4 w-4 text-amber-400" />
+                    <span>Complete 4-Month Circle Settlement Ledger</span>
+                  </h3>
+                  <span className="text-[10px] font-mono text-neutral-400">
+                    Total Volume: 16,000 USDC
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto no-scrollbar">
+                  <table className="w-full text-xs font-mono text-left">
+                    <thead>
+                      <tr className="border-b border-white/10 text-[10px] uppercase text-neutral-400 tracking-wider">
+                        <th className="py-2 pr-3">Participant</th>
+                        <th className="py-2 px-3">Month Won</th>
+                        <th className="py-2 px-3">Winning Bid</th>
+                        <th className="py-2 px-3">Total Paid</th>
+                        <th className="py-2 px-3 text-right">Net Position</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      <tr className="hover:bg-white/[0.02]">
+                        <td className="py-2.5 pr-3 font-bold text-white">@vikramnair02 (Vikram)</td>
+                        <td className="py-2.5 px-3 text-emerald-400 font-bold">Month 1</td>
+                        <td className="py-2.5 px-3 font-bold text-white">3,800 USDC</td>
+                        <td className="py-2.5 px-3 text-neutral-300">3,875 USDC</td>
+                        <td className="py-2.5 px-3 text-right text-emerald-400 font-bold">Fast Liquidity (-75 USDC)</td>
+                      </tr>
+                      <tr className="hover:bg-white/[0.02]">
+                        <td className="py-2.5 pr-3 font-bold text-white">@meerajoshi03 (Meera)</td>
+                        <td className="py-2.5 px-3 text-emerald-400 font-bold">Month 2</td>
+                        <td className="py-2.5 px-3 font-bold text-white">3,820 USDC</td>
+                        <td className="py-2.5 px-3 text-neutral-300">3,875 USDC</td>
+                        <td className="py-2.5 px-3 text-right text-emerald-400 font-bold">Month 2 Pot (-55 USDC)</td>
+                      </tr>
+                      <tr className="hover:bg-white/[0.02]">
+                        <td className="py-2.5 pr-3 font-bold text-white">@asharao01 (Asha)</td>
+                        <td className="py-2.5 px-3 text-emerald-400 font-bold">Month 3</td>
+                        <td className="py-2.5 px-3 font-bold text-white">3,880 USDC</td>
+                        <td className="py-2.5 px-3 text-neutral-300">3,875 USDC</td>
+                        <td className="py-2.5 px-3 text-right text-emerald-400 font-bold">+5 USDC Gain</td>
+                      </tr>
+                      <tr className="hover:bg-white/[0.02]">
+                        <td className="py-2.5 pr-3 font-bold text-white">@rohandas04 (Rohan)</td>
+                        <td className="py-2.5 px-3 text-emerald-400 font-bold">Month 4</td>
+                        <td className="py-2.5 px-3 font-bold text-white">4,000 USDC</td>
+                        <td className="py-2.5 px-3 text-neutral-300">3,875 USDC</td>
+                        <td className="py-2.5 px-3 text-right text-emerald-400 font-bold">+125 USDC Max Saver Gain</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="p-3 rounded-xl bg-amber-950/20 border border-amber-500/20 text-[11px] font-mono text-amber-200">
+                  💡 <strong>Chit Fund Game Theory Verified:</strong> Early bidders (@vikramnair02) accept a small discount for immediate access to capital; patient savers (@rohandas04) receive the full 4,000 USDC pot while enjoying 125 USDC of accumulated monthly dividend discounts.
+                </div>
+              </div>
+            )}
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between pt-3 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSimModal(false);
+                  setIsAutoPlaying(false);
+                }}
+                className="px-4 py-2 rounded-xl border border-white/10 bg-white/[0.02] text-neutral-300 hover:text-white text-xs font-semibold cursor-pointer"
+              >
+                Close Simulation
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSimModal(false);
+                  setIsAutoPlaying(false);
+                  handleQuickDemoRun();
+                }}
+                className="px-4 py-2 rounded-xl bg-white text-black hover:bg-neutral-200 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-md"
+              >
+                <Play className="h-3.5 w-3.5 fill-current" />
+                <span>Apply Demo Result to Current Circle</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
