@@ -100,7 +100,7 @@ export default function CirclesListPage() {
   };
 
   const pendingInvites = notifications.filter(
-    (n) => n.type === "JOIN_REQUEST" && n.inviteId && !n.readAt
+    (n) => (n.type === "JOIN_REQUEST" || n.type === "INVITE_RECEIVED") && n.inviteId
   );
 
   return (

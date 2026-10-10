@@ -482,7 +482,7 @@ export default function DashboardPage() {
             {/* Pending Circle Invitations Banner */}
             {(() => {
               const pendingInvites = notifications.filter(
-                (n) => n.type === "JOIN_REQUEST" && n.inviteId && !n.readAt
+                (n) => (n.type === "JOIN_REQUEST" || n.type === "INVITE_RECEIVED") && n.inviteId
               );
               if (pendingInvites.length === 0) return null;
               return (

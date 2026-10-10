@@ -1273,22 +1273,90 @@ export async function getFinalizedCircle(circleId: string): Promise<FinalizedCir
 }
 
 export async function getNotificationsForUser(walletAddress: string, username?: string): Promise<NotificationRecord[]> {
-  const normWallet = (walletAddress || "").toLowerCase();
-  const normUser = (username || "").toLowerCase().replace(/^@/, "");
+  const normWallet = (walletAddress || "").toLowerCase().trim();
+  const normUser = (username || "").toLowerCase().trim().replace(/^@/, "");
 
-  if (!isTestEnv && normWallet) {
+  const matchedWallets = new Set<string>();
+  if (normWallet) matchedWallets.add(normWallet);
+  if (normUser) {
+    const u = getUserByUsername(normUser);
+    if (u?.walletAddress) matchedWallets.add(u.walletAddress.toLowerCase());
+  }
+
+  if (!isTestEnv) {
     try {
-      const dbNotifs = await prisma.notification.findMany({
-        where: { userWallet: normWallet },
-        orderBy: { createdAt: "desc" },
+      const orConditions: any[] = [];
+      matchedWallets.forEach((w) => orConditions.push({ userWallet: w }));
+      if (normUser) orConditions.push({ userWallet: normUser });
+
+      const [dbNotifs, dbPendingInvites, dbUsers] = await Promise.all([
+        orConditions.length > 0
+          ? prisma.notification.findMany({ where: { OR: orConditions }, orderBy: { createdAt: "desc" } })
+          : [],
+        prisma.invite.findMany({
+          where: {
+            OR: [
+              ...(normWallet ? [{ inviteeWallet: { equals: normWallet, mode: "insensitive" as const } }] : []),
+              ...(normUser ? [{ inviteeUsername: { equals: normUser, mode: "insensitive" as const } }] : []),
+            ],
+            status: "PENDING",
+          },
+        }),
+        prisma.user.findMany(),
+      ]);
+
+      dbUsers.forEach((u) => {
+        addUser({
+          privyUserId: u.privyUserId || undefined,
+          username: u.username,
+          walletAddress: u.walletAddress as `0x${string}`,
+          displayName: u.displayName,
+          createdAt: u.createdAt.toISOString(),
+        });
       });
+
+      // Synchronize pending invites into notifications with exact inviteId
+      for (const inv of dbPendingInvites) {
+        const circle = await ensureCircleLoaded(inv.circleId);
+        const circleName = circle?.name || "Wealth Circle";
+        const volUser = circle?.volunteerWallet ? getUserByWallet(circle.volunteerWallet) : null;
+        const volName = volUser?.displayName || circle?.volunteerUsername || "Volunteer";
+
+        const existing = memoryNotifications.find((n) => n.inviteId === inv.id);
+        if (existing) {
+          existing.circleName = circleName;
+          existing.volunteerName = volName;
+        } else {
+          const synthNotif: NotificationRecord = {
+            id: `notif-${inv.id}`,
+            userWallet: normWallet || inv.inviteeWallet.toLowerCase(),
+            type: "JOIN_REQUEST",
+            circleId: inv.circleId,
+            inviteId: inv.id,
+            circleName,
+            volunteerName: volName,
+            body: `You were invited to join "${circleName}" by @${circle?.volunteerUsername || volName}. Review and accept your seat.`,
+            readAt: null,
+            createdAt: inv.createdAt,
+          };
+          memoryNotifications.unshift(synthNotif);
+        }
+      }
+
       dbNotifs.forEach((n) => {
         const idx = memoryNotifications.findIndex((item) => item.id === n.id);
+        const matchingInv = memoryInvites.find(
+          (i) =>
+            i.circleId === n.circleId &&
+            (matchedWallets.has(i.inviteeWallet.toLowerCase()) ||
+              (normUser && i.inviteeUsername.toLowerCase() === normUser))
+        );
         const item: NotificationRecord = {
           id: n.id,
           userWallet: n.userWallet,
           type: n.type as any,
           circleId: n.circleId,
+          inviteId: matchingInv?.id,
           circleName: "Circle",
           volunteerName: "Volunteer",
           body: n.body,
@@ -1298,15 +1366,38 @@ export async function getNotificationsForUser(walletAddress: string, username?: 
         if (idx !== -1) memoryNotifications[idx] = item;
         else memoryNotifications.push(item);
       });
-    } catch {}
+    } catch (err) {
+      console.warn("getNotificationsForUser DB lookup notice:", err);
+    }
   }
 
-  const matchedWallets = new Set<string>();
-  if (normWallet) matchedWallets.add(normWallet);
-  if (normUser) {
-    const u = getUserByUsername(normUser);
-    if (u?.walletAddress) matchedWallets.add(u.walletAddress.toLowerCase());
-  }
+  // Also in testEnv or in-memory, synthesize any pending invites
+  memoryInvites.forEach((inv) => {
+    if (
+      inv.status === "PENDING" &&
+      (matchedWallets.has(inv.inviteeWallet.toLowerCase()) ||
+        (normUser && inv.inviteeUsername.toLowerCase() === normUser))
+    ) {
+      const existing = memoryNotifications.find((n) => n.inviteId === inv.id);
+      if (!existing) {
+        const circle = memoryCircles.find((c) => c.id === inv.circleId);
+        const circleName = circle?.name || "Wealth Circle";
+        const volName = circle?.volunteerUsername || "Volunteer";
+        memoryNotifications.unshift({
+          id: `notif-${inv.id}`,
+          userWallet: normWallet || inv.inviteeWallet.toLowerCase(),
+          type: "JOIN_REQUEST",
+          circleId: inv.circleId,
+          inviteId: inv.id,
+          circleName,
+          volunteerName: volName,
+          body: `You were added to ${circleName} by ${volName}. Verify whether you want to join.`,
+          readAt: null,
+          createdAt: inv.createdAt,
+        });
+      }
+    }
+  });
 
   return memoryNotifications.filter((n) => {
     return (

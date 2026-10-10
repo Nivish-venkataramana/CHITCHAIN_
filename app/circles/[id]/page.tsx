@@ -170,6 +170,31 @@ export default function CircleDetailPage() {
     }
   };
 
+  const [isResponding, setIsResponding] = useState(false);
+
+  const handleRespondDirect = async (inviteId: string, accept: boolean) => {
+    setIsResponding(true);
+    try {
+      const res = await fetch(`/api/invites/${inviteId}/respond`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-dev-user": dynamicUsername,
+          "x-dev-wallet": activeWalletAddress,
+        },
+        body: JSON.stringify({ accept }),
+      });
+      if (res.ok) {
+        await fetchCircle();
+        window.dispatchEvent(new Event("balance_updated"));
+      }
+    } catch (err) {
+      console.error("Error responding to invite:", err);
+    } finally {
+      setIsResponding(false);
+    }
+  };
+
   const allCandidatePool = directoryUsers.length > 0 ? directoryUsers : users;
   const cleanQuery = searchQuery.trim().replace(/^@/, "").toLowerCase();
 
@@ -214,6 +239,15 @@ export default function CircleDetailPage() {
   const acceptedInvites = circle.invites.filter((i) => i.status === "ACCEPTED");
   const monthlyUSDC = fromBaseUnits(circle.monthlyAmount);
 
+  const myPendingInvite = circle.invites.find(
+    (inv) =>
+      inv.status === "PENDING" &&
+      (inv.inviteeUsername.toLowerCase() === dynamicUsername.toLowerCase() ||
+        (user?.username && inv.inviteeUsername.toLowerCase() === user.username.toLowerCase()) ||
+        (activeWalletAddress && inv.inviteeWallet.toLowerCase() === activeWalletAddress) ||
+        (user?.walletAddress && inv.inviteeWallet.toLowerCase() === user.walletAddress.toLowerCase()))
+  );
+
   return (
     <div className="w-full max-w-5xl mx-auto px-2 sm:px-4 flex flex-col text-neutral-100 gap-4 py-4 pb-32">
       {/* Action Modals */}
@@ -241,6 +275,40 @@ export default function CircleDetailPage() {
           <span>Return to Dashboard</span>
         </Link>
       </div>
+
+      {/* Recipient Pending Invite Action Banner */}
+      {myPendingInvite && (
+        <div className="rounded-3xl border border-amber-500/40 bg-amber-950/30 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xl backdrop-blur-md">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
+              <h3 className="text-sm font-bold text-white">You have been invited to join this Circle!</h3>
+            </div>
+            <p className="text-xs text-neutral-300">
+              Confirm your participation as member of <span className="font-semibold text-white">{circle.name}</span>.
+            </p>
+          </div>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              disabled={isResponding}
+              onClick={() => handleRespondDirect(myPendingInvite.id, true)}
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold text-xs tracking-wider uppercase transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>{isResponding ? "Joining..." : "Accept Invitation"}</span>
+            </button>
+            <button
+              type="button"
+              disabled={isResponding}
+              onClick={() => handleRespondDirect(myPendingInvite.id, false)}
+              className="px-4 py-2.5 rounded-xl border border-neutral-800 hover:border-neutral-700 bg-neutral-900/80 hover:bg-neutral-800 text-neutral-400 hover:text-white font-semibold text-xs transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              <span>Decline</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Header Banner - Transparent with light white tint */}
       <div className="rounded-2xl border border-white/10 bg-transparent p-3.5 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0 shadow-lg">
@@ -430,21 +498,43 @@ export default function CircleDetailPage() {
                     </p>
                   </div>
 
-                  <div>
-                    <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider border ${
-                        inv.status === "ACCEPTED"
-                          ? "border-emerald-500/40 text-emerald-400 bg-emerald-950/20"
-                          : inv.status === "PENDING"
-                          ? "border-amber-500/40 text-amber-400 bg-amber-950/20"
-                          : "border-red-500/40 text-red-400 bg-red-950/20"
-                      }`}
-                    >
-                      {inv.status === "ACCEPTED" && <CheckCircle2 className="h-3 w-3" />}
-                      {inv.status === "PENDING" && <Clock className="h-3 w-3" />}
-                      {inv.status === "REJECTED" && <XCircle className="h-3 w-3" />}
-                      {inv.status}
-                    </span>
+                  <div className="flex items-center gap-2">
+                    {inv.status === "PENDING" && isCurrentUser ? (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          disabled={isResponding}
+                          onClick={() => handleRespondDirect(inv.id, true)}
+                          className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-[11px] flex items-center gap-1 shadow-md transition-all cursor-pointer"
+                        >
+                          <CheckCircle2 className="h-3 w-3" />
+                          <span>Accept</span>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isResponding}
+                          onClick={() => handleRespondDirect(inv.id, false)}
+                          className="px-2.5 py-1 rounded-lg border border-neutral-700 bg-neutral-900/80 hover:bg-neutral-800 text-neutral-400 hover:text-white text-[11px] transition-colors cursor-pointer"
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    ) : (
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider border ${
+                          inv.status === "ACCEPTED"
+                            ? "border-emerald-500/40 text-emerald-400 bg-emerald-950/20"
+                            : inv.status === "PENDING"
+                            ? "border-amber-500/40 text-amber-400 bg-amber-950/20"
+                            : "border-red-500/40 text-red-400 bg-red-950/20"
+                        }`}
+                      >
+                        {inv.status === "ACCEPTED" && <CheckCircle2 className="h-3 w-3" />}
+                        {inv.status === "PENDING" && <Clock className="h-3 w-3" />}
+                        {inv.status === "REJECTED" && <XCircle className="h-3 w-3" />}
+                        {inv.status}
+                      </span>
+                    )}
                   </div>
                 </div>
               );
