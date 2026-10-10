@@ -265,6 +265,24 @@ async function ensureCircleLoaded(id: string): Promise<CircleRecord | null> {
     }
   }
 
+  // Auto-promote circle to ISSUE_STAGE if all accepted invites match numPeople
+  if (circle) {
+    const acceptedCount = memoryInvites.filter(
+      (i) => i.circleId === circle!.id && i.status === "ACCEPTED"
+    ).length;
+    if (circle.status === "INVITING" && acceptedCount >= circle.numPeople) {
+      circle.status = "ISSUE_STAGE";
+      if (!isTestEnv) {
+        prisma.circle
+          .update({
+            where: { id: circle.id },
+            data: { status: "ISSUE_STAGE" },
+          })
+          .catch((err) => console.warn("Auto-promote circle to ISSUE_STAGE notice:", err.message));
+      }
+    }
+  }
+
   return circle || null;
 }
 
@@ -909,6 +927,7 @@ export async function respondToInvite(params: {
 export async function createIssueRecord(params: {
   circleId: string;
   authorWallet: string;
+  authorUsername?: string;
   category: "PEOPLE_COUNT" | "DURATION" | "AMOUNT" | "PEOPLE_JOINED";
   targetMemberWallet?: string | null;
   comment: string;
@@ -924,13 +943,20 @@ export async function createIssueRecord(params: {
     throw new Error("A comment is required for every issue");
   }
 
-  const author = getUserByWallet(params.authorWallet);
-  const authorUsername = author?.username || "member";
+  const normAuthorWallet = (params.authorWallet || "").toLowerCase().trim();
+  const normAuthorUser = (params.authorUsername || "").toLowerCase().trim().replace(/^@/, "");
+
+  let authorUsername = normAuthorUser;
+  if (!authorUsername && normAuthorWallet) {
+    const author = getUserByWallet(normAuthorWallet);
+    authorUsername = author?.username || "member";
+  }
+  if (!authorUsername) authorUsername = "member";
 
   const newIssue: IssueRecord = {
     id: `issue-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     circleId: circle.id,
-    authorWallet: params.authorWallet.toLowerCase(),
+    authorWallet: normAuthorWallet,
     authorUsername,
     category: params.category,
     targetMemberWallet: params.targetMemberWallet ? params.targetMemberWallet.toLowerCase() : null,
@@ -1000,6 +1026,7 @@ export async function createIssueRecord(params: {
 export async function resolveIssueRecord(params: {
   issueId: string;
   volunteerWallet: string;
+  volunteerUsername?: string;
   response: string;
 }): Promise<IssueRecord> {
   const issue = memoryIssues.find((i) => i.id === params.issueId);
@@ -1008,7 +1035,14 @@ export async function resolveIssueRecord(params: {
   const circle = await ensureCircleLoaded(issue.circleId);
   if (!circle) throw new Error("Circle not found");
 
-  if (circle.volunteerWallet.toLowerCase() !== params.volunteerWallet.toLowerCase()) {
+  const normVolWallet = (params.volunteerWallet || "").toLowerCase().trim();
+  const normVolUser = (params.volunteerUsername || "").toLowerCase().trim().replace(/^@/, "");
+
+  const isVol =
+    (normVolWallet && circle.volunteerWallet.toLowerCase() === normVolWallet) ||
+    (normVolUser && circle.volunteerUsername?.toLowerCase() === normVolUser);
+
+  if (!isVol) {
     throw new Error("Only the volunteer can resolve issues");
   }
 
@@ -1066,6 +1100,7 @@ export async function resolveIssueRecord(params: {
 export async function submitNoIssuesConfirmation(params: {
   circleId: string;
   memberWallet: string;
+  username?: string;
 }): Promise<{ circle: CircleRecord; allConfirmed: boolean }> {
   const circle = await ensureCircleLoaded(params.circleId);
   if (!circle) throw new Error("Circle not found");
@@ -1082,21 +1117,47 @@ export async function submitNoIssuesConfirmation(params: {
     throw new Error("Cannot confirm 'No issues' while open issues remain unresolved");
   }
 
-  const normMember = params.memberWallet.toLowerCase();
-  
+  const normMember = (params.memberWallet || "").toLowerCase().trim();
+  const normUser = (params.username || "").toLowerCase().trim().replace(/^@/, "");
+
+  // Find matching invite or volunteer
+  const isVol =
+    (normMember && circle.volunteerWallet.toLowerCase() === normMember) ||
+    (normUser && circle.volunteerUsername?.toLowerCase() === normUser);
+
+  const matchingInvite = memoryInvites.find(
+    (i) =>
+      i.circleId === circle.id &&
+      i.status === "ACCEPTED" &&
+      ((normMember && i.inviteeWallet.toLowerCase() === normMember) ||
+        (normUser && i.inviteeUsername.toLowerCase() === normUser))
+  );
+
+  if (!isVol && !matchingInvite) {
+    throw new Error("You must be an accepted member of this circle to submit 'No Issues'");
+  }
+
+  const canonicalWallet = matchingInvite
+    ? matchingInvite.inviteeWallet.toLowerCase()
+    : circle.volunteerWallet.toLowerCase();
+
   // Record confirmation
   const existingConf = memoryConfirmations.find(
-    (c) => c.circleId === circle.id && c.memberWallet.toLowerCase() === normMember
+    (c) =>
+      c.circleId === circle.id &&
+      (c.memberWallet.toLowerCase() === canonicalWallet ||
+        (normMember && c.memberWallet.toLowerCase() === normMember))
   );
+
   if (!existingConf) {
     memoryConfirmations.push({
       circleId: circle.id,
-      memberWallet: normMember,
+      memberWallet: canonicalWallet,
       confirmedAt: new Date(),
     });
   }
 
-  // Check if ALL N members have confirmed
+  // Check all accepted members
   const acceptedMembers = memoryInvites.filter(
     (i) => i.circleId === circle.id && i.status === "ACCEPTED"
   );
@@ -1124,15 +1185,17 @@ export async function submitNoIssuesConfirmation(params: {
       memoryNotifications.unshift(notif);
 
       if (!isTestEnv) {
-        prisma.notification.create({
-          data: {
-            id: notif.id,
-            userWallet: notif.userWallet,
-            type: notif.type,
-            circleId: notif.circleId,
-            body: notif.body,
-          },
-        }).catch((err) => console.warn("Prisma notification create notice:", err.message));
+        prisma.notification
+          .create({
+            data: {
+              id: notif.id,
+              userWallet: notif.userWallet,
+              type: notif.type,
+              circleId: notif.circleId,
+              body: notif.body,
+            },
+          })
+          .catch((err) => console.warn("Prisma notification create notice:", err.message));
       }
     });
   }
@@ -1141,9 +1204,9 @@ export async function submitNoIssuesConfirmation(params: {
   if (!isTestEnv) {
     try {
       await prisma.noIssueConfirmation.upsert({
-        where: { circleId_memberWallet: { circleId: circle.id, memberWallet: normMember } },
+        where: { circleId_memberWallet: { circleId: circle.id, memberWallet: canonicalWallet } },
         update: { confirmedAt: new Date() },
-        create: { circleId: circle.id, memberWallet: normMember, confirmedAt: new Date() },
+        create: { circleId: circle.id, memberWallet: canonicalWallet, confirmedAt: new Date() },
       });
 
       if (allConfirmed) {
@@ -1163,11 +1226,19 @@ export async function submitNoIssuesConfirmation(params: {
 export async function activateCircleRecord(params: {
   circleId: string;
   volunteerWallet: string;
+  username?: string;
 }): Promise<CircleRecord> {
   const circle = await ensureCircleLoaded(params.circleId);
   if (!circle) throw new Error("Circle not found");
 
-  if (circle.volunteerWallet.toLowerCase() !== params.volunteerWallet.toLowerCase()) {
+  const normVolWallet = (params.volunteerWallet || "").toLowerCase().trim();
+  const normVolUser = (params.username || "").toLowerCase().trim().replace(/^@/, "");
+
+  const isVol =
+    (normVolWallet && circle.volunteerWallet.toLowerCase() === normVolWallet) ||
+    (normVolUser && circle.volunteerUsername?.toLowerCase() === normVolUser);
+
+  if (!isVol) {
     throw new Error("Only the volunteer can activate the circle");
   }
 
@@ -1185,9 +1256,12 @@ export async function activateCircleRecord(params: {
   const acceptedMembers = memoryInvites.filter(
     (i) => i.circleId === circle.id && i.status === "ACCEPTED"
   );
+  const nonVolAccepted = acceptedMembers.filter(
+    (m) => m.inviteeWallet.toLowerCase() !== circle.volunteerWallet.toLowerCase()
+  );
 
   // Volunteer confirms their own No issues automatically on activation
-  const normVol = params.volunteerWallet.toLowerCase();
+  const normVol = circle.volunteerWallet.toLowerCase();
   if (!memoryConfirmations.some((c) => c.circleId === circle.id && c.memberWallet.toLowerCase() === normVol)) {
     memoryConfirmations.push({
       circleId: circle.id,
@@ -1196,10 +1270,18 @@ export async function activateCircleRecord(params: {
     });
   }
 
-  const currentConfirmations = memoryConfirmations.filter((c) => c.circleId === circle.id);
-  if (currentConfirmations.length < acceptedMembers.length) {
+  const confirmedNonVols = nonVolAccepted.filter((m) =>
+    memoryConfirmations.some(
+      (c) =>
+        c.circleId === circle.id &&
+        (c.memberWallet.toLowerCase() === m.inviteeWallet.toLowerCase() ||
+          (m.inviteeUsername && c.memberWallet.toLowerCase() === m.inviteeUsername.toLowerCase()))
+    )
+  );
+
+  if (nonVolAccepted.length > 0 && confirmedNonVols.length < nonVolAccepted.length) {
     throw new Error(
-      `Cannot activate circle: Only ${currentConfirmations.length} of ${acceptedMembers.length} members have confirmed 'No issues'`
+      `Cannot activate circle: Only ${confirmedNonVols.length} of ${nonVolAccepted.length} members have confirmed 'No issues'`
     );
   }
 
@@ -1222,15 +1304,17 @@ export async function activateCircleRecord(params: {
     memoryNotifications.unshift(notif);
 
     if (!isTestEnv) {
-      prisma.notification.create({
-        data: {
-          id: notif.id,
-          userWallet: notif.userWallet,
-          type: notif.type,
-          circleId: notif.circleId,
-          body: notif.body,
-        },
-      }).catch((err) => console.warn("Prisma notification create notice:", err.message));
+      prisma.notification
+        .create({
+          data: {
+            id: notif.id,
+            userWallet: notif.userWallet,
+            type: notif.type,
+            circleId: notif.circleId,
+            body: notif.body,
+          },
+        })
+        .catch((err) => console.warn("Prisma notification create notice:", err.message));
     }
   });
 
@@ -1274,7 +1358,7 @@ export async function getIssuesForCircle(circleId: string): Promise<{
         const item: IssueRecord = {
           id: iss.id,
           circleId: iss.circleId,
-          authorWallet: iss.authorWallet,
+          authorWallet: iss.authorWallet.toLowerCase(),
           authorUsername: author?.username || "member",
           category: iss.category as any,
           targetMemberWallet: iss.targetMemberWallet,
@@ -1288,13 +1372,21 @@ export async function getIssuesForCircle(circleId: string): Promise<{
         else memoryIssues.push(item);
       });
 
+      // Synchronize memoryConfirmations with DB records
+      const dbWallets = new Set(dbConfirmations.map((c) => c.memberWallet.toLowerCase()));
+      const kept = memoryConfirmations.filter(
+        (c) => c.circleId !== circleId || dbWallets.has(c.memberWallet.toLowerCase())
+      );
+      memoryConfirmations.splice(0, memoryConfirmations.length, ...kept);
+
       dbConfirmations.forEach((conf) => {
+        const normW = conf.memberWallet.toLowerCase();
         const idx = memoryConfirmations.findIndex(
-          (c) => c.circleId === conf.circleId && c.memberWallet === conf.memberWallet
+          (c) => c.circleId === conf.circleId && c.memberWallet.toLowerCase() === normW
         );
         const item: NoIssueConfirmationRecord = {
           circleId: conf.circleId,
-          memberWallet: conf.memberWallet,
+          memberWallet: normW,
           confirmedAt: conf.confirmedAt,
         };
         if (idx !== -1) memoryConfirmations[idx] = item;

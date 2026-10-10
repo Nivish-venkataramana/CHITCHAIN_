@@ -95,12 +95,18 @@ export default function IssuesStagePage() {
   );
 
   const hasUserConfirmed = Boolean(
-    user && confirmations.some((c) => c.memberWallet.toLowerCase() === user.walletAddress.toLowerCase())
+    user && confirmations.some((c) =>
+      (user.walletAddress && c.memberWallet.toLowerCase() === user.walletAddress.toLowerCase()) ||
+      (user.username && c.memberWallet.toLowerCase() === user.username.toLowerCase())
+    )
   );
 
   // Count non-volunteer confirmations
   const nonVolunteerConfirmations = nonVolunteerMembers.filter((m) =>
-    confirmations.some((c) => c.memberWallet.toLowerCase() === m.inviteeWallet.toLowerCase())
+    confirmations.some((c) =>
+      c.memberWallet.toLowerCase() === m.inviteeWallet.toLowerCase() ||
+      (m.inviteeUsername && c.memberWallet.toLowerCase() === m.inviteeUsername.toLowerCase())
+    )
   );
 
   const allMembersConfirmedNoIssues =
@@ -130,11 +136,14 @@ export default function IssuesStagePage() {
         headers: {
           "Content-Type": "application/json",
           "x-dev-user": user.username,
+          "x-dev-wallet": user.walletAddress,
         },
         body: JSON.stringify({
           category,
           targetMemberWallet: category === "PEOPLE_JOINED" ? (targetMemberWallet || null) : null,
           comment: comment.trim(),
+          walletAddress: user.walletAddress,
+          username: user.username,
         }),
       });
 
@@ -170,8 +179,13 @@ export default function IssuesStagePage() {
         headers: {
           "Content-Type": "application/json",
           "x-dev-user": user?.username || "",
+          "x-dev-wallet": user?.walletAddress || "",
         },
-        body: JSON.stringify({ resolutionResponse: resp }),
+        body: JSON.stringify({
+          resolutionResponse: resp,
+          walletAddress: user?.walletAddress,
+          username: user?.username,
+        }),
       });
 
       const data = await res.json();
@@ -192,6 +206,7 @@ export default function IssuesStagePage() {
       setError("Cannot submit 'No Issues' while open issues remain unresolved.");
       return;
     }
+    setIsSubmitting(true);
     setError(null);
     setActionSuccess(null);
 
@@ -201,7 +216,12 @@ export default function IssuesStagePage() {
         headers: {
           "Content-Type": "application/json",
           "x-dev-user": user.username,
+          "x-dev-wallet": user.walletAddress,
         },
+        body: JSON.stringify({
+          walletAddress: user.walletAddress,
+          username: user.username,
+        }),
       });
 
       const data = await res.json();
@@ -213,6 +233,8 @@ export default function IssuesStagePage() {
       loadData();
     } catch (err: any) {
       setError(err.message || "Failed to confirm No issues");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -233,7 +255,12 @@ export default function IssuesStagePage() {
         headers: {
           "Content-Type": "application/json",
           "x-dev-user": user.username,
+          "x-dev-wallet": user.walletAddress,
         },
+        body: JSON.stringify({
+          walletAddress: user.walletAddress,
+          username: user.username,
+        }),
       });
 
       const data = await res.json();
@@ -326,7 +353,7 @@ export default function IssuesStagePage() {
             </button>
           ) : (
             <button
-              disabled={openIssuesCount > 0 || hasUserConfirmed}
+              disabled={openIssuesCount > 0 || hasUserConfirmed || isSubmitting}
               onClick={handleConfirmNoIssues}
               className={`px-4 py-2 rounded-xl font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer ${
                 openIssuesCount === 0 && !hasUserConfirmed
@@ -337,7 +364,13 @@ export default function IssuesStagePage() {
               }`}
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
-              <span>{hasUserConfirmed ? "Confirmed: No Issues" : "Submit No Issues"}</span>
+              <span>
+                {isSubmitting
+                  ? "Confirming..."
+                  : hasUserConfirmed
+                  ? "Confirmed: No Issues"
+                  : "Submit No Issues"}
+              </span>
             </button>
           )}
         </div>
@@ -436,7 +469,9 @@ export default function IssuesStagePage() {
                   <div className="space-y-1.5">
                     {nonVolunteerMembers.map((m) => {
                       const confirmed = confirmations.some(
-                        (c) => c.memberWallet.toLowerCase() === m.inviteeWallet.toLowerCase()
+                        (c) =>
+                          c.memberWallet.toLowerCase() === m.inviteeWallet.toLowerCase() ||
+                          (m.inviteeUsername && c.memberWallet.toLowerCase() === m.inviteeUsername.toLowerCase())
                       );
                       return (
                         <div
@@ -588,7 +623,7 @@ export default function IssuesStagePage() {
                 <button
                   type="button"
                   onClick={handleConfirmNoIssues}
-                  disabled={openIssuesCount > 0 || hasUserConfirmed}
+                  disabled={openIssuesCount > 0 || hasUserConfirmed || isSubmitting}
                   className={`px-4 py-2.5 rounded-xl font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer ${
                     openIssuesCount === 0 && !hasUserConfirmed
                       ? "border border-white/20 bg-white/10 text-white hover:bg-white/20"
@@ -599,7 +634,13 @@ export default function IssuesStagePage() {
                   title={openIssuesCount > 0 ? "Resolve open issues first" : "Submit No Issues"}
                 >
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  <span>{hasUserConfirmed ? "No Issues Confirmed" : "Submit No Issues"}</span>
+                  <span>
+                    {isSubmitting
+                      ? "Confirming..."
+                      : hasUserConfirmed
+                      ? "No Issues Confirmed"
+                      : "Submit No Issues"}
+                  </span>
                 </button>
               </div>
             </form>
