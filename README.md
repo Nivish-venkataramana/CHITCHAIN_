@@ -5,7 +5,6 @@
 ChitChain is a decentralized chit fund prototype that enables trusted community members to form savings circles, contribute stablecoins, participate in private auctions, and distribute payouts through smart contracts.
 
 ## Overview
-
 Chit funds are community-based savings arrangements in which members contribute a fixed amount periodically and one participant receives the pooled amount during each cycle.
 
 Traditional arrangements can depend on a central organizer, manual accounting, and participants fulfilling their financial commitments. ChitChain explores how blockchain technology and smart contracts can make these processes more transparent, verifiable, and rule-driven.
